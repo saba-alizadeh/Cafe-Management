@@ -29,10 +29,10 @@ const SpecialDiscounts = () => {
     };
 
     return (
-        <Box sx={{ bgcolor: '#A81C1C', py: 4, direction: 'rtl' }}>
+        <Box sx={{ bgcolor: 'var(--color-primary)', py: 4, direction: 'rtl' }}>
             <Container>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white', mb: 2 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'var(--color-secondary)', mb: 2 }}>
                         تخفیف‌های ویژه کافه
                     </Typography>
                     <Typography sx={{ color: 'rgba(255,255,255,0.8)' }}>
@@ -54,7 +54,7 @@ const SpecialDiscounts = () => {
                     >
                         {specialItems.map((item) => (
                             <Card key={item.id} sx={{ minWidth: 200, bgcolor: 'rgba(255,255,255,0.1)' }}>
-                                <CardContent sx={{ textAlign: 'center', color: 'white' }}>
+                                <CardContent sx={{ textAlign: 'center', color: 'var(--color-secondary)' }}>
                                     <img
                                         src={item.image}
                                         alt={item.name}
@@ -71,7 +71,7 @@ const SpecialDiscounts = () => {
                                     {item.discount && (
                                         <Chip
                                             label={`${item.discount}% تخفیف`}
-                                            sx={{ bgcolor: '#ff9800', color: 'white', mb: 1 }}
+                                            sx={{ bgcolor: 'var(--color-accent)', color: 'var(--color-secondary)', mb: 1 }}
                                         />
                                     )}
                                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -80,10 +80,10 @@ const SpecialDiscounts = () => {
                                     <Button
                                         variant="contained"
                                         sx={{
-                                            bgcolor: '#8B1717',
-                                            color: 'white',
+                                            bgcolor: 'var(--color-primary)',
+                                            color: 'var(--color-secondary)',
                                             mt: 1,
-                                            '&:hover': { bgcolor: '#6B0F0F' },
+                                            '&:hover': { bgcolor: 'var(--color-primary)' },
                                         }}
                                     >
                                         سفارش
@@ -101,11 +101,11 @@ const SpecialDiscounts = () => {
                             left: 0,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'white',
-                            color: 'black',
+                            bgcolor: 'var(--color-secondary)',
+                            color: 'var(--color-primary)',
                             boxShadow: 2,
                             zIndex: 2,
-                            '&:hover': { bgcolor: '#A81C1C', color: 'white' },
+                            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' },
                         }}
                     >
                         <ArrowBack />
@@ -118,11 +118,11 @@ const SpecialDiscounts = () => {
                             right: 0,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'white',
-                            color: 'black',
+                            bgcolor: 'var(--color-secondary)',
+                            color: 'var(--color-primary)',
                             boxShadow: 2,
                             zIndex: 2,
-                            '&:hover': { bgcolor: '#A81C1C', color: 'white' },
+                            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' },
                         }}
                     >
                         <ArrowForward />

@@ -25,24 +25,24 @@ const BranchesSection = () => {
                                 <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>{branch.name}</Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{branch.phone}</Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{branch.address}</Typography>
-                                <Button className="more-info-button" variant="contained" sx={{ bgcolor: '#A81C1C', color: 'white', opacity: hoveredCard === index ? 1 : 0, visibility: hoveredCard === index ? 'visible' : 'hidden', transition: 'all 0.3s ease', '&:hover': { bgcolor: '#8B1717' } }}>
+                                <Button className="more-info-button" variant="contained" sx={{ bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)', opacity: hoveredCard === index ? 1 : 0, visibility: hoveredCard === index ? 'visible' : 'hidden', transition: 'all 0.3s ease', '&:hover': { bgcolor: 'var(--color-primary)' } }}>
                                     More Information
                                 </Button>
                             </CardContent>
                         </Card>
                     ))}
                 </Box>
-                <IconButton sx={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', bgcolor: 'white', color: 'black', boxShadow: 2 }}>
+                <IconButton sx={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', bgcolor: 'var(--color-secondary)', color: 'var(--color-primary)', boxShadow: 2 }}>
                     <ArrowBack />
                 </IconButton>
-                <IconButton sx={{ position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)', bgcolor: 'white', color: 'black', boxShadow: 2 }}>
+                <IconButton sx={{ position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)', bgcolor: 'var(--color-secondary)', color: 'var(--color-primary)', boxShadow: 2 }}>
                     <ArrowForward />
                 </IconButton>
             </Box>
             <Box sx={{ textAlign: 'center', mt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#e0e0e0' }} />
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#A81C1C' }} />
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'var(--color-accent-soft)' }} />
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'var(--color-primary)' }} />
                 </Box>
             </Box>
         </Container>

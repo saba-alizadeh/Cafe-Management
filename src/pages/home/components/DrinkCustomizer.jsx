@@ -61,32 +61,32 @@ const DrinkCustomizer = () => {
     { name: 'اسپرسو', emoji: '☕', price: 3.5, color: '#8B4513', bgColor: '#D2B48C' },
     { name: 'قهوه', emoji: '☕', price: 2.5, color: '#6F4E37', bgColor: '#A0522D' },
     { name: 'آب', emoji: '💧', price: 1, color: '#87CEEB', bgColor: '#B0E0E6' },
-    { name: 'شیر', emoji: '🥛', price: 2, color: '#FFFFFF', bgColor: '#F5F5F5' },
+    { name: 'شیر', emoji: '🥛', price: 2, color: 'var(--color-secondary)', bgColor: 'var(--color-surface)' },
     { name: 'چای سبز', emoji: '🍃', price: 2.5, color: '#90EE90', bgColor: '#98FB98' },
     { name: 'چای سیاه', emoji: '🫖', price: 2.5, color: '#CD853F', bgColor: '#D2A679' }
   ];
 
   const fruits = [
-    { name: 'موز', emoji: '🍌', price: 1, bgColor: '#FFFACD' },
-    { name: 'توت فرنگی', emoji: '🍓', price: 1.25, bgColor: '#FFE4E1' },
-    { name: 'بلوبری', emoji: '🫐', price: 1.5, bgColor: '#E0E0FF' },
+    { name: 'موز', emoji: '🍌', price: 1, bgColor: 'var(--color-secondary)' },
+    { name: 'توت فرنگی', emoji: '🍓', price: 1.25, bgColor: 'var(--color-accent-soft)' },
+    { name: 'بلوبری', emoji: '🫐', price: 1.5, bgColor: 'var(--color-accent-soft)' },
     { name: 'گیلاس ', emoji: '🍒', price: 1.25, bgColor: '#FFB6C1' },
-    { name: 'انبه', emoji: '🥭', price: 1.5, bgColor: '#FFE4B5' },
-    { name: 'هلو', emoji: '🍑', price: 1.25, bgColor: '#FFDAB9' },
-    { name: 'سیب', emoji: '🍎', price: 1, bgColor: '#FFE4E1' },
-    { name: 'پرتقال', emoji: '🍊', price: 1, bgColor: '#FFE4C4' }
+    { name: 'انبه', emoji: '🥭', price: 1.5, bgColor: 'var(--color-accent-soft)' },
+    { name: 'هلو', emoji: '🍑', price: 1.25, bgColor: 'var(--color-accent-soft)' },
+    { name: 'سیب', emoji: '🍎', price: 1, bgColor: 'var(--color-accent-soft)' },
+    { name: 'پرتقال', emoji: '🍊', price: 1, bgColor: 'var(--color-accent-soft)' }
   ];
 
   const syrups = [
-    { name: 'وانیل', emoji: '🍦', price: 0.5, bgColor: '#FFF8DC' },
-    { name: 'کارامل', emoji: '🍯', price: 0.5, bgColor: '#FFE4B5' },
+    { name: 'وانیل', emoji: '🍦', price: 0.5, bgColor: 'var(--color-secondary)' },
+    { name: 'کارامل', emoji: '🍯', price: 0.5, bgColor: 'var(--color-accent-soft)' },
     { name: 'شکلات', emoji: '🍫', price: 0.75, bgColor: '#8B4513' }
   ];
 
   const extras = [
-    { name: 'یخ', emoji: '🧊', price: 0, bgColor: '#E0F7FA' },
-    { name: 'خامه زده شده', emoji: '☁️', price: 0.5, bgColor: '#FFFFFF' },
-    { name: 'نعناع', emoji: '🌿', price: 0.5, bgColor: '#E8F5E9' }
+    { name: 'یخ', emoji: '🧊', price: 0, bgColor: 'var(--color-accent-soft)' },
+    { name: 'خامه زده شده', emoji: '☁️', price: 0.5, bgColor: 'var(--color-secondary)' },
+    { name: 'نعناع', emoji: '🌿', price: 0.5, bgColor: 'var(--color-accent-soft)' }
   ];
 
   const handleSizeSelect = (sizeName, index) => {
@@ -167,7 +167,7 @@ const DrinkCustomizer = () => {
           sx={{
             width: '100%',
             height: '2px',
-            bgcolor: '#e0e0e0',
+            bgcolor: 'var(--color-accent-soft)',
             position: 'relative',
             '&::before': {
               content: '""',
@@ -177,9 +177,9 @@ const DrinkCustomizer = () => {
               transform: 'translate(-50%, -50%)',
               width: '200px',
               height: '2px',
-              bgcolor: '#A81C1C',
+              bgcolor: 'var(--color-primary)',
               borderStyle: 'dashed',
-              borderColor: '#A81C1C',
+              borderColor: 'var(--color-primary)',
             },
           }}
         />
@@ -188,7 +188,7 @@ const DrinkCustomizer = () => {
       <Paper
         sx={{
           p: 4,
-          bgcolor: '#eeeeee',
+          bgcolor: 'var(--color-accent-soft)',
           boxShadow: 3,
           borderRadius: 3
         }}
@@ -196,13 +196,13 @@ const DrinkCustomizer = () => {
         <Grid container spacing={4} alignItems="flex-start">
           {/* Ingredients Panel - Left Side */}
           <Grid item xs={12} lg={6}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3, color: '#3E2723' }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3, color: 'var(--color-primary)' }}>
               اجزای نوشیدنیت رو انتخاب کن
             </Typography>
 
             {/* Base Liquids */}
             <Box sx={{ mb: 4 }}>
-              <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: '#8D6E63' }}>
+              <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 🥤 مواد پایه
               </Typography>
               <Grid container spacing={2}>
@@ -231,7 +231,7 @@ const DrinkCustomizer = () => {
                       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 0.5 }}>
                         {liquid.name}
                       </Typography>
-                      <Typography sx={{ fontSize: '0.875rem', color: '#A81C1C', fontWeight: 600 }}>
+                      <Typography sx={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600 }}>
                         {liquid.price.toFixed(2)} تومان
                       </Typography>
                     </Card>
@@ -242,7 +242,7 @@ const DrinkCustomizer = () => {
 
             {/* Fruits */}
             <Box sx={{ mb: 4 }}>
-              <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: '#8D6E63' }}>
+              <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 🍓 میوه های تازه
               </Typography>
               <Grid container spacing={1.5}>
@@ -270,7 +270,7 @@ const DrinkCustomizer = () => {
                       <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 0.25 }}>
                         {fruit.name}
                       </Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#A81C1C', fontWeight: 600 }}>
+                      <Typography sx={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600 }}>
                         {fruit.price.toFixed(2)} تومان
                       </Typography>
                     </Card>
@@ -281,7 +281,7 @@ const DrinkCustomizer = () => {
 
             {/* Syrups & Extras */}
             <Box sx={{ mb: 4 }}>
-              <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: '#8D6E63' }}>
+              <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 🍯 سیروپ ها
               </Typography>
               <Grid container spacing={1.5}>
@@ -295,7 +295,7 @@ const DrinkCustomizer = () => {
                         p: 1.5,
                         cursor: 'pointer',
                         transition: 'all 0.3s ease',
-                        bgcolor: item.name === 'شکلات' ? '#5D4037' : item.bgColor,
+                        bgcolor: item.name === 'شکلات' ? 'var(--color-primary)' : item.bgColor,
                         border: item.name === 'خامه زده شده' ? '1px solid #E0E0E0' : 'none',
                         borderRadius: 2,
                         textAlign: 'center',
@@ -314,14 +314,14 @@ const DrinkCustomizer = () => {
                           fontSize: '0.75rem',
                           fontWeight: 600,
                           mb: 0.25,
-                          color: item.name === 'شکلات' ? '#fff' : '#000'
+                          color: item.name === 'شکلات' ? 'var(--color-secondary)' : 'var(--color-primary)'
                         }}
                       >
                         {item.name}
                       </Typography>
                       <Typography sx={{
                         fontSize: '0.75rem',
-                        color: item.name === 'شکلات' ? '#FFD700' : '#A81C1C',
+                        color: item.name === 'شکلات' ? 'var(--color-accent)' : 'var(--color-primary)',
                         fontWeight: 600
                       }}>
                         {item.price === 0 ? 'رایگان' : `${item.price.toFixed(2)} تومان`}
@@ -335,7 +335,7 @@ const DrinkCustomizer = () => {
 
           {/* Drink Preview - Right Side */}
           <Grid item xs={12} lg={6}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3, color: '#3E2723' }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3, color: 'var(--color-primary)' }}>
               نوشیدنی شما
             </Typography>
 
@@ -347,13 +347,13 @@ const DrinkCustomizer = () => {
                 mx: 'auto',
                 mb: 3,
                 p: 3,
-                bgcolor: isDraggingOverCup ? '#D6EBFF' : '#E3F2FD',
+                bgcolor: isDraggingOverCup ? 'var(--color-accent-soft)' : 'var(--color-accent-soft)',
                 borderRadius: 3,
                 width: 280,
                 maxWidth: 280,
                 height: 360,
                 boxShadow: 2,
-                border: isDraggingOverCup ? '2px dashed #1976d2' : '2px solid #BBDEFB'
+                border: isDraggingOverCup ? '2px dashed var(--color-accent)' : '2px solid var(--color-accent-soft)'
               }}
               onDragOver={handleDragOverCup}
               onDragLeave={handleDragLeaveCup}
@@ -364,27 +364,27 @@ const DrinkCustomizer = () => {
                 <svg width="100%" viewBox="0 0 200 300" style={{ maxHeight: 280 }}>
                   <defs>
                     <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" style={{ stopColor: '#ffffff', stopOpacity: 0.3 }} />
-                      <stop offset="30%" style={{ stopColor: '#ffffff', stopOpacity: 0.1 }} />
-                      <stop offset="70%" style={{ stopColor: '#ffffff', stopOpacity: 0.05 }} />
-                      <stop offset="100%" style={{ stopColor: '#ffffff', stopOpacity: 0.2 }} />
+                      <stop offset="0%" style={{ stopColor: 'var(--color-secondary)', stopOpacity: 0.3 }} />
+                      <stop offset="30%" style={{ stopColor: 'var(--color-secondary)', stopOpacity: 0.1 }} />
+                      <stop offset="70%" style={{ stopColor: 'var(--color-secondary)', stopOpacity: 0.05 }} />
+                      <stop offset="100%" style={{ stopColor: 'var(--color-secondary)', stopOpacity: 0.2 }} />
                     </linearGradient>
                     <clipPath id="glassClip">
                       <path d="M52 52 L148 52 L138 248 L62 248 Z" />
                     </clipPath>
                   </defs>
 
-                  <ellipse cx="100" cy="280" rx="45" ry="8" fill="#000000" opacity="0.1" />
+                  <ellipse cx="100" cy="280" rx="45" ry="8" fill="var(--color-primary)" opacity="0.1" />
                   <path
                     d="M50 50 L150 50 L140 250 L60 250 Z"
                     fill="url(#glassGradient)"
-                    stroke="#6B7280"
+                    stroke="var(--color-primary)"
                     strokeWidth="3"
                     opacity="0.9"
                   />
                   <path
                     d="M55 55 L75 55 L73 240 L57 240 Z"
-                    fill="#ffffff"
+                    fill="var(--color-secondary)"
                     opacity="0.4"
                   />
 
@@ -407,7 +407,7 @@ const DrinkCustomizer = () => {
                       y={98 + idx * 12}
                       width="86"
                       height={10}
-                      fill={syrup.bgColor || '#FFD54F'}
+                      fill={syrup.bgColor || 'var(--color-accent)'}
                       opacity="0.9"
                       clipPath="url(#glassClip)"
                     />
@@ -485,7 +485,7 @@ const DrinkCustomizer = () => {
 
             {/* Size Selection - Fixed to avoid overlapping */}
             <Box sx={{ mb: 3 }}>
-              <Typography sx={{ fontWeight: 600, mb: 2, color: '#3E2723', textAlign: 'center' }}>
+              <Typography sx={{ fontWeight: 600, mb: 2, color: 'var(--color-primary)', textAlign: 'center' }}>
                 اندازه نوشیدنیت رو انتخاب کن
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -497,14 +497,14 @@ const DrinkCustomizer = () => {
                     sx={{
                       minWidth: 90,
                       py: 1.5,
-                      bgcolor: selectedSize === size.name.toLowerCase() ? '#A81C1C' : 'transparent',
-                      color: selectedSize === size.name.toLowerCase() ? '#ffffff' : '#3E2723',
-                      borderColor: '#A81C1C',
+                      bgcolor: selectedSize === size.name.toLowerCase() ? 'var(--color-primary)' : 'transparent',
+                      color: selectedSize === size.name.toLowerCase() ? 'var(--color-secondary)' : 'var(--color-primary)',
+                      borderColor: 'var(--color-primary)',
                       fontWeight: 600,
                       '&:hover': {
-                        bgcolor: '#A81C1C',
-                        color: '#ffffff',
-                        borderColor: '#A81C1C'
+                        bgcolor: 'var(--color-primary)',
+                        color: 'var(--color-secondary)',
+                        borderColor: 'var(--color-primary)'
                       }
                     }}
                   >
@@ -519,13 +519,13 @@ const DrinkCustomizer = () => {
             </Box>
 
             {/* Ingredients List */}
-            <Paper sx={{ bgcolor: '#fff', p: 2, mb: 3, borderRadius: 2, boxShadow: 2, overflow: 'hidden', maxHeight: 400, maxWidth: 350 }}>
-              <Typography sx={{ fontWeight: 600, mb: 2, color: '#3E2723' }}>
+            <Paper sx={{ bgcolor: 'var(--color-secondary)', p: 2, mb: 3, borderRadius: 2, boxShadow: 2, overflow: 'hidden', maxHeight: 400, maxWidth: 350 }}>
+              <Typography sx={{ fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 اجزای نوشیدنی
               </Typography>
               <Box sx={{ minHeight: 60, mb: 2 }}>
                 {ingredients.length === 0 ? (
-                  <Typography sx={{ fontSize: '0.875rem', color: '#8D6E63', textAlign: 'center', py: 2 }}>
+                  <Typography sx={{ fontSize: '0.875rem', color: 'var(--color-primary)', textAlign: 'center', py: 2 }}>
                     برای اینکه نوشیدنیت رو بسازی باید مواد پایه رو اضافه کنی!
                   </Typography>
                 ) : (
@@ -537,7 +537,7 @@ const DrinkCustomizer = () => {
                         size="small"
                         variant="outlined"
                         sx={{
-                          bgcolor: '#f5f5f5',
+                          bgcolor: 'var(--color-secondary)',
                           fontWeight: 500,
                           border: '1px solid #E0E0E0'
                         }}
@@ -549,10 +549,10 @@ const DrinkCustomizer = () => {
               <Box sx={{ borderTop: '2px solid #E0E0E0', pt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>
-                    <Typography sx={{ fontSize: '0.875rem', color: '#8D6E63', mb: 0.5 }}>
+                    <Typography sx={{ fontSize: '0.875rem', color: 'var(--color-primary)', mb: 0.5 }}>
                       اندازه: {selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1)}
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#A81C1C' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
                       {calculatePrice()} تومان
                     </Typography>
                   </Box>
@@ -567,14 +567,14 @@ const DrinkCustomizer = () => {
                 onClick={handleClearDrink}
                 fullWidth
                 sx={{
-                  borderColor: '#A81C1C',
-                  color: '#A81C1C',
+                  borderColor: 'var(--color-primary)',
+                  color: 'var(--color-primary)',
                   py: 1.5,
                   fontWeight: 600,
                   '&:hover': {
-                    borderColor: '#A81C1C',
-                    bgcolor: '#A81C1C',
-                    color: '#ffffff'
+                    borderColor: 'var(--color-primary)',
+                    bgcolor: 'var(--color-primary)',
+                    color: 'var(--color-secondary)'
                   }
                 }}
               >
@@ -584,12 +584,12 @@ const DrinkCustomizer = () => {
                 variant="contained"
                 fullWidth
                 sx={{
-                  bgcolor: '#A81C1C',
-                  color: '#ffffff',
+                  bgcolor: 'var(--color-primary)',
+                  color: 'var(--color-secondary)',
                   py: 2,
                   fontWeight: 600,
                   fontSize: '1rem',
-                  '&:hover': { bgcolor: '#8B1717' }
+                  '&:hover': { bgcolor: 'var(--color-primary)' }
                 }}
               >
                 ✨ اضافه کردن به سفارش

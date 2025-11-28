@@ -30,7 +30,7 @@ const Login = () => {
         { id: 'admin', name: 'Admin', icon: AdminPanelSettings, color: '#f44336', description: 'System Administrator' },
         { id: 'manager', name: 'Café Manager', icon: Business, color: '#2196f3', description: 'Café Owner/Manager' },
         { id: 'barista', name: 'Barista', icon: LocalCafe, color: '#4caf50', description: 'Café Staff' },
-        { id: 'customer', name: 'Customer', icon: Person, color: '#ff9800', description: 'Café Customer' }
+        { id: 'customer', name: 'Customer', icon: Person, color: 'var(--color-accent)', description: 'Café Customer' }
     ];
 
     const handleLogin = (e) => {

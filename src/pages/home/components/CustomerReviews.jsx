@@ -34,7 +34,7 @@ const Testimonials = () => {
             textAlign: 'center',
             fontWeight: 'bold',
             mb: 4,
-            borderBottom: '1px dashed #ccc',
+            borderBottom: '1px dashed var(--color-accent-soft)',
             display: 'inline-block',
             pb: 1,
             mx: 'auto'
@@ -66,7 +66,7 @@ const Testimonials = () => {
                 boxShadow: 2,
                 textAlign: 'center',
                 p: 2,
-                bgcolor: 'white',
+                bgcolor: 'var(--color-secondary)',
                 transition: '0.3s',
                 '&:hover': { boxShadow: 4, transform: 'translateY(-5px)' }
               }}
@@ -89,7 +89,7 @@ const Testimonials = () => {
               <Typography variant="body2" sx={{ color: 'gray', fontSize: '0.9rem' }}>
                 {item.text}
               </Typography>
-              <Typography variant="h6" sx={{ color: '#ccc', mt: 1 }}>
+              <Typography variant="h6" sx={{ color: 'var(--color-accent-soft)', mt: 1 }}>
                 “
               </Typography>
             </Card>
@@ -104,11 +104,11 @@ const Testimonials = () => {
             left: 0,
             top: '50%',
             transform: 'translateY(-50%)',
-            bgcolor: 'white',
-            color: 'black',
+            bgcolor: 'var(--color-secondary)',
+            color: 'var(--color-primary)',
             boxShadow: 2,
             zIndex: 2,
-            '&:hover': { bgcolor: '#A81C1C', color: 'white' }
+            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }
           }}
         >
           <ArrowBack />
@@ -121,11 +121,11 @@ const Testimonials = () => {
             right: 0,
             top: '50%',
             transform: 'translateY(-50%)',
-            bgcolor: 'white',
-            color: 'black',
+            bgcolor: 'var(--color-secondary)',
+            color: 'var(--color-primary)',
             boxShadow: 2,
             zIndex: 2,
-            '&:hover': { bgcolor: '#A81C1C', color: 'white' }
+            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }
           }}
         >
           <ArrowForward />

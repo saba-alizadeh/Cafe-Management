@@ -4,8 +4,8 @@ import { Box, Container, Typography, Button, Grid } from '@mui/material';
 const HeroSection = () => {
     return (
         <Box sx={{
-            background: 'linear-gradient(135deg, #dde6d5 0%, #667b68 100%)',
-            color: 'white',
+            background: 'linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-accent) 100%)',
+            color: 'var(--color-secondary)',
             py: 8,
             position: 'relative',
             overflow: 'hidden'
@@ -22,7 +22,7 @@ const HeroSection = () => {
                         <Button
                             variant="contained"
                             size="large"
-                            sx={{ bgcolor: '#A81C1C', px: 4, py: 2 }}
+                            sx={{ bgcolor: 'var(--color-primary)', px: 4, py: 2 }}
                         >
                             Restaurant Information
                         </Button>

@@ -12,15 +12,15 @@ import {
 import OverviewCard from '../../../components/dashboard/OverviewCard';
 
 const palette = {
-	blush: '#fff4ef',
-	peach: '#fceee9',
-	coral: '#f7d4c3',
-	amber: '#f8e4ce',
-	sand: '#f5d1b3',
-	sageSoft: '#e8f0eb',
-	sageTint: '#edf5ef',
-	accent: '#667b68',
-	accentAlt: '#7a9280'
+	blush: 'var(--color-secondary)',
+	peach: 'var(--color-secondary)',
+	coral: 'var(--color-secondary)',
+	amber: 'var(--color-secondary)',
+	sand: 'var(--color-secondary)',
+	sageSoft: 'var(--color-secondary)',
+	sageTint: 'var(--color-secondary)',
+	accent: 'var(--color-accent)',
+	accentAlt: 'var(--color-accent)'
 };
 
 const cards = [

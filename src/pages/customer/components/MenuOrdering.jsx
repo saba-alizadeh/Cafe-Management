@@ -4,196 +4,94 @@ import {
     Grid,
     Card,
     CardContent,
-    CardActions,
     Paper,
     Button,
     TextField,
     InputAdornment,
     Chip,
     IconButton,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     List,
     ListItem,
     ListItemText,
     ListItemSecondaryAction,
-    Divider,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Stack
+    Divider
 } from '@mui/material';
 import {
     Search,
     Add,
     Remove,
     ShoppingCart,
-    LocalCafe,
-    Tune
+    LocalOffer,
+    Restaurant,
+    Timer
 } from '@mui/icons-material';
 import { useState } from 'react';
 
 const MenuOrdering = () => {
-    const cafes = [
-        { id: 'central-branch', name: 'کافه مرکزی ولیعصر', location: 'تهران، ولیعصر، نبش کوچه دوازدهم' },
-        { id: 'north-branch', name: 'کافه نیاوران', location: 'تهران، نیاوران، بلوار پورابتهاج' },
-        { id: 'west-branch', name: 'کافه شهرک غرب', location: 'تهران، شهرک غرب، فاز ۲' }
-    ];
-
-    const ordersByCafe = {
-        'central-branch': [
-            {
-                id: 'order-central-1',
-                name: 'کاپوچینو کلاسیک',
-                description: 'اسپرسو تیره با فوم نرم و دارچین تازه',
-                basePrice: 145000,
-                lastOrdered: '۱۴ آذر ۱۴۰۲',
-                status: 'آماده تحویل',
-                customizations: {
-                    size: 'متوسط',
-                    milk: 'بادام',
-                    extras: ['وانیل', 'پودر دارچین']
-                }
-            },
-            {
-                id: 'order-central-2',
-                name: 'ماکیاتو کاراملی',
-                description: 'دو شات اسپرسو با سس کارامل دست‌ساز',
-                basePrice: 165000,
-                lastOrdered: '۲۷ آبان ۱۴۰۲',
-                status: 'در حال آماده سازی',
-                customizations: {
-                    size: 'بزرگ',
-                    milk: 'پرچرب',
-                    extras: ['کارامل اضافه']
-                }
-            }
-        ],
-        'north-branch': [
-            {
-                id: 'order-north-1',
-                name: 'لاته وانیلی',
-                description: 'لاته ملایم با سیروپ وانیل ماداگاسکار',
-                basePrice: 155000,
-                lastOrdered: '۱۰ آذر ۱۴۰۲',
-                status: 'تحویل شده',
-                customizations: {
-                    size: 'متوسط',
-                    milk: 'جوی دوسر',
-                    extras: ['وانیل', 'خامه']
-                }
-            },
-            {
-                id: 'order-north-2',
-                name: 'چای ماسالا',
-                description: 'چای ماسالا با ادویه‌های تازه آسیایی',
-                basePrice: 120000,
-                lastOrdered: '۲۵ مهر ۱۴۰۲',
-                status: 'تحویل شده',
-                customizations: {
-                    size: 'کوچک',
-                    milk: 'نارگیل',
-                    extras: ['عسل ارگانیک']
-                }
-            }
-        ],
-        'west-branch': [
-            {
-                id: 'order-west-1',
-                name: 'آفوگاتو',
-                description: 'اسکوپ بستنی وانیل با شات اسپرسو تازه',
-                basePrice: 180000,
-                lastOrdered: '۶ آبان ۱۴۰۲',
-                status: 'تحویل شده',
-                customizations: {
-                    size: 'تکی',
-                    milk: 'بدون شیر',
-                    extras: ['شکلات تلخ رنده شده']
-                }
-            }
-        ]
-    };
-
-    const savedCustomDrink = {
-        id: 'custom-1',
-        name: 'ترکیب اختصاصی انرژی‌زا',
-        description: 'اسپرسو دو شات با شیر بادام، سیروپ کارامل و تکه‌های بلوبری تازه',
-        basePrice: 185000,
-        ingredients: [
-            { label: '☕ اسپرسو دو شات', type: 'base' },
-            { label: '🥛 شیر بادام', type: 'milk' },
-            { label: '🍯 سیروپ کارامل', type: 'syrup' },
-            { label: '🫐 بلوبری تازه', type: 'fruit' },
-            { label: '☁️ خامه زده شده', type: 'extra' }
-        ]
-    };
-
-    const [selectedCafe, setSelectedCafe] = useState(cafes[0]?.id || '');
-    const [reorderQuantities, setReorderQuantities] = useState({});
-    const [customDrinkQuantity, setCustomDrinkQuantity] = useState(1);
     const [cart, setCart] = useState([]);
     const [discountCode, setDiscountCode] = useState('');
-    const [orderSearch, setOrderSearch] = useState('');
+    const [customizeDialog, setCustomizeDialog] = useState({ open: false, item: null });
 
-    const formatCurrency = (value) =>
-        new Intl.NumberFormat('fa-IR', { style: 'currency', currency: 'IRR' }).format(value);
-
-    const currentCafe = cafes.find((cafe) => cafe.id === selectedCafe);
-    const cafeOrders = selectedCafe ? ordersByCafe[selectedCafe] || [] : [];
-    const filteredOrders = cafeOrders.filter((item) => {
-        if (!orderSearch.trim()) return true;
-        const keyword = orderSearch.trim().toLowerCase();
-        return (
-            item.name.toLowerCase().includes(keyword) ||
-            item.description.toLowerCase().includes(keyword)
-        );
-    });
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'آماده تحویل':
-                return 'success';
-            case 'در حال آماده سازی':
-                return 'warning';
-            default:
-                return 'default';
+    // Mock data - in real app, this would come from API
+    const menuItems = [
+        {
+            id: 1,
+            name: 'Cappuccino',
+            category: 'Beverages',
+            basePrice: 4.50,
+            description: 'Rich espresso with steamed milk and foam',
+            customizable: true,
+            options: {
+                size: ['Small', 'Medium', 'Large'],
+                milk: ['Whole', 'Skim', 'Almond', 'Oat'],
+                extras: ['Extra Shot', 'Vanilla', 'Caramel', 'Chocolate']
+            }
+        },
+        {
+            id: 2,
+            name: 'Latte',
+            category: 'Beverages',
+            basePrice: 4.00,
+            description: 'Smooth espresso with steamed milk',
+            customizable: true,
+            options: {
+                size: ['Small', 'Medium', 'Large'],
+                milk: ['Whole', 'Skim', 'Almond', 'Oat'],
+                extras: ['Extra Shot', 'Vanilla', 'Caramel']
+            }
+        },
+        {
+            id: 3,
+            name: 'Croissant',
+            category: 'Pastries',
+            basePrice: 3.50,
+            description: 'Buttery, flaky pastry',
+            customizable: false
+        },
+        {
+            id: 4,
+            name: 'Muffin',
+            category: 'Pastries',
+            basePrice: 2.50,
+            description: 'Fresh baked muffin',
+            customizable: false
         }
-    };
+    ];
 
-    const getReorderQuantity = (itemId) => reorderQuantities[itemId] || 1;
-
-    const updateReorderQuantity = (itemId, delta) => {
-        setReorderQuantities((prev) => {
-            const current = prev[itemId] || 1;
-            const nextValue = Math.max(1, current + delta);
-            return { ...prev, [itemId]: nextValue };
-        });
-    };
-
-    const updateCustomDrinkQuantity = (delta) => {
-        setCustomDrinkQuantity((prev) => Math.max(1, prev + delta));
-    };
-
-    const getCustomizationSummary = (customizations) => {
-        if (!customizations) return '';
-        const summary = [];
-        if (customizations.size) summary.push(`اندازه: ${customizations.size}`);
-        if (customizations.milk) summary.push(`نوع شیر: ${customizations.milk}`);
-        if (customizations.extras?.length) summary.push(`افزودنی‌ها: ${customizations.extras.join('، ')}`);
-        if (customizations.ingredients?.length) summary.push(`مواد: ${customizations.ingredients.join('، ')}`);
-        return summary.join(' | ');
-    };
-
-    const addToCart = (item, customizations = {}, quantity = 1) => {
-        const normalizedQuantity = Math.max(1, quantity);
+    const addToCart = (item, customizations = {}) => {
         const cartItem = {
             id: `${item.id}-${Date.now()}`,
             name: item.name,
             basePrice: item.basePrice,
             customizations,
-            quantity: normalizedQuantity,
-            totalPrice: item.basePrice * normalizedQuantity
+            quantity: 1,
+            totalPrice: item.basePrice
         };
-        setCart((prev) => [...prev, cartItem]);
+        setCart([...cart, cartItem]);
     };
 
     const updateQuantity = (itemId, newQuantity) => {
@@ -223,206 +121,96 @@ const MenuOrdering = () => {
     const finalTotal = getTotalPrice() - applyDiscount();
 
     return (
-        <Box sx={{ direction: 'rtl' }}>
+        <Box>
             <Typography variant="h4" gutterBottom>
-                سفارش‌های من
+                Menu & Ordering
             </Typography>
             <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-                ابتدا کافه مورد نظر را انتخاب کنید تا سفارش‌های همان کافه را مشاهده و مدیریت کنید
+                Browse our menu and place your order
             </Typography>
 
-            <Paper sx={{ p: 2, mb: 3 }}>
-                <FormControl fullWidth size="small">
-                    <InputLabel id="cafe-select-label">انتخاب کافه</InputLabel>
-                    <Select
-                        labelId="cafe-select-label"
-                        label="انتخاب کافه"
-                        value={selectedCafe}
-                        onChange={(event) => setSelectedCafe(event.target.value)}
-                    >
-                        {cafes.map((cafe) => (
-                            <MenuItem key={cafe.id} value={cafe.id}>
-                                {cafe.name}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </Paper>
-
             <Grid container spacing={3}>
+                {/* Menu Items */}
                 <Grid item xs={12} md={8}>
-                    <Stack spacing={3}>
-                        <Paper sx={{ p: 2 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2}>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    <LocalCafe color="primary" />
-                                    <Box>
-                                        <Typography variant="h6">
-                                            سفارش‌های {currentCafe?.name}
-                                        </Typography>
-                                        {currentCafe && (
-                                            <Typography variant="body2" color="text.secondary">
-                                                {currentCafe.location}
+                    <Paper sx={{ p: 2 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                            <Typography variant="h6">Menu Items</Typography>
+                            <TextField
+                                size="small"
+                                placeholder="Search menu..."
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <Search />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                        </Box>
+                        <Grid container spacing={2}>
+                            {menuItems.map((item) => (
+                                <Grid item xs={12} sm={6} key={item.id}>
+                                    <Card>
+                                        <CardContent>
+                                            <Typography variant="h6" gutterBottom>
+                                                {item.name}
                                             </Typography>
-                                        )}
-                                    </Box>
-                                </Box>
-                                <TextField
-                                    size="small"
-                                    placeholder="جستجوی سفارش‌ها..."
-                                    value={orderSearch}
-                                    onChange={(event) => setOrderSearch(event.target.value)}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <Search />
-                                            </InputAdornment>
-                                        ),
-                                    }}
-                                />
-                            </Box>
-
-                            {filteredOrders.length === 0 ? (
-                                <Box py={6} textAlign="center">
-                                    <Typography color="text.secondary">
-                                        برای این کافه سفارشی ثبت نشده است.
-                                    </Typography>
-                                </Box>
-                            ) : (
-                                <Grid container spacing={2}>
-                                    {filteredOrders.map((item) => (
-                                        <Grid item xs={12} sm={6} key={item.id}>
-                                            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                                <CardContent>
-                                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                                        <Typography variant="h6">
-                                                            {item.name}
-                                                        </Typography>
-                                                        <Chip
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                                {item.description}
+                                            </Typography>
+                                            <Box display="flex" justifyContent="space-between" alignItems="center">
+                                                <Typography variant="h6" color="primary">
+                                                    ${item.basePrice}
+                                                </Typography>
+                                                <Box>
+                                                    {item.customizable && (
+                                                        <Button
                                                             size="small"
-                                                            label={item.status}
-                                                            color={getStatusColor(item.status)}
-                                                        />
-                                                    </Box>
-                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                                        {item.description}
-                                                    </Typography>
-                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                                        آخرین سفارش: {item.lastOrdered}
-                                                    </Typography>
-                                                    <Typography variant="h6" color="primary" sx={{ mb: 1 }}>
-                                                        {formatCurrency(item.basePrice)}
-                                                    </Typography>
-                                                    {getCustomizationSummary(item.customizations) && (
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {getCustomizationSummary(item.customizations)}
-                                                        </Typography>
+                                                            variant="outlined"
+                                                            onClick={() => setCustomizeDialog({ open: true, item })}
+                                                        >
+                                                            Customize
+                                                        </Button>
                                                     )}
-                                                </CardContent>
-                                                <CardActions sx={{ mt: 'auto', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                                                    <Box display="flex" alignItems="center" gap={1}>
-                                                        <IconButton size="small" onClick={() => updateReorderQuantity(item.id, -1)}>
-                                                            <Remove fontSize="small" />
-                                                        </IconButton>
-                                                        <Typography>{getReorderQuantity(item.id)}</Typography>
-                                                        <IconButton size="small" onClick={() => updateReorderQuantity(item.id, 1)}>
-                                                            <Add fontSize="small" />
-                                                        </IconButton>
-                                                    </Box>
                                                     <Button
                                                         size="small"
                                                         variant="contained"
-                                                        startIcon={<ShoppingCart fontSize="small" />}
-                                                        onClick={() => addToCart(item, item.customizations, getReorderQuantity(item.id))}
+                                                        startIcon={<Add />}
+                                                        onClick={() => addToCart(item)}
+                                                        sx={{ ml: 1 }}
                                                     >
-                                                        افزودن به سبد
+                                                        Add to Cart
                                                     </Button>
-                                                </CardActions>
-                                            </Card>
-                                        </Grid>
-                                    ))}
+                                                </Box>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
                                 </Grid>
-                            )}
-                        </Paper>
-
-                        <Paper sx={{ p: 2 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mb={1}>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    <Tune color="primary" />
-                                    <Typography variant="h6">نوشیدنی سفارشی شما</Typography>
-                                </Box>
-                                <Typography variant="h6" color="primary">
-                                    {formatCurrency(savedCustomDrink.basePrice)}
-                                </Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                {savedCustomDrink.description}
-                            </Typography>
-                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-                                {savedCustomDrink.ingredients.map((ingredient) => (
-                                    <Chip
-                                        key={ingredient.label}
-                                        label={ingredient.label}
-                                        variant="outlined"
-                                        sx={{ borderRadius: 1 }}
-                                    />
-                                ))}
-                            </Stack>
-                            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    <IconButton size="small" onClick={() => updateCustomDrinkQuantity(-1)}>
-                                        <Remove fontSize="small" />
-                                    </IconButton>
-                                    <Typography>{customDrinkQuantity}</Typography>
-                                    <IconButton size="small" onClick={() => updateCustomDrinkQuantity(1)}>
-                                        <Add fontSize="small" />
-                                    </IconButton>
-                                </Box>
-                                <Button
-                                    variant="contained"
-                                    onClick={() => addToCart(
-                                        savedCustomDrink,
-                                        { ingredients: savedCustomDrink.ingredients.map((item) => item.label) },
-                                        customDrinkQuantity
-                                    )}
-                                >
-                                    افزودن به سبد
-                                </Button>
-                            </Box>
-                        </Paper>
-                    </Stack>
+                            ))}
+                        </Grid>
+                    </Paper>
                 </Grid>
 
+                {/* Shopping Cart */}
                 <Grid item xs={12} md={4}>
-                    <Paper sx={{ p: 2, position: { md: 'sticky' }, top: { md: 20 } }}>
+                    <Paper sx={{ p: 2, position: 'sticky', top: 20 }}>
                         <Box display="flex" alignItems="center" mb={2}>
-                            <ShoppingCart sx={{ ml: 1 }} />
-                            <Typography variant="h6">سبد خرید</Typography>
+                            <ShoppingCart sx={{ mr: 1 }} />
+                            <Typography variant="h6">Shopping Cart</Typography>
                         </Box>
-
+                        
                         {cart.length === 0 ? (
                             <Typography color="text.secondary" align="center">
-                                سبد خرید شما خالی است
+                                Your cart is empty
                             </Typography>
                         ) : (
                             <>
                                 <List>
                                     {cart.map((item) => (
-                                        <ListItem key={item.id} divider alignItems="flex-start">
+                                        <ListItem key={item.id} divider>
                                             <ListItemText
                                                 primary={item.name}
-                                                secondary={
-                                                    <Box>
-                                                        <Typography variant="body2">
-                                                            {formatCurrency(item.basePrice)} برای هر واحد
-                                                        </Typography>
-                                                        {getCustomizationSummary(item.customizations) && (
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                {getCustomizationSummary(item.customizations)}
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
-                                                }
+                                                secondary={`$${item.basePrice} each`}
                                             />
                                             <ListItemSecondaryAction>
                                                 <Box display="flex" alignItems="center" gap={1}>
@@ -430,7 +218,7 @@ const MenuOrdering = () => {
                                                         size="small"
                                                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                                     >
-                                                        <Remove fontSize="small" />
+                                                        <Remove />
                                                     </IconButton>
                                                     <Typography variant="body2">
                                                         {item.quantity}
@@ -439,55 +227,97 @@ const MenuOrdering = () => {
                                                         size="small"
                                                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                                     >
-                                                        <Add fontSize="small" />
+                                                        <Add />
                                                     </IconButton>
                                                 </Box>
                                             </ListItemSecondaryAction>
                                         </ListItem>
                                     ))}
                                 </List>
-
+                                
                                 <Divider sx={{ my: 2 }} />
-
+                                
+                                {/* Discount Code */}
                                 <Box display="flex" gap={1} mb={2}>
                                     <TextField
                                         size="small"
-                                        placeholder="کد تخفیف"
+                                        placeholder="Discount code"
                                         value={discountCode}
                                         onChange={(e) => setDiscountCode(e.target.value)}
                                         fullWidth
                                     />
                                     <Button variant="outlined" size="small">
-                                        اعمال
+                                        Apply
                                     </Button>
                                 </Box>
-
+                                
+                                {/* Total */}
                                 <Box display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography>جمع جزء:</Typography>
-                                    <Typography>{formatCurrency(getTotalPrice())}</Typography>
+                                    <Typography>Subtotal:</Typography>
+                                    <Typography>${getTotalPrice().toFixed(2)}</Typography>
                                 </Box>
                                 {applyDiscount() > 0 && (
                                     <Box display="flex" justifyContent="space-between" mb={1}>
-                                        <Typography color="success.main">تخفیف:</Typography>
-                                        <Typography color="success.main">
-                                            -{formatCurrency(applyDiscount())}
-                                        </Typography>
+                                        <Typography color="success.main">Discount:</Typography>
+                                        <Typography color="success.main">-${applyDiscount().toFixed(2)}</Typography>
                                     </Box>
                                 )}
                                 <Divider sx={{ my: 1 }} />
                                 <Box display="flex" justifyContent="space-between" mb={2}>
-                                    <Typography variant="h6">جمع کل:</Typography>
-                                    <Typography variant="h6">{formatCurrency(finalTotal)}</Typography>
+                                    <Typography variant="h6">Total:</Typography>
+                                    <Typography variant="h6">${finalTotal.toFixed(2)}</Typography>
                                 </Box>
-
+                                
                                 <Button variant="contained" fullWidth size="large">
-                                    ثبت سفارش
+                                    Place Order
                                 </Button>
                             </>
                         )}
                     </Paper>
                 </Grid>
             </Grid>
+
+            {/* Customization Dialog */}
+            <Dialog open={customizeDialog.open} onClose={() => setCustomizeDialog({ open: false, item: null })}>
+                <DialogTitle>Customize {customizeDialog.item?.name}</DialogTitle>
+                <DialogContent>
+                    {customizeDialog.item && (
+                        <Box>
+                            <Typography variant="h6" gutterBottom>Size</Typography>
+                            <Box display="flex" gap={1} mb={2}>
+                                {customizeDialog.item.options.size.map((size) => (
+                                    <Chip key={size} label={size} />
+                                ))}
+                            </Box>
+                            
+                            <Typography variant="h6" gutterBottom>Milk Type</Typography>
+                            <Box display="flex" gap={1} mb={2}>
+                                {customizeDialog.item.options.milk.map((milk) => (
+                                    <Chip key={milk} label={milk} />
+                                ))}
+                            </Box>
+                            
+                            <Typography variant="h6" gutterBottom>Extras</Typography>
+                            <Box display="flex" gap={1}>
+                                {customizeDialog.item.options.extras.map((extra) => (
+                                    <Chip key={extra} label={extra} />
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setCustomizeDialog({ open: false, item: null })}>
+                        Cancel
+                    </Button>
+                    <Button variant="contained" onClick={() => {
+                        addToCart(customizeDialog.item);
+                        setCustomizeDialog({ open: false, item: null });
+                    }}>
+                        Add to Cart
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

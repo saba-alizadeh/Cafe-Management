@@ -53,14 +53,14 @@ const ServicesSection = () => {
                     width: 80,
                     height: 80,
                     borderRadius: '50%',
-                    border: '2px dashed #A81C1C',
+                    border: '2px dashed var(--color-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     mb: 2,
                   }}
                 >
-                  <Box sx={{ color: '#A81C1C', fontSize: '2rem' }}>
+                  <Box sx={{ color: 'var(--color-primary)', fontSize: '2rem' }}>
                     {service.icon}
                   </Box>
                 </Box>

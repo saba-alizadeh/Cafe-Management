@@ -10,37 +10,37 @@ const BookingOptions = () => {
             title: 'میز های کافه',
             description: 'رزرو میز برای صرف قهوه یا غذا',
             link: '/booking/cafe',
-            iconColor: '#A78BFA',
-            iconBgColor: '#EDE9FE'
+            iconColor: 'var(--color-accent)',
+            iconBgColor: 'var(--color-secondary)'
         },
         {
             icon: Movie,
             title: 'سینما',
             description: 'تماشای فیلم همراه با نوشیدنی و دسر',
             link: '/booking/cinema',
-            iconColor: '#C084FC',
-            iconBgColor: '#F3E8FF'
+            iconColor: 'var(--color-accent)',
+            iconBgColor: 'var(--color-secondary)'
         },
         {
             icon: Work,
             title: 'محیط کار اشتراکی',
             description: 'فضایی آزاد برای کار و تمرکز',
             link: '/booking/shared',
-            iconColor: '#3B82F6',
-            iconBgColor: '#DBEAFE'
+            iconColor: 'var(--color-accent)',
+            iconBgColor: 'var(--color-secondary)'
         },
         {
             icon: EventAvailable,
             title: 'ایونت',
             description: 'برگزاری دورهمی‌ها و مناسبت‌های ویژه',
             link: '/booking/event',
-            iconColor: '#EC4899',
-            iconBgColor: '#FCE7F3'
+            iconColor: 'var(--color-accent)',
+            iconBgColor: 'var(--color-secondary)'
         }
     ];
 
     return (
-        <Container sx={{ py: 4, bgcolor: '#f8f6f4' }}>
+        <Container sx={{ py: 4, bgcolor: 'var(--color-secondary)' }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
                     گزینه های رزرو
@@ -48,7 +48,7 @@ const BookingOptions = () => {
                 <Box sx={{
                     width: '100%',
                     height: '2px',
-                    bgcolor: '#e0e0e0',
+                    bgcolor: 'var(--color-accent-soft)',
                     position: 'relative',
                     '&::before': {
                         content: '""',
@@ -58,9 +58,9 @@ const BookingOptions = () => {
                         transform: 'translate(-50%, -50%)',
                         width: '220px',
                         height: '2px',
-                        bgcolor: '#A81C1C',
+                        bgcolor: 'var(--color-primary)',
                         borderStyle: 'dashed',
-                        borderColor: '#A81C1C'
+                        borderColor: 'var(--color-primary)'
                     }
                 }} />
             </Box>
@@ -75,7 +75,7 @@ const BookingOptions = () => {
                                     height: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    bgcolor: '#ede7e1',
+                                    bgcolor: 'var(--color-secondary)',
                                     borderRadius: 3,
                                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                                     transition: 'all 0.3s ease',
@@ -127,7 +127,7 @@ const BookingOptions = () => {
                                             sx={{ 
                                                 fontWeight: 'bold', 
                                                 mb: 1.5,
-                                                color: '#333333',
+                                                color: 'var(--color-primary)',
                                                 fontSize: '1.5rem'
                                             }}
                                         >
@@ -138,7 +138,7 @@ const BookingOptions = () => {
                                         <Typography 
                                             variant="body1" 
                                             sx={{ 
-                                                color: '#666666',
+                                                color: 'var(--color-primary)',
                                                 mb: 3,
                                                 fontSize: '1rem',
                                                 lineHeight: 1.6
@@ -151,8 +151,8 @@ const BookingOptions = () => {
                                         <Button
                                             variant="contained"
                                             sx={{
-                                                bgcolor: '#5c4b40',
-                                                color: '#ffffff',
+                                                bgcolor: 'var(--color-primary)',
+                                                color: 'var(--color-secondary)',
                                                 fontWeight: 'bold',
                                                 py: 1.5,
                                                 borderRadius: 2,
@@ -160,7 +160,7 @@ const BookingOptions = () => {
                                                 fontSize: '1rem',
                                                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                                                 '&:hover': {
-                                                    bgcolor: '#4a3d35',
+                                                    bgcolor: 'var(--color-primary)',
                                                     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
                                                 }
                                             }}

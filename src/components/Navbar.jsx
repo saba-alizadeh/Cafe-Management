@@ -7,7 +7,7 @@ import HomeIcon from '@mui/icons-material/Home';
 export default function Navbar() {
 
     return (
-        <header style={{ width: "77.5vw", backgroundColor: "#fceee9", height: "5vh", position: "fixed", top: "2vh", left: "1vw", padding: "25px", alignItems: "right", textAlign: 'right', boxShadow: '1px 2px 10px gray', borderRadius: '10px' }}>
+        <header style={{ width: "77.5vw", backgroundColor: "var(--color-secondary)", height: "5vh", position: "fixed", top: "2vh", left: "1vw", padding: "25px", alignItems: "right", textAlign: 'right', boxShadow: '1px 2px 10px gray', borderRadius: '10px' }}>
             <Button style={{ position: 'absolute', left: '3%' }} variant="contained">
                 <LogoutIcon/>
             </Button>

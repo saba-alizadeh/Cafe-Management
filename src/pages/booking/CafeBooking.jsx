@@ -13,9 +13,9 @@ const CafeBooking = () => {
     const [guests, setGuests] = useState(2);
 
     return (
-        <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', py: 6 }}>
+        <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', py: 6 }}>
             <Container>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: '#A81C1C' }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: 'var(--color-primary)' }}>
                     Cafe Seat Booking
                 </Typography>
 
@@ -26,7 +26,7 @@ const CafeBooking = () => {
                                 <Grid item xs={12} sm={6} md={4} key={t.tableNumber}>
                                     <Card
                                         onClick={() => setSelected(t)}
-                                        sx={{ cursor: 'pointer', border: selected?.tableNumber === t.tableNumber ? '2px solid #A81C1C' : '1px solid #e0e0e0' }}
+                                        sx={{ cursor: 'pointer', border: selected?.tableNumber === t.tableNumber ? '2px solid var(--color-primary)' : '1px solid var(--color-accent-soft)' }}
                                     >
                                         <CardContent>
                                             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Table {t.tableNumber}</Typography>
@@ -58,7 +58,7 @@ const CafeBooking = () => {
                                             sx={{ mt: 2 }}
                                             inputProps={{ min: 1, max: selected.seats }}
                                         />
-                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: '#A81C1C' }}>
+                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: 'var(--color-primary)' }}>
                                             Reserve (UI only)
                                         </Button>
                                     </Box>

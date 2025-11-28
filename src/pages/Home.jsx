@@ -11,9 +11,9 @@ import DashboardBody from "../components/DashboardBody.jsx";
 export default function Home() {
 
     return (
-        <div style={{backgroundColor: '#fceee9'}}>
+        <div style={{backgroundColor: 'var(--color-secondary)'}}>
             {/*<Sidebar/>*/}
-            {/*<div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, right: '15vw', backgroundColor: '#fafafa', boxShadow: '1px 2px 10px darkgray', padding: '15px', color: 'black' }}>*/}
+            {/*<div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, right: '15vw', backgroundColor: '#fafafa', boxShadow: '1px 2px 10px darkgray', padding: '15px', color: 'var(--color-primary)' }}>*/}
             {/*    <Navbar/>*/}
             {/*    <DashboardBody title='خوش آمدید' path='ورود > داشبورد'>*/}
             {/*        قثثقثقذ*/}
@@ -30,4 +30,6 @@ export default function Home() {
 
     );
 }
-//78jfrd8tkf7r8thdt
+//78jfrd8tkf7r8th
+//rhstdfdyhdfbg
+//add comment

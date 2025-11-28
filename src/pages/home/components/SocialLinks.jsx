@@ -2,19 +2,19 @@ import React from 'react';
 import { Container, Box, Typography, Grid, Card, CardContent } from '@mui/material';
 
 const socials = [
-  { name: 'تلگرام', icon: '📱', color: '#0088cc', text: 'در تلگرام همراه ما باشید' },
-  { name: 'اینستاگرام', icon: '📷', color: '#E4405F', text: 'ما را در اینستاگرام دنبال کنید' },
-  { name: 'ایکس (X)', icon: '🐦', color: '#1DA1F2', text: 'خبرها و پست‌های ما را ببینید' },
-  { name: 'واتساپ', icon: '💬', color: '#25D366', text: 'از طریق واتساپ با ما در تماس باشید' },
+  { name: 'تلگرام', icon: '📱', color: 'var(--color-accent)', text: 'در تلگرام همراه ما باشید' },
+  { name: 'اینستاگرام', icon: '📷', color: 'var(--color-accent)', text: 'ما را در اینستاگرام دنبال کنید' },
+  { name: 'ایکس (X)', icon: '🐦', color: 'var(--color-accent)', text: 'خبرها و پست‌های ما را ببینید' },
+  { name: 'واتساپ', icon: '💬', color: 'var(--color-accent)', text: 'از طریق واتساپ با ما در تماس باشید' },
 ];
 
 const SocialLinks = () => {
   return (
-    <Box sx={{ bgcolor: '#f6f2ea', py: 6, textAlign: 'center', fontFamily: 'Vazir, sans-serif' }} dir="rtl">
+    <Box sx={{ bgcolor: 'var(--color-secondary)', py: 6, textAlign: 'center', fontFamily: 'Vazir, sans-serif' }} dir="rtl">
       <Container>
         <Typography
           variant="h4"
-          sx={{ fontWeight: 'bold', mb: 4, color: '#3a322a' }}
+          sx={{ fontWeight: 'bold', mb: 4, color: 'var(--color-primary)' }}
         >
           راه‌های ارتباط با ما
         </Typography>
@@ -34,7 +34,7 @@ const SocialLinks = () => {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  bgcolor: '#fff',
+                  bgcolor: 'var(--color-secondary)',
                   borderRadius: 3,
                   boxShadow: 3,
                   cursor: 'pointer',
@@ -61,10 +61,10 @@ const SocialLinks = () => {
                   >
                     <Typography variant="h4">{social.icon}</Typography>
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#3a322a' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
                     {social.name}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#6b5b4d' }}>
+                  <Typography variant="body2" sx={{ color: 'var(--color-primary)' }}>
                     {social.text}
                   </Typography>
                 </CardContent>

@@ -16,7 +16,7 @@ import SocialLinks from './home/components/SocialLinks';
 
 const HomePage = () => {
     return (
-        <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
+        <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
             <HeaderBar />
             <HeroSection />
             <BookingOptions />

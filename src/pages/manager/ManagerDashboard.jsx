@@ -89,7 +89,7 @@ const ManagerDashboard = () => {
                                     backgroundColor: 'rgba(102, 123, 104, 0.18)',
                                     color: theme.palette.text.primary,
                                     '& .MuiListItemIcon-root': {
-                                        color: '#667b68'
+                                        color: 'var(--color-accent)'
                                     }
                                 },
                                 '&:hover': {

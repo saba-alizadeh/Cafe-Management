@@ -20,7 +20,7 @@ export default function Navbar() {
             position="fixed"
             sx={{
                 width: "95%",
-                backgroundColor: "#fceee9",
+                backgroundColor: "var(--color-secondary)",
                 top: "2vh",
                 left: "2.5vw",
                 boxShadow: "1px 2px 10px gray",
@@ -42,7 +42,7 @@ export default function Navbar() {
                     disableFocusRipple
                     href="#logout"
                     sx={{
-                        color: "black",
+                        color: "var(--color-primary)",
                         "&:hover": { backgroundColor: "transparent" },
                         "&:focus": { outline: "none" },
                         "&:active": { outline: "none" },
@@ -59,7 +59,7 @@ export default function Navbar() {
                         size="small"
                         sx={{
                             width: "40%",
-                            backgroundColor: "white",
+                            backgroundColor: "var(--color-secondary)",
                             borderRadius: "25px",
                             "& .MuiOutlinedInput-root": {
                                 borderRadius: "25px",
@@ -82,7 +82,7 @@ export default function Navbar() {
                         disableFocusRipple
                         href="#home"
                         sx={{
-                            color: "black",
+                            color: "var(--color-primary)",
                             "&:hover": { backgroundColor: "transparent" },
                             "&:focus": { outline: "none" },
                             "&:active": { outline: "none" },
@@ -96,7 +96,7 @@ export default function Navbar() {
                         disableFocusRipple
                         href="#settings"
                         sx={{
-                            color: "black",
+                            color: "var(--color-primary)",
                             "&:hover": { backgroundColor: "transparent" },
                             "&:focus": { outline: "none" },
                             "&:active": { outline: "none" },
@@ -110,7 +110,7 @@ export default function Navbar() {
                         disableFocusRipple
                         href="#mail"
                         sx={{
-                            color: "black",
+                            color: "var(--color-primary)",
                             "&:hover": { backgroundColor: "transparent" },
                             "&:focus": { outline: "none" },
                             "&:active": { outline: "none" },

@@ -78,7 +78,7 @@ const MenuSection = () => {
             sx={{
               width: '100%',
               height: '2px',
-              bgcolor: '#e0e0e0',
+              bgcolor: 'var(--color-accent-soft)',
               position: 'relative',
               '&::before': {
                 content: '""',
@@ -88,9 +88,9 @@ const MenuSection = () => {
                 transform: 'translate(-50%, -50%)',
                 width: '200px',
                 height: '2px',
-                bgcolor: '#A81C1C',
+                bgcolor: 'var(--color-primary)',
                 borderStyle: 'dashed',
-                borderColor: '#A81C1C',
+                borderColor: 'var(--color-primary)',
               },
             }}
           />
@@ -155,8 +155,8 @@ const MenuSection = () => {
                         position: 'absolute',
                         top: 8,
                         right: 8,
-                        bgcolor: '#ff9800',
-                        color: 'white',
+                        bgcolor: 'var(--color-accent)',
+                        color: 'var(--color-secondary)',
                         fontWeight: 'bold',
                       }}
                     />
@@ -222,18 +222,18 @@ const MenuSection = () => {
                       )}
                       <Typography
                         variant="h6"
-                        sx={{ fontWeight: 'bold', color: '#A81C1C' }}
+                        sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}
                       >
                         {item.price.toLocaleString()} تومان
                       </Typography>
                     </Box>
                     <IconButton
                       sx={{
-                        bgcolor: '#e0e0e0',
-                        color: 'black',
+                        bgcolor: 'var(--color-accent-soft)',
+                        color: 'var(--color-primary)',
                         '&:hover': {
-                          bgcolor: '#A81C1C',
-                          color: 'white',
+                          bgcolor: 'var(--color-primary)',
+                          color: 'var(--color-secondary)',
                         },
                       }}
                     >

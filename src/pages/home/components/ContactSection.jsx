@@ -30,7 +30,7 @@ export default function FeedbackForm() {
     <Box
       dir="rtl"
       sx={{
-        bgcolor: "#594d3f",
+        bgcolor: "var(--color-primary)",
         minHeight: "100vh",
         py: 6,
         display: "flex",
@@ -42,7 +42,7 @@ export default function FeedbackForm() {
       <Container
         maxWidth="sm"
         sx={{
-          bgcolor: "#f6f2ea",
+          bgcolor: "var(--color-secondary)",
           borderRadius: 3,
           boxShadow: 4,
           p: 4,
@@ -54,7 +54,7 @@ export default function FeedbackForm() {
           fontWeight="bold"
           gutterBottom
           sx={{
-            color: "#3a322a",
+            color: "var(--color-primary)",
             mb: 4,
           }}
         >
@@ -103,8 +103,8 @@ export default function FeedbackForm() {
               onChange={(event, newValue) => setRating(newValue)}
               sx={{
                 mb: 3,
-                "& .MuiRating-iconFilled": { color: "#f5b301" },
-                "& .MuiRating-iconEmpty": { color: "#ccc" },
+                "& .MuiRating-iconFilled": { color: "var(--color-accent)" },
+                "& .MuiRating-iconEmpty": { color: "var(--color-accent-soft)" },
               }}
             />
           </Box>
@@ -127,13 +127,13 @@ export default function FeedbackForm() {
             type="submit"
             fullWidth
             sx={{
-              bgcolor: "#3a322a",
-              color: "#fff",
+              bgcolor: "var(--color-primary)",
+              color: "var(--color-secondary)",
               borderRadius: "30px",
               py: 1.5,
               fontWeight: "bold",
               fontSize: "1rem",
-              "&:hover": { bgcolor: "#2b241e" },
+              "&:hover": { bgcolor: "var(--color-primary)" },
             }}
           >
             ارسال بازخورد

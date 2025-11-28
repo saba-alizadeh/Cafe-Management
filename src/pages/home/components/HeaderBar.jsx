@@ -4,26 +4,26 @@ import { Search, ShoppingCart, Favorite, Home, Menu } from '@mui/icons-material'
 
 const HeaderBar = ({ cartItems = 3 }) => {
     return (
-        <AppBar position="fixed" sx={{ bgcolor: 'white', color: 'black', boxShadow: 'none', direction: 'rtl' }}>
+        <AppBar position="fixed" sx={{ bgcolor: 'var(--color-secondary)', color: 'var(--color-primary)', boxShadow: 'none', direction: 'rtl' }}>
             <Toolbar>
                 <Box sx={{ display: 'flex', alignItems: 'right', flexGrow: 1 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mr: 1 }}>
                         کافه
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 3, mr: 'auto', direction: 'rtl', marginRight: '30px', '& .MuiButton-startIcon': { marginLeft: '5px', marginRight: 0, } }}>
-                        <Button startIcon={<Home />} sx={{ color: 'black' }}>خانه</Button>
-                        <Button startIcon={<Menu />} sx={{ color: 'black' }}>سفارشات</Button>
-                        <Button startIcon={<Favorite />} sx={{ color: 'black' }}>مورد علاقه ها</Button>
+                        <Button startIcon={<Home />} sx={{ color: 'var(--color-primary)' }}>خانه</Button>
+                        <Button startIcon={<Menu />} sx={{ color: 'var(--color-primary)' }}>سفارشات</Button>
+                        <Button startIcon={<Favorite />} sx={{ color: 'var(--color-primary)' }}>مورد علاقه ها</Button>
                         <Badge badgeContent={cartItems} color="error">
-                            <Button startIcon={<ShoppingCart />} sx={{ color: 'black' }}>سبد خرید</Button>
+                            <Button startIcon={<ShoppingCart />} sx={{ color: 'var(--color-primary)' }}>سبد خرید</Button>
                         </Badge>
                     </Box>
                 </Box>
-                <IconButton sx={{ bgcolor: '#8B1717', color: 'white' }}>
+                <IconButton sx={{ bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }}>
                     <Search />
                 </IconButton>
                 <Box sx={{ display: 'flex', gap: 1, marginRight: '7px' }}>
-                    <Button variant="contained" sx={{ bgcolor: '#A81C1C' }}>ورود | ثبت نام</Button>
+                    <Button variant="contained" sx={{ bgcolor: 'var(--color-primary)' }}>ورود | ثبت نام</Button>
                 </Box>
             </Toolbar>
         </AppBar>

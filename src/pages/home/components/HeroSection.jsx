@@ -5,8 +5,8 @@ const HeroSection = () => {
     return (
         <Box
             sx={{
-                backgroundColor: '#fff',
-                color: '#333',
+                backgroundColor: 'var(--color-secondary)',
+                color: 'var(--color-primary)',
                 py: 8,
                 position: 'relative',
                 overflow: 'hidden',
@@ -55,7 +55,7 @@ const HeroSection = () => {
                                 sx={{
                                     fontWeight: 'bold',
                                     mb: 2,
-                                    color: '#3e2723',
+                                    color: 'var(--color-primary)',
                                 }}
                             >
                                 یه فنجون قهوه، یه بهونه برای موندن.
@@ -75,11 +75,11 @@ const HeroSection = () => {
                                 variant="contained"
                                 size="large"
                                 sx={{
-                                    bgcolor: '#3e2723',
+                                    bgcolor: 'var(--color-primary)',
                                     px: 4,
                                     py: 2,
                                     borderRadius: '12px',
-                                    '&:hover': { bgcolor: '#5d4037' },
+                                    '&:hover': { bgcolor: 'var(--color-primary)' },
                                 }}
                             >
                                 اطلاعات کافه

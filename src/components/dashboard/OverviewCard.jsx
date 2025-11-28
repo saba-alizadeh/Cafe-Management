@@ -2,9 +2,9 @@ import { Box, Paper, Typography, Stack } from '@mui/material';
 import { ArrowDropUpRounded, ArrowDropDownRounded, RemoveRounded } from '@mui/icons-material';
 
 const trendStyles = {
-	up: { color: '#2e7d32', Icon: ArrowDropUpRounded },
-	down: { color: '#c62828', Icon: ArrowDropDownRounded },
-	neutral: { color: '#546e7a', Icon: RemoveRounded }
+	up: { color: 'var(--color-accent)', Icon: ArrowDropUpRounded },
+	down: { color: 'var(--color-primary)', Icon: ArrowDropDownRounded },
+	neutral: { color: 'var(--color-accent)', Icon: RemoveRounded }
 };
 
 const OverviewCard = ({
@@ -12,8 +12,8 @@ const OverviewCard = ({
 	icon,
 	metrics,
 	background,
-	accentColor = '#667b68',
-	textColor = '#333333'
+	accentColor = 'var(--color-accent)',
+	textColor = 'var(--color-primary)'
 }) => (
 	<Paper
 		elevation={0}
@@ -69,7 +69,7 @@ const OverviewCard = ({
 						alignItems="center"
 						sx={{ direction: 'rtl' }}
 					>
-						<Typography variant="body2" sx={{ color: '#6f7b7b', fontWeight: 500 }}>
+						<Typography variant="body2" sx={{ color: 'var(--color-primary)', fontWeight: 500 }}>
 							{label}
 						</Typography>
 						<Box display="flex" alignItems="center" gap={0.5} sx={{ direction: 'ltr' }}>

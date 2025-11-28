@@ -260,28 +260,28 @@ const HomePage = () => {
 
 
     return (
-        <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
+        <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
             {/* Header */}
-            <AppBar position="fixed" sx={{ bgcolor: 'white', color: 'black', boxShadow: 'none', direction: 'rtl' }}>
+            <AppBar position="fixed" sx={{ bgcolor: 'var(--color-secondary)', color: 'var(--color-primary)', boxShadow: 'none', direction: 'rtl' }}>
                 <Toolbar>
                     <Box sx={{ display: 'flex', alignItems: 'right', flexGrow: 1 }}>
                         <Typography variant="h6" sx={{ fontWeight: 'bold', mr: 1 }}>
                             Cafe
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 3, mr: 'auto', direction: 'rtl', marginRight: '30px', '& .MuiButton-startIcon': { marginLeft: '5px', marginRight: 0, } }}>
-                            <Button startIcon={<Home />} sx={{ color: 'black' }}>Home</Button>
-                            <Button startIcon={<Menu />} sx={{ color: 'black' }}>Orders</Button>
-                            <Button startIcon={<Favorite />} sx={{ color: 'black' }}>Favorites</Button>
+                            <Button startIcon={<Home />} sx={{ color: 'var(--color-primary)' }}>Home</Button>
+                            <Button startIcon={<Menu />} sx={{ color: 'var(--color-primary)' }}>Orders</Button>
+                            <Button startIcon={<Favorite />} sx={{ color: 'var(--color-primary)' }}>Favorites</Button>
                             <Badge badgeContent={cartItems} color="error">
-                                <Button startIcon={<ShoppingCart />} sx={{ color: 'black' }}>Cart</Button>
+                                <Button startIcon={<ShoppingCart />} sx={{ color: 'var(--color-primary)' }}>Cart</Button>
                             </Badge>
                         </Box>
                     </Box>
-                    <IconButton sx={{ bgcolor: '#8B1717', color: 'white' }}>
+                    <IconButton sx={{ bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }}>
                         <Search />
                     </IconButton>
                     <Box sx={{ display: 'flex', gap: 1, marginRight: '7px' }}>
-                        <Button variant="contained" sx={{ bgcolor: '#A81C1C' }}>Login | Register</Button>
+                        <Button variant="contained" sx={{ bgcolor: 'var(--color-primary)' }}>Login | Register</Button>
 
                     </Box>
                 </Toolbar>
@@ -289,8 +289,8 @@ const HomePage = () => {
 
             {/* Hero Section */}
             <Box sx={{
-                background: 'linear-gradient(135deg, #dde6d5 0%, #667b68 100%)',
-                color: 'white',
+                background: 'linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-accent) 100%)',
+                color: 'var(--color-secondary)',
                 py: 8,
                 position: 'relative',
                 overflow: 'hidden'
@@ -307,7 +307,7 @@ const HomePage = () => {
                             <Button
                                 variant="contained"
                                 size="large"
-                                sx={{ bgcolor: '#A81C1C', px: 4, py: 2 }}
+                                sx={{ bgcolor: 'var(--color-primary)', px: 4, py: 2 }}
                             >
                                 Restaurant Information
                             </Button>
@@ -338,11 +338,11 @@ const HomePage = () => {
                             left: 150,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'white',
-                            color: 'black',
+                            bgcolor: 'var(--color-secondary)',
+                            color: 'var(--color-primary)',
                             boxShadow: 2,
                             zIndex: 2,
-                            '&:hover': { bgcolor: '#A81C1C', color: 'white' },
+                            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' },
                         }}
                     >
                         <ArrowBack />
@@ -356,11 +356,11 @@ const HomePage = () => {
                             right: 150,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'white',
-                            color: 'black',
+                            bgcolor: 'var(--color-secondary)',
+                            color: 'var(--color-primary)',
                             boxShadow: 2,
                             zIndex: 2,
-                            '&:hover': { bgcolor: '#A81C1C', color: 'white' },
+                            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' },
                         }}
                     >
                         <ArrowForward />
@@ -392,13 +392,13 @@ const HomePage = () => {
                                 sx={{
                                     minWidth: 120,
                                     cursor: 'pointer',
-                                    bgcolor: 'white',
-                                    color: 'black',
-                                    border: '1px solid #e0e0e0',
+                                    bgcolor: 'var(--color-secondary)',
+                                    color: 'var(--color-primary)',
+                                    border: '1px solid var(--color-accent-soft)',
                                     '&:hover': {
                                         transform: 'translateY(-2px)',
-                                        bgcolor: '#A81C1C',
-                                        color: 'white',
+                                        bgcolor: 'var(--color-primary)',
+                                        color: 'var(--color-secondary)',
                                         transition: 'all 0.3s ease',
                                     },
                                 }}
@@ -426,7 +426,7 @@ const HomePage = () => {
                     <Box sx={{
                         width: '100%',
                         height: '2px',
-                        bgcolor: '#e0e0e0',
+                        bgcolor: 'var(--color-accent-soft)',
                         position: 'relative',
                         '&::before': {
                             content: '""',
@@ -436,9 +436,9 @@ const HomePage = () => {
                             transform: 'translate(-50%, -50%)',
                             width: '200px',
                             height: '2px',
-                            bgcolor: '#A81C1C',
+                            bgcolor: 'var(--color-primary)',
                             borderStyle: 'dashed',
-                            borderColor: '#A81C1C'
+                            borderColor: 'var(--color-primary)'
                         }
                     }} />
                 </Box>
@@ -499,11 +499,11 @@ const HomePage = () => {
                                                     {item.originalPrice.toLocaleString()} تومان
                                                 </Typography>
                                             )}
-                                            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#A81C1C' }}>
+                                            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
                                                 {item.price.toLocaleString()} تومان
                                             </Typography>
                                         </Box>
-                                        <IconButton sx={{ bgcolor: '#e0e0e0', '&:hover': { bgcolor: '#A81C1C', color: 'white' } }}>+</IconButton>
+                                        <IconButton sx={{ bgcolor: 'var(--color-accent-soft)', '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' } }}>+</IconButton>
                                     </Box>
                                 </CardContent>
                             </Card>
@@ -514,12 +514,12 @@ const HomePage = () => {
             </Container>
 
             {/* Special Discounts */}
-            <Box sx={{ bgcolor: '#A81C1C', py: 4 }}>
+            <Box sx={{ bgcolor: 'var(--color-primary)', py: 4 }}>
                 <Container>
                     <Box sx={{ textAlign: 'center', mb: 4 }}>
                         <Typography
                             variant="h4"
-                            sx={{ fontWeight: 'bold', color: 'white', mb: 2 }}
+                            sx={{ fontWeight: 'bold', color: 'var(--color-secondary)', mb: 2 }}
                         >
                             Special Discounts
                         </Typography>
@@ -542,7 +542,7 @@ const HomePage = () => {
                                 key={item.id}
                                 sx={{
                                     bgcolor: 'rgba(255,255,255,0.1)',
-                                    color: 'white',
+                                    color: 'var(--color-secondary)',
                                     borderRadius: 2,
                                     textAlign: 'center',
                                     display: 'flex',
@@ -586,8 +586,8 @@ const HomePage = () => {
                                         <Chip
                                             label={`${item.discount}%`}
                                             sx={{
-                                                bgcolor: '#ff9800',
-                                                color: 'white',
+                                                bgcolor: 'var(--color-accent)',
+                                                color: 'var(--color-secondary)',
                                                 my: 1
                                             }}
                                         />
@@ -611,10 +611,10 @@ const HomePage = () => {
                                 <Button
                                     variant="contained"
                                     sx={{
-                                        bgcolor: '#8B1717',
-                                        color: 'white',
+                                        bgcolor: 'var(--color-primary)',
+                                        color: 'var(--color-secondary)',
                                         borderRadius: 0,
-                                        '&:hover': { bgcolor: '#6B0F0F' }
+                                        '&:hover': { bgcolor: 'var(--color-primary)' }
                                     }}
                                 >
                                     Order
@@ -635,7 +635,7 @@ const HomePage = () => {
                     <Box sx={{
                         width: '100%',
                         height: '2px',
-                        bgcolor: '#e0e0e0',
+                        bgcolor: 'var(--color-accent-soft)',
                         position: 'relative',
                         '&::before': {
                             content: '""',
@@ -645,9 +645,9 @@ const HomePage = () => {
                             transform: 'translate(-50%, -50%)',
                             width: '200px',
                             height: '2px',
-                            bgcolor: '#A81C1C',
+                            bgcolor: 'var(--color-primary)',
                             borderStyle: 'dashed',
-                            borderColor: '#A81C1C'
+                            borderColor: 'var(--color-primary)'
                         }
                     }} />
                 </Box>
@@ -693,13 +693,13 @@ const HomePage = () => {
                                     </Box>
 
                                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#A81C1C' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
                                             {item.price.toLocaleString()} تومان
                                         </Typography>
                                         <Button variant="outlined" sx={{
-                                            borderColor: '#A81C1C',
-                                            color: '#A81C1C',
-                                            '&:hover': { bgcolor: '#A81C1C', color: 'white' }
+                                            borderColor: 'var(--color-primary)',
+                                            color: 'var(--color-primary)',
+                                            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }
                                         }}>
                                             Add to Cart
                                         </Button>
@@ -712,10 +712,10 @@ const HomePage = () => {
 
                 <Box sx={{ textAlign: 'center', mt: 4 }}>
                     <Button variant="contained" sx={{
-                        bgcolor: '#A81C1C',
-                        color: 'white',
+                        bgcolor: 'var(--color-primary)',
+                        color: 'var(--color-secondary)',
                         px: 4,
-                        '&:hover': { bgcolor: '#8B1717' }
+                        '&:hover': { bgcolor: 'var(--color-primary)' }
                     }}>
                         View All ←
                     </Button>
@@ -738,14 +738,14 @@ const HomePage = () => {
                                     width: 80,
                                     height: 80,
                                     borderRadius: '50%',
-                                    border: '2px dashed #A81C1C',
+                                    border: '2px dashed var(--color-primary)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     mx: 'auto',
                                     mb: 2
                                 }}>
-                                    <Box sx={{ color: '#A81C1C', fontSize: '2rem' }}>
+                                    <Box sx={{ color: 'var(--color-primary)', fontSize: '2rem' }}>
                                         {service.icon}
                                     </Box>
                                 </Box>
@@ -784,7 +784,7 @@ const HomePage = () => {
                                     '&::before': {
                                         content: '"',
                                         fontSize: '3rem',
-                                        color: '#e0e0e0',
+                                        color: 'var(--color-accent-soft)',
                                         position: 'absolute',
                                         top: -10,
                                         left: -10
@@ -792,7 +792,7 @@ const HomePage = () => {
                                     '&::after': {
                                         content: '"',
                                         fontSize: '3rem',
-                                        color: '#e0e0e0',
+                                        color: 'var(--color-accent-soft)',
                                         position: 'absolute',
                                         bottom: -20,
                                         right: -10
@@ -849,12 +849,12 @@ const HomePage = () => {
                                         className="more-info-button"
                                         variant="contained"
                                         sx={{
-                                            bgcolor: '#A81C1C',
-                                            color: 'white',
+                                            bgcolor: 'var(--color-primary)',
+                                            color: 'var(--color-secondary)',
                                             opacity: hoveredCard === index ? 1 : 0,
                                             visibility: hoveredCard === index ? 'visible' : 'hidden',
                                             transition: 'all 0.3s ease',
-                                            '&:hover': { bgcolor: '#8B1717' }
+                                            '&:hover': { bgcolor: 'var(--color-primary)' }
                                         }}
                                     >
                                         More Information
@@ -869,8 +869,8 @@ const HomePage = () => {
                             left: -20,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'white',
-                            color: 'black',
+                            bgcolor: 'var(--color-secondary)',
+                            color: 'var(--color-primary)',
                             boxShadow: 2
                         }}
                     >
@@ -882,8 +882,8 @@ const HomePage = () => {
                             right: -20,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'white',
-                            color: 'black',
+                            bgcolor: 'var(--color-secondary)',
+                            color: 'var(--color-primary)',
                             boxShadow: 2
                         }}
                     >
@@ -893,14 +893,14 @@ const HomePage = () => {
 
                 <Box sx={{ textAlign: 'center', mt: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#e0e0e0' }} />
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#A81C1C' }} />
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'var(--color-accent-soft)' }} />
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'var(--color-primary)' }} />
                     </Box>
                 </Box>
             </Container>
 
             {/* Contact Section */}
-            <Box sx={{ bgcolor: '#f5f5f5', py: 4 }}>
+            <Box sx={{ bgcolor: 'var(--color-secondary)', py: 4 }}>
                 <Container>
                     <Grid container spacing={4}>
                         <Grid item xs={12} md={6}>
@@ -937,8 +937,8 @@ const HomePage = () => {
                                 <Button
                                     variant="contained"
                                     sx={{
-                                        bgcolor: '#A81C1C',
-                                        color: 'white',
+                                        bgcolor: 'var(--color-primary)',
+                                        color: 'var(--color-secondary)',
                                         alignSelf: 'flex-start',
                                         px: 4
                                     }}
@@ -950,7 +950,7 @@ const HomePage = () => {
                         <Grid item xs={12} md={6}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
                                 <Box sx={{
-                                    bgcolor: '#e0e0e0',
+                                    bgcolor: 'var(--color-accent-soft)',
                                     height: '200px',
                                     borderRadius: 2,
                                     display: 'flex',
@@ -968,7 +968,7 @@ const HomePage = () => {
                                     </Typography>
                                 </Box>
                                 <Box sx={{
-                                    bgcolor: '#e0e0e0',
+                                    bgcolor: 'var(--color-accent-soft)',
                                     height: '200px',
                                     borderRadius: 2,
                                     display: 'flex',
@@ -995,10 +995,10 @@ const HomePage = () => {
 
                 <Grid container spacing={2}>
                     {[
-                        { name: 'On Telegram', icon: '📱', color: '#0088cc' },
-                        { name: 'On Instagram', icon: '📷', color: '#E4405F' },
-                        { name: 'On X', icon: '🐦', color: '#1DA1F2' },
-                        { name: 'On WhatsApp', icon: '💬', color: '#25D366' }
+                        { name: 'On Telegram', icon: '📱', color: 'var(--color-accent)' },
+                        { name: 'On Instagram', icon: '📷', color: 'var(--color-accent)' },
+                        { name: 'On X', icon: '🐦', color: 'var(--color-accent)' },
+                        { name: 'On WhatsApp', icon: '💬', color: 'var(--color-accent)' }
                     ].map((social, index) => (
                         <Grid item xs={12} sm={6} md={4} key={index}>
                             <Card sx={{

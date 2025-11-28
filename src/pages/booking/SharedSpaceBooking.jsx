@@ -13,9 +13,9 @@ const SharedSpaceBooking = () => {
     const [notes, setNotes] = useState('');
 
     return (
-        <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', py: 6 }}>
+        <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', py: 6 }}>
             <Container>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: '#A81C1C' }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: 'var(--color-primary)' }}>
                     Shared Space Booking
                 </Typography>
 
@@ -24,7 +24,7 @@ const SharedSpaceBooking = () => {
                         <Grid container spacing={2}>
                             {desks.map((d) => (
                                 <Grid item xs={12} sm={6} md={4} key={d.deskNumber}>
-                                    <Card onClick={() => setSelected(d)} sx={{ cursor: 'pointer', border: selected?.deskNumber === d.deskNumber ? '2px solid #A81C1C' : '1px solid #e0e0e0' }}>
+                                    <Card onClick={() => setSelected(d)} sx={{ cursor: 'pointer', border: selected?.deskNumber === d.deskNumber ? '2px solid var(--color-primary)' : '1px solid var(--color-accent-soft)' }}>
                                         <CardContent>
                                             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Desk {d.deskNumber}</Typography>
                                             <Typography color="text.secondary">Seat: {d.seatNumber}</Typography>
@@ -57,7 +57,7 @@ const SharedSpaceBooking = () => {
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
                                         />
-                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: '#A81C1C' }}>
+                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: 'var(--color-primary)' }}>
                                             Reserve (UI only)
                                         </Button>
                                     </Box>

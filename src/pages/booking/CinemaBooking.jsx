@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { Box, Container, Typography, Button } from '@mui/material';
 
+const seatColors = {
+    selected: 'var(--color-accent)',
+    occupied: 'var(--color-primary)',
+    recommended: 'var(--color-accent-soft)',
+    available: 'var(--color-secondary)',
+};
+
 const CinemaBooking = () => {
     const [selectedSeats, setSelectedSeats] = useState([]);
     const sessionTime = '09:15 AM';
@@ -45,25 +52,14 @@ const CinemaBooking = () => {
         return 'available';
     };
 
-    const getSeatColor = (status) => {
-        switch (status) {
-            case 'selected':
-                return '#4CAF50'; // Green
-            case 'occupied':
-                return '#F44336'; // Red
-            case 'recommended':
-                return '#9C27B0'; // Purple
-            default:
-                return '#FFC107'; // Yellow (available)
-        }
-    };
+    const getSeatColor = (status) => seatColors[status] || seatColors.available;
 
     const totalPrice = selectedSeats.length * pricePerSeat;
     const selectedSeatNumbers = [...selectedSeats].sort((a, b) => a - b);
 
     return (
         <Box sx={{ 
-            bgcolor: '#ffffff', 
+            bgcolor: 'var(--color-secondary)', 
             minHeight: '100vh', 
             py: 4,
             display: 'flex',
@@ -73,8 +69,8 @@ const CinemaBooking = () => {
             <Container maxWidth="md" sx={{ width: '100%' }}>
                 {/* Order Successful Banner */}
                 <Box sx={{
-                    bgcolor: '#4CAF50',
-                    color: '#ffffff',
+                    bgcolor: 'var(--color-primary)',
+                    color: 'var(--color-secondary)',
                     textAlign: 'center',
                     py: 1.5,
                     mb: 3,
@@ -92,7 +88,7 @@ const CinemaBooking = () => {
                         fontWeight: 'bold', 
                         mb: 2, 
                         textAlign: 'center',
-                        color: '#000000',
+                        color: 'var(--color-primary)',
                         fontSize: '1.75rem'
                     }}
                 >
@@ -105,7 +101,7 @@ const CinemaBooking = () => {
                     sx={{ 
                         textAlign: 'center', 
                         mb: 4,
-                        color: '#000000',
+                        color: 'var(--color-primary)',
                         fontSize: '1rem'
                     }}
                 >
@@ -121,8 +117,8 @@ const CinemaBooking = () => {
                     <Box sx={{
                         width: '70%',
                         height: 40,
-                        bgcolor: '#ffffff',
-                        border: '2px solid #e0e0e0',
+                        bgcolor: 'var(--color-surface)',
+                        border: '2px solid var(--color-border)',
                         position: 'relative',
                         borderRadius: '4px 4px 0 0',
                         '&::before': {
@@ -132,7 +128,7 @@ const CinemaBooking = () => {
                             left: '-10%',
                             width: '120%',
                             height: 40,
-                            bgcolor: '#f5f5f5',
+                            bgcolor: 'var(--color-secondary)',
                             clipPath: 'polygon(0% 100%, 10% 0%, 90% 0%, 100% 100%)',
                             zIndex: -1,
                             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -143,7 +139,7 @@ const CinemaBooking = () => {
                             sx={{ 
                                 textAlign: 'center', 
                                 pt: 1,
-                                color: '#666666',
+                                color: 'var(--color-primary)',
                                 fontSize: '0.875rem'
                             }}
                         >
@@ -195,11 +191,11 @@ const CinemaBooking = () => {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                border: status === 'selected' ? '2px solid #2E7D32' : 'none',
+                                                border: status === 'selected' ? '2px solid var(--color-accent)' : 'none',
                                                 transition: 'all 0.2s',
                                                 '&:hover': status !== 'occupied' ? {
                                                     transform: 'scale(1.1)',
-                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                    boxShadow: '0 3px 12px rgba(57,80,53,0.18)'
                                                 } : {}
                                             }}
                                         />
@@ -235,11 +231,11 @@ const CinemaBooking = () => {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                border: status === 'selected' ? '2px solid #2E7D32' : 'none',
+                                                border: status === 'selected' ? '2px solid var(--color-accent)' : 'none',
                                                 transition: 'all 0.2s',
                                                 '&:hover': status !== 'occupied' ? {
                                                     transform: 'scale(1.1)',
-                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                    boxShadow: '0 3px 12px rgba(57,80,53,0.18)'
                                                 } : {}
                                             }}
                                         />
@@ -262,7 +258,7 @@ const CinemaBooking = () => {
                         <Box sx={{ 
                             width: 16, 
                             height: 16, 
-                            bgcolor: '#FFC107',
+                            bgcolor: seatColors.available,
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
@@ -273,7 +269,7 @@ const CinemaBooking = () => {
                         <Box sx={{ 
                             width: 16, 
                             height: 16, 
-                            bgcolor: '#9C27B0',
+                            bgcolor: seatColors.recommended,
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
@@ -284,7 +280,7 @@ const CinemaBooking = () => {
                         <Box sx={{ 
                             width: 16, 
                             height: 16, 
-                            bgcolor: '#4CAF50',
+                            bgcolor: seatColors.selected,
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
@@ -295,7 +291,7 @@ const CinemaBooking = () => {
                         <Box sx={{ 
                             width: 16, 
                             height: 16, 
-                            bgcolor: '#F44336',
+                            bgcolor: seatColors.occupied,
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
@@ -310,20 +306,20 @@ const CinemaBooking = () => {
                     sx={{ 
                         textAlign: 'center', 
                         mb: 3,
-                        color: '#000000',
+                        color: 'var(--color-primary)',
                         fontSize: '1rem'
                     }}
                 >
                     You have selected{' '}
-                    <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                    <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
                         {selectedSeats.length}
                     </span>
                     {' '}seat{selectedSeats.length !== 1 ? 's' : ''}:{' '}
-                    <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                    <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
                         {selectedSeatNumbers.join(', ') || '-'}
                     </span>
                     {' '}for the price of{' '}
-                    <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                    <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
                         {totalPrice}€
                     </span>
                 </Typography>
@@ -334,8 +330,8 @@ const CinemaBooking = () => {
                         variant="contained"
                         disabled={selectedSeats.length === 0}
                         sx={{
-                            bgcolor: '#4CAF50',
-                            color: '#ffffff',
+                            bgcolor: 'var(--color-accent)',
+                            color: 'var(--color-secondary)',
                             fontWeight: 'bold',
                             px: 6,
                             py: 1.5,
@@ -343,11 +339,11 @@ const CinemaBooking = () => {
                             textTransform: 'none',
                             fontSize: '1rem',
                             '&:hover': {
-                                bgcolor: '#45a049'
+                                bgcolor: 'var(--color-accent)'
                             },
                             '&:disabled': {
-                                bgcolor: '#cccccc',
-                                color: '#666666'
+                                bgcolor: 'var(--color-accent-soft)',
+                                color: 'var(--color-muted)'
                             }
                         }}
                     >
