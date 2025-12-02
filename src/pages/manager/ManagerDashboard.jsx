@@ -24,9 +24,11 @@ import {
     Inventory,
     Campaign,
     Settings,
-    Logout
+    Logout,
+    AccountCircle
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import UserProfile from '../../components/profile/UserProfile';
 
 // Manager Components
 import ManagerOverview from './components/ManagerOverview';
@@ -53,7 +55,8 @@ const ManagerDashboard = () => {
         { text: 'مدیریت کارکنان', icon: <People />, to: `${basePath}/employees` },
         { text: 'مدیریت موجودی', icon: <Inventory />, to: `${basePath}/inventory` },
         { text: 'کمپین‌ها و تخفیف‌ها', icon: <Campaign />, to: `${basePath}/promotions` },
-        { text: 'تنظیمات کافه', icon: <Settings />, to: `${basePath}/settings` }
+        { text: 'تنظیمات کافه', icon: <Settings />, to: `${basePath}/settings` },
+        { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
     ];
 
     const handleDrawerToggle = () => {
@@ -189,6 +192,7 @@ const ManagerDashboard = () => {
                     <Route path="inventory" element={<InventoryManagement />} />
                     <Route path="promotions" element={<Promotions />} />
                     <Route path="settings" element={<CafeSettings />} />
+                    <Route path="profile" element={<UserProfile />} />
                 </Routes>
             </Box>
         </Box>

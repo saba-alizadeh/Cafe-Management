@@ -30,11 +30,17 @@ import {
     Timer
 } from '@mui/icons-material';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const MenuOrdering = () => {
     const [cart, setCart] = useState([]);
     const [discountCode, setDiscountCode] = useState('');
     const [customizeDialog, setCustomizeDialog] = useState({ open: false, item: null });
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     // Mock data - in real app, this would come from API
     const menuItems = [
@@ -119,6 +125,19 @@ const MenuOrdering = () => {
     };
 
     const finalTotal = getTotalPrice() - applyDiscount();
+
+    const completeOrder = () => {
+        // Placeholder for actual order placement / payment flow
+        alert('سفارش شما با موفقیت ثبت شد.');
+    };
+
+    const handlePlaceOrderClick = () => {
+        if (!user) {
+            setAuthDialogOpen(true);
+            return;
+        }
+        completeOrder();
+    };
 
     return (
         <Box>
@@ -268,7 +287,12 @@ const MenuOrdering = () => {
                                     <Typography variant="h6">${finalTotal.toFixed(2)}</Typography>
                                 </Box>
                                 
-                                <Button variant="contained" fullWidth size="large">
+                                <Button
+                                    variant="contained"
+                                    fullWidth
+                                    size="large"
+                                    onClick={handlePlaceOrderClick}
+                                >
                                     Place Order
                                 </Button>
                             </>
@@ -318,6 +342,17 @@ const MenuOrdering = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Phone Authentication Dialog */}
+            <PhoneAuthDialog
+                open={authDialogOpen}
+                onClose={() => setAuthDialogOpen(false)}
+                onAuthenticated={() => {
+                    setAuthDialogOpen(false);
+                    completeOrder();
+                    navigate('/customer/profile');
+                }}
+            />
         </Box>
     );
 };

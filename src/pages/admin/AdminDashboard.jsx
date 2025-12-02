@@ -33,9 +33,11 @@ import {
 	BookOnline,
 	ShoppingBag,
 	Group,
-	RateReview
+	RateReview,
+	AccountCircle
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import UserProfile from '../../components/profile/UserProfile';
 
 // Admin Components
 import AdminOverview from './components/AdminOverview';
@@ -81,7 +83,8 @@ const AdminDashboard = () => {
 		{ text: 'مدیریت کاربران', icon: <Group />, to: `${basePath}/users` },
 		{ text: 'بازخورد مشتریان', icon: <RateReview />, to: `${basePath}/feedback` },
 		{ text: 'مدیریت کافه', icon: <Business />, to: `${basePath}/cafes` },
-		{ text: 'تنظیمات سیستم', icon: <Settings />, to: `${basePath}/settings` }
+		{ text: 'تنظیمات سیستم', icon: <Settings />, to: `${basePath}/settings` },
+		{ text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
 	];
 
 	const handleDrawerToggle = () => {
@@ -221,6 +224,7 @@ const AdminDashboard = () => {
 					<Route path="feedback" element={<CustomerFeedback />} />
 					<Route path="cafes" element={<CafeManagement />} />
 					<Route path="settings" element={<SystemSettings />} />
+					<Route path="profile" element={<UserProfile />} />
 				</Routes>
 			</Box>
 		</Box>

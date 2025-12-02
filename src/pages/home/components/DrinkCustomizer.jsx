@@ -9,6 +9,9 @@ import {
   Paper,
   Chip
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const DrinkCustomizer = () => {
   const [selectedSize, setSelectedSize] = useState('medium');
@@ -18,6 +21,9 @@ const DrinkCustomizer = () => {
   const [showWhippedCream, setShowWhippedCream] = useState(false);
   const [floatingItems, setFloatingItems] = useState([]);
   const [isDraggingOverCup, setIsDraggingOverCup] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleDragStart = (event, item) => {
     try {
@@ -154,6 +160,15 @@ const DrinkCustomizer = () => {
 
   const getSyrupLayers = () => {
     return ingredients.filter(ing => syrups.some(s => s.name === ing.name));
+  };
+
+  const handleAddToOrderClick = () => {
+    if (user) {
+      // In a real app this would add the customized drink to the cart/order.
+      navigate('/customer/profile');
+    } else {
+      setAuthDialogOpen(true);
+    }
   };
 
   return (
@@ -591,6 +606,7 @@ const DrinkCustomizer = () => {
                   fontSize: '1rem',
                   '&:hover': { bgcolor: 'var(--color-primary)' }
                 }}
+                onClick={handleAddToOrderClick}
               >
                 ✨ اضافه کردن به سفارش
               </Button>
@@ -598,6 +614,14 @@ const DrinkCustomizer = () => {
           </Grid>
         </Grid>
       </Paper>
+      <PhoneAuthDialog
+        open={authDialogOpen}
+        onClose={() => setAuthDialogOpen(false)}
+        onAuthenticated={() => {
+          setAuthDialogOpen(false);
+          navigate('/customer/profile');
+        }}
+      />
     </Container>
   );
 };

@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Container, Box, Typography, Grid, Card, CardContent, Button } from '@mui/material';
 import { Movie, LocalCafe, Work, EventAvailable } from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const BookingOptions = () => {
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const bookingOptions = [
         {
             icon: LocalCafe,
@@ -39,7 +44,16 @@ const BookingOptions = () => {
         }
     ];
 
+    const handleBookingClick = (link) => {
+        if (user) {
+            navigate(link);
+        } else {
+            setAuthDialogOpen(true);
+        }
+    };
+
     return (
+        <>
         <Container sx={{ py: 4, bgcolor: 'var(--color-secondary)' }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
@@ -85,7 +99,6 @@ const BookingOptions = () => {
                                     }
                                 }}
                             >
-                                <Link to={option.link} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                     <CardContent sx={{ 
                                         textAlign: 'center', 
                                         py: 4,
@@ -164,17 +177,26 @@ const BookingOptions = () => {
                                                     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
                                                 }
                                             }}
+                                            onClick={() => handleBookingClick(option.link)}
                                         >
                                             رزرو {option.title.split(' ')[0]}
                                         </Button>
                                     </CardContent>
-                                </Link>
                             </Card>
                         </Grid>
                     );
                 })}
             </Grid>
         </Container>
+        <PhoneAuthDialog
+            open={authDialogOpen}
+            onClose={() => setAuthDialogOpen(false)}
+            onAuthenticated={() => {
+                setAuthDialogOpen(false);
+                navigate('/customer/profile');
+            }}
+        />
+        </>
     );
 };
 

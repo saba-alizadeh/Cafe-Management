@@ -23,9 +23,11 @@ import {
     Schedule,
     Inventory,
     Assignment,
-    Logout
+    Logout,
+    AccountCircle
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import UserProfile from '../../components/profile/UserProfile';
 
 // Barista Components
 import BaristaOverview from './components/BaristaOverview';
@@ -50,7 +52,8 @@ const BaristaDashboard = () => {
         { text: 'سفارش‌ها', icon: <Restaurant />, to: `${basePath}/orders` },
         { text: 'رزروها', icon: <Schedule />, to: `${basePath}/reservations` },
         { text: 'موجودی', icon: <Inventory />, to: `${basePath}/inventory` },
-        { text: 'درخواست‌های مرخصی', icon: <Assignment />, to: `${basePath}/leave` }
+        { text: 'درخواست‌های مرخصی', icon: <Assignment />, to: `${basePath}/leave` },
+        { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
     ];
 
     const handleDrawerToggle = () => {
@@ -185,6 +188,7 @@ const BaristaDashboard = () => {
                     <Route path="reservations" element={<ReservationManagement />} />
                     <Route path="inventory" element={<InventoryStatus />} />
                     <Route path="leave" element={<LeaveRequests />} />
+                    <Route path="profile" element={<UserProfile />} />
                 </Routes>
             </Box>
         </Box>

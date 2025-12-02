@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Container, Box, Typography, IconButton, Card, CardContent, Button } from '@mui/material';
 import { ArrowBack, ArrowForward } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const chefRecommendations = [
     { id: 1, name: 'Shami Kebab & Vegetables', description: 'This dish is prepared with fresh lamb meat and grilled, served with rice. Each...', price: 360000, image: '/api/placeholder/250/180' },
@@ -10,6 +13,18 @@ const chefRecommendations = [
 ];
 
 const ChefRecommendations = () => {
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
+    const handleAddToCartClick = () => {
+        if (user) {
+            navigate('/customer/profile');
+        } else {
+            setAuthDialogOpen(true);
+        }
+    };
+
     return (
         <Container sx={{ py: 4 }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -26,7 +41,13 @@ const ChefRecommendations = () => {
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{item.description}</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{item.price.toLocaleString()} تومان</Typography>
-                                    <Button variant="outlined" sx={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' } }}>Add to Cart</Button>
+                                    <Button
+                                        variant="outlined"
+                                        sx={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' } }}
+                                        onClick={handleAddToCartClick}
+                                    >
+                                        Add to Cart
+                                    </Button>
                                 </Box>
                             </CardContent>
                         </Card>
@@ -42,6 +63,14 @@ const ChefRecommendations = () => {
             <Box sx={{ textAlign: 'center', mt: 4 }}>
                 <Button variant="contained" sx={{ bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)', px: 4, '&:hover': { bgcolor: 'var(--color-primary)' } }}>View All ←</Button>
             </Box>
+            <PhoneAuthDialog
+                open={authDialogOpen}
+                onClose={() => setAuthDialogOpen(false)}
+                onAuthenticated={() => {
+                    setAuthDialogOpen(false);
+                    navigate('/customer/profile');
+                }}
+            />
         </Container>
     );
 };

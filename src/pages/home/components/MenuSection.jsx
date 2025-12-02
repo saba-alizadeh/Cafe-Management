@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Box,
@@ -10,6 +10,9 @@ import {
   Chip,
 } from '@mui/material';
 import { Favorite } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 const menuItems = [
   {
     id: 1,
@@ -59,6 +62,18 @@ const menuItems = [
 ];
 
 const MenuSection = () => {
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleAddClick = () => {
+    if (user) {
+      navigate('/customer/profile');
+    } else {
+      setAuthDialogOpen(true);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -236,6 +251,7 @@ const MenuSection = () => {
                           color: 'var(--color-secondary)',
                         },
                       }}
+                      onClick={handleAddClick}
                     >
                       +
                     </IconButton>
@@ -246,6 +262,14 @@ const MenuSection = () => {
           ))}
         </Grid>
       </Container>
+      <PhoneAuthDialog
+        open={authDialogOpen}
+        onClose={() => setAuthDialogOpen(false)}
+        onAuthenticated={() => {
+          setAuthDialogOpen(false);
+          navigate('/customer/profile');
+        }}
+      />
     </Box>
   );
 };

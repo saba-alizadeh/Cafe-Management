@@ -1,6 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Container, Typography, IconButton, Card, CardContent, Chip, Button } from '@mui/material';
 import { ArrowBack, ArrowForward } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const specialItems = [
     { id: 1, name: 'آیس لاته', price: 89000, discount: 10, image: '/api/placeholder/200/150' },
@@ -15,6 +18,9 @@ const specialItems = [
 
 const SpecialDiscounts = () => {
     const scrollRef = useRef(null);
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     const scrollLeft = () => {
         if (scrollRef.current) {
@@ -25,6 +31,14 @@ const SpecialDiscounts = () => {
     const scrollRight = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+        }
+    };
+
+    const handleOrderClick = () => {
+        if (user) {
+            navigate('/customer/profile');
+        } else {
+            setAuthDialogOpen(true);
         }
     };
 
@@ -85,6 +99,7 @@ const SpecialDiscounts = () => {
                                             mt: 1,
                                             '&:hover': { bgcolor: 'var(--color-primary)' },
                                         }}
+                                        onClick={handleOrderClick}
                                     >
                                         سفارش
                                     </Button>
@@ -129,6 +144,14 @@ const SpecialDiscounts = () => {
                     </IconButton>
                 </Box>
             </Container>
+            <PhoneAuthDialog
+                open={authDialogOpen}
+                onClose={() => setAuthDialogOpen(false)}
+                onAuthenticated={() => {
+                    setAuthDialogOpen(false);
+                    navigate('/customer/profile');
+                }}
+            />
         </Box>
     );
 };

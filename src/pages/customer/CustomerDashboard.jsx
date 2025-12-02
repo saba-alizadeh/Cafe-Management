@@ -24,9 +24,11 @@ import {
     ShoppingCart,
     History,
     Star,
-    Logout
+    Logout,
+    AccountCircle
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import UserProfile from '../../components/profile/UserProfile';
 
 // Customer Components
 import CustomerOverview from './components/CustomerOverview';
@@ -51,7 +53,8 @@ const CustomerDashboard = () => {
         { text: 'سفارش منو', icon: <Restaurant />, to: `${basePath}/order` },
         { text: 'رزرو میز', icon: <Schedule />, to: `${basePath}/reservations` },
         { text: 'تاریخچه سفارش‌ها', icon: <History />, to: `${basePath}/history` },
-        { text: 'نظرات و امتیازها', icon: <Star />, to: `${basePath}/reviews` }
+        { text: 'نظرات و امتیازها', icon: <Star />, to: `${basePath}/reviews` },
+        { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
     ];
 
     const handleDrawerToggle = () => {
@@ -207,6 +210,7 @@ const CustomerDashboard = () => {
                     <Route path="reservations" element={<Reservations />} />
                     <Route path="history" element={<OrderHistory />} />
                     <Route path="reviews" element={<Reviews />} />
+                    <Route path="profile" element={<UserProfile />} />
                 </Routes>
             </Box>
         </Box>

@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 
 // Pages
 import HomePage from "./pages/HomePage";
-import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManagerDashboard from "./pages/manager/ManagerDashboard";
 import BaristaDashboard from "./pages/barista/BaristaDashboard";
@@ -23,7 +22,6 @@ function App() {
             <Router>
                 <Routes>
                     <Route path="/" element={<HomePage />} />
-                    <Route path="/login" element={<Login />} />
                     <Route path="/booking/cinema" element={<CinemaBooking />} />
                     <Route path="/booking/cafe" element={<CafeBooking />} />
                     <Route path="/booking/shared" element={<SharedSpaceBooking />} />
