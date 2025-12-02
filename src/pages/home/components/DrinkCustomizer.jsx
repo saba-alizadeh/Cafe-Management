@@ -201,7 +201,7 @@ const DrinkCustomizer = () => {
             </Typography>
 
             {/* Base Liquids */}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 4, width: '600px' }}>
               <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 🥤 مواد پایه
               </Typography>
@@ -241,7 +241,7 @@ const DrinkCustomizer = () => {
             </Box>
 
             {/* Fruits */}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 4, width: '600px' }}>
               <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 🍓 میوه های تازه
               </Typography>
@@ -280,7 +280,7 @@ const DrinkCustomizer = () => {
             </Box>
 
             {/* Syrups & Extras */}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 4, width: '600px' }}>
               <Typography sx={{ fontSize: '1rem', fontWeight: 600, mb: 2, color: 'var(--color-primary)' }}>
                 🍯 سیروپ ها
               </Typography>

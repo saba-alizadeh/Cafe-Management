@@ -13,7 +13,7 @@ const HeroSection = () => {
             <Container>
                 <Grid container spacing={4} alignItems="center">
                     <Grid item xs={12} md={6}>
-                        <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 2, marginTop: '100px' }}>
+                        <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 2 }}>
                             Delicious and Memorable Food Experience
                         </Typography>
                         <Typography variant="body1" sx={{ mb: 4, opacity: 0.9 }}>
@@ -32,7 +32,7 @@ const HeroSection = () => {
                             <img
                                 src="src/assets/HeaderPics/CoffeeBeans.png"
                                 alt="Coffee Beans"
-                                style={{ maxWidth: '500px', height: 'auto' }}
+                                style={{ width: '100%', maxWidth: '400px', height: 'auto' }}
                             />
                         </Box>
                     </Grid>
