@@ -5,6 +5,7 @@ import {
     Drawer,
     AppBar,
     Toolbar,
+    Button,
     List,
     Typography,
     Divider,
@@ -138,9 +139,12 @@ const BaristaDashboard = () => {
                     >
                         <MenuIcon />
                     </IconButton>
-                    <Typography variant="h6" noWrap component="div" sx={{ direction: 'rtl', flexGrow: 1, textAlign: 'right' }}>
-                        سامانه مدیریت کافه - باریستا
-                    </Typography>
+                        <Typography variant="h6" noWrap component="div" sx={{ direction: 'rtl', flexGrow: 1, textAlign: 'right' }}>
+                            سامانه مدیریت کافه - باریستا
+                        </Typography>
+                        <Button color="inherit" size="small" onClick={() => navigate('/')} sx={{ position: 'absolute', left: 8 }}>
+                            بازگشت به خانه
+                        </Button>
                 </Toolbar>
             </AppBar>
             <Box

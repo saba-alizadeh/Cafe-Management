@@ -11,6 +11,7 @@ const HeroSection = () => {
                 position: 'relative',
                 overflow: 'hidden',
                 direction: 'rtl',
+                textAlign: 'right'
             }}
         >
             <Container maxWidth="lg">
@@ -18,15 +19,15 @@ const HeroSection = () => {
                     container
                     spacing={4}
                     alignItems="center"
-                    justifyContent="space-between"
-                    direction={{ xs: 'column-reverse', md: 'row-reverse' }}
+                    justifyContent="flex-end"
+                    direction={{ xs: 'column', md: 'row' }}
                 >
 
                     <Grid item xs={12} md={5}>
                         <Box
                             sx={{
                                 display: 'flex',
-                                justifyContent: 'flex-end', 
+                                justifyContent: 'flex-start', 
                                 alignItems: 'center',
                             }}
                         >
@@ -37,7 +38,7 @@ const HeroSection = () => {
                                     width: '100%',
                                     maxWidth: '400px',
                                     height: 'auto',
-                                    marginRight: '40px', 
+                                    marginLeft: '40px', 
                                 }}
                             />
                         </Box>
@@ -47,7 +48,7 @@ const HeroSection = () => {
                         <Box
                             sx={{
                                 textAlign: 'right', 
-                                pl: { md: 8 },
+                                pr: { md: 8 },
                             }}
                         >
                             <Typography

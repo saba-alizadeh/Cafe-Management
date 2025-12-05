@@ -5,6 +5,7 @@ import {
 	Drawer,
 	AppBar,
 	Toolbar,
+	Button,
 	List,
 	Typography,
 	Divider,
@@ -172,6 +173,9 @@ const AdminDashboard = () => {
 					<Typography variant="h6" noWrap component="div">
 						سامانه مدیریت کافه - ادمین
 					</Typography>
+					<Button color="inherit" size="small" onClick={() => navigate('/')} sx={{ position: 'absolute', left: 8 }}>
+						بازگشت به خانه
+					</Button>
 				</Toolbar>
 			</AppBar>
 			<Box

@@ -40,9 +40,12 @@ import menuImage1 from '../assets/MenuPics/1.png';
 import menuImage2 from '../assets/MenuPics/2.png';
 import menuImage3 from '../assets/MenuPics/3.png';
 import menuImage4 from '../assets/MenuPics/4.png';
+import ShoppingCartDrawer from './ShoppingCart/ShoppingCartDrawer';
 
 const HomePage = () => {
     const [cartItems, setCartItems] = useState(3);
+    const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+    const [cart, setCart] = useState([]);
     const [hoveredCard, setHoveredCard] = useState(null);
 
     // Food categories
@@ -272,8 +275,8 @@ const HomePage = () => {
                             <Button startIcon={<Home />} sx={{ color: 'var(--color-primary)' }}>Home</Button>
                             <Button startIcon={<Menu />} sx={{ color: 'var(--color-primary)' }}>Orders</Button>
                             <Button startIcon={<Favorite />} sx={{ color: 'var(--color-primary)' }}>Favorites</Button>
-                            <Badge badgeContent={cartItems} color="error">
-                                <Button startIcon={<ShoppingCart />} sx={{ color: 'var(--color-primary)' }}>Cart</Button>
+                            <Badge badgeContent={cart.length} color="error">
+                                <Button startIcon={<ShoppingCart />} sx={{ color: 'var(--color-primary)' }} onClick={() => setCartDrawerOpen(true)}>سبد خرید</Button>
                             </Badge>
                         </Box>
                     </Box>
@@ -1032,6 +1035,30 @@ const HomePage = () => {
                 </Grid>
             </Container>
 
+            {/* Shopping Cart Drawer */}
+            <ShoppingCartDrawer
+                open={cartDrawerOpen}
+                onClose={() => setCartDrawerOpen(false)}
+                cartItems={cart}
+                onUpdateQuantity={(itemId, newQuantity) => {
+                    if (newQuantity <= 0) {
+                        setCart(cart.filter(item => item.id !== itemId));
+                    } else {
+                        setCart(cart.map(item =>
+                            item.id === itemId
+                                ? { ...item, quantity: newQuantity }
+                                : item
+                        ));
+                    }
+                }}
+                onRemoveItem={(itemId) => {
+                    setCart(cart.filter(item => item.id !== itemId));
+                }}
+                onCheckout={() => {
+                    alert('سفارش شما با موفقیت ثبت شد.');
+                    setCart([]);
+                }}
+            />
         </Box>
     );
 };

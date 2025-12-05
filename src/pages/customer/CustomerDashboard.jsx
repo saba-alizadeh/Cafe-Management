@@ -5,6 +5,7 @@ import {
     Drawer,
     AppBar,
     Toolbar,
+    Button,
     List,
     Typography,
     Divider,
@@ -14,7 +15,8 @@ import {
     ListItemIcon,
     ListItemText,
     CssBaseline,
-    useTheme
+    useTheme,
+    Badge
 } from '@mui/material';
 import {
     Menu as MenuIcon,
@@ -36,12 +38,14 @@ import MenuOrdering from './components/MenuOrdering';
 import Reservations from './components/Reservations';
 import OrderHistory from './components/OrderHistory';
 import Reviews from './components/Reviews';
+import CartDisplay from './components/CartDisplay';
 
 const drawerWidth = 240;
 
 const CustomerDashboard = () => {
     const theme = useTheme();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [cart, setCart] = useState([]);
     const { logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -54,6 +58,7 @@ const CustomerDashboard = () => {
         { text: 'رزرو میز', icon: <Schedule />, to: `${basePath}/reservations` },
         { text: 'تاریخچه سفارش‌ها', icon: <History />, to: `${basePath}/history` },
         { text: 'نظرات و امتیازها', icon: <Star />, to: `${basePath}/reviews` },
+        { text: 'سبد خریدم', icon: <ShoppingCart />, to: `${basePath}/cart` },
         { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
     ];
 
@@ -154,6 +159,14 @@ const CustomerDashboard = () => {
                     <Typography variant="h6" noWrap component="div">
                         سامانه مدیریت کافه - مشتری
                     </Typography>
+                    <Badge badgeContent={cart.length} color="error" sx={{ mr: 2 }}>
+                        <IconButton color="inherit" onClick={() => navigate('/customer/cart')}>
+                            <ShoppingCart />
+                        </IconButton>
+                    </Badge>
+                    <Button color="inherit" size="small" onClick={() => navigate('/')} sx={{ position: 'absolute', left: 8 }}>
+                        بازگشت به خانه
+                    </Button>
                 </Toolbar>
             </AppBar>
             <Box
@@ -206,10 +219,36 @@ const CustomerDashboard = () => {
                 <Toolbar />
                 <Routes>
                     <Route index element={<CustomerOverview />} />
-                    <Route path="order" element={<MenuOrdering />} />
+                    <Route path="order" element={<MenuOrdering onAddToCart={(item) => setCart([...cart, item])} />} />
                     <Route path="reservations" element={<Reservations />} />
                     <Route path="history" element={<OrderHistory />} />
                     <Route path="reviews" element={<Reviews />} />
+                    <Route path="cart" element={
+                        <CartDisplay
+                            cartItems={cart}
+                            onUpdateQuantity={(itemId, newQuantity) => {
+                                if (newQuantity <= 0) {
+                                    setCart(cart.filter(item => item.id !== itemId));
+                                } else {
+                                    setCart(cart.map(item =>
+                                        item.id === itemId
+                                            ? { ...item, quantity: newQuantity }
+                                            : item
+                                    ));
+                                }
+                            }}
+                            onRemoveItem={(itemId) => {
+                                setCart(cart.filter(item => item.id !== itemId));
+                            }}
+                            onAddToCart={(item) => {
+                                setCart([...cart, item]);
+                            }}
+                            onCheckout={() => {
+                                alert('سفارش شما با موفقیت ثبت شد.');
+                                setCart([]);
+                            }}
+                        />
+                    } />
                     <Route path="profile" element={<UserProfile />} />
                 </Routes>
             </Box>

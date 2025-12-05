@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { Box, Container, Typography, Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const seatColors = {
     selected: 'var(--color-accent)',
     occupied: 'var(--color-primary)',
     recommended: 'var(--color-accent-soft)',
-    available: 'var(--color-secondary)',
+    available: '#a8c49a',
 };
 
 const CinemaBooking = () => {
     const [selectedSeats, setSelectedSeats] = useState([]);
     const sessionTime = '09:15 AM';
-    const pricePerSeat = 10;
+    const pricePerSeat = 150000; // 150,000 Toman
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     // Create seat grid: 8 rows, 8 columns divided into two blocks (4 columns each)
     const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -78,7 +82,7 @@ const CinemaBooking = () => {
                     fontWeight: 'bold',
                     fontSize: '1rem'
                 }}>
-                    Order Successful
+                    سفارش موفق
                 </Box>
 
                 {/* Main Heading */}
@@ -92,7 +96,7 @@ const CinemaBooking = () => {
                         fontSize: '1.75rem'
                     }}
                 >
-                    Choose your seat by clicking on the available seats
+                    صندلی خود را با کلیک روی صندلی‌های موجود انتخاب کنید
                 </Typography>
 
                 {/* Session Time */}
@@ -105,7 +109,7 @@ const CinemaBooking = () => {
                         fontSize: '1rem'
                     }}
                 >
-                    Session Time: {sessionTime}
+                    زمان جلسه: {sessionTime}
                 </Typography>
 
                 {/* Screen Representation */}
@@ -143,7 +147,7 @@ const CinemaBooking = () => {
                                 fontSize: '0.875rem'
                             }}
                         >
-                            SCREEN
+                            صفحه نمایش
                         </Typography>
                     </Box>
                 </Box>
@@ -262,7 +266,7 @@ const CinemaBooking = () => {
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                            Available
+                            موجود
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -273,7 +277,7 @@ const CinemaBooking = () => {
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                            Recommended
+                            توصیه شده
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -284,7 +288,7 @@ const CinemaBooking = () => {
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                            Selected
+                            انتخاب شده
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -295,7 +299,7 @@ const CinemaBooking = () => {
                             borderRadius: 1
                         }} />
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                            Occupied
+                            اشغال
                         </Typography>
                     </Box>
                 </Box>
@@ -310,25 +314,45 @@ const CinemaBooking = () => {
                         fontSize: '1rem'
                     }}
                 >
-                    You have selected{' '}
+                    شما انتخاب کردید{' '}
                     <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
                         {selectedSeats.length}
                     </span>
-                    {' '}seat{selectedSeats.length !== 1 ? 's' : ''}:{' '}
+                    {' '}صندلی:{' '}
                     <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
                         {selectedSeatNumbers.join(', ') || '-'}
                     </span>
-                    {' '}for the price of{' '}
+                    {' '}به قیمت{' '}
                     <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
                         {totalPrice}€
                     </span>
                 </Typography>
 
-                {/* Buy Button */}
+                {/* Reserve Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Button
                         variant="contained"
                         disabled={selectedSeats.length === 0}
+                        onClick={() => {
+                            if (selectedSeats.length > 0) {
+                                const cinemaReservation = {
+                                    id: `cinema-${Date.now()}`,
+                                    type: 'cinema',
+                                    title: 'رزرو سینما',
+                                    seats: selectedSeatNumbers.join(', '),
+                                    sessionTime,
+                                    quantity: 1,
+                                    price: totalPrice
+                                };
+                                if (user) {
+                                    localStorage.setItem('pendingReservation', JSON.stringify(cinemaReservation));
+                                    navigate('/customer/cart');
+                                } else {
+                                    alert('لطفاً ابتدا وارد حساب کاربری خود شوید.');
+                                    navigate('/login');
+                                }
+                            }
+                        }}
                         sx={{
                             bgcolor: 'var(--color-accent)',
                             color: 'var(--color-secondary)',
@@ -347,7 +371,7 @@ const CinemaBooking = () => {
                             }
                         }}
                     >
-                        Buy at {totalPrice || 0}€
+                        رزرو کنید
                     </Button>
                 </Box>
             </Container>

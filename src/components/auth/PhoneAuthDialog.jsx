@@ -14,13 +14,14 @@ import { useAuth } from '../../context/AuthContext';
 
 const FIXED_OTP = '123456';
 
-const PhoneAuthDialog = ({ open, onClose, onAuthenticated }) => {
-    const { login } = useAuth();
+const PhoneAuthDialog = ({ open, onClose, onAuthenticated, onNewUser = null }) => {
+    const { login, setUnloggedPhone } = useAuth();
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [step, setStep] = useState(1); // 1 = phone, 2 = otp
     const [error, setError] = useState('');
+    const [isNewUser, setIsNewUser] = useState(false); // Track if this is a new user
 
     const resetState = () => {
         setPhone('');
@@ -28,6 +29,7 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated }) => {
         setStep(1);
         setError('');
         setSubmitting(false);
+        setIsNewUser(false);
     };
 
     const handleSubmit = (event) => {
@@ -59,6 +61,11 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated }) => {
 
         setSubmitting(true);
 
+        // Mock: Check if user exists (for demo, assume new user if odd phone number)
+        const phoneNumber = parseInt(phone);
+        const mockIsNewUser = phoneNumber % 2 === 1;
+        setIsNewUser(mockIsNewUser);
+
         const userData = {
             id: Date.now(),
             role: 'customer',
@@ -66,10 +73,19 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated }) => {
             name: phone.trim()
         };
 
-        login(userData);
-
-        if (onAuthenticated) {
-            onAuthenticated(userData);
+        if (mockIsNewUser) {
+            // New user - will be redirected to profile
+            login(userData, true);
+            if (onNewUser) {
+                onNewUser(userData);
+            }
+        } else {
+            // Existing user, not logged in yet
+            login(userData, false);
+            setUnloggedPhone(phone.trim());
+            if (onAuthenticated) {
+                onAuthenticated(userData);
+            }
         }
 
         resetState();

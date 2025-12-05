@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
 import { Box, Container, Typography, Grid, Card, CardContent, Chip, Button, TextField } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const desks = Array.from({ length: 24 }).map((_, i) => ({
     deskNumber: i + 1,
     seatNumber: (i % 6) + 1,
-    zone: ['Quiet', 'Collab', 'Phone Booth'][i % 3],
-    amenities: ['Power', 'Lamp', 'Monitor'].slice(0, (i % 3) + 1)
+    zone: ['آرام', 'همکاری', 'تلفنی'][i % 3],
+    amenities: ['برق', 'لامپ', 'مانیتور'].slice(0, (i % 3) + 1)
 }));
 
 const SharedSpaceBooking = () => {
     const [selected, setSelected] = useState(null);
     const [notes, setNotes] = useState('');
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const pricePerDesk = 100000; // 100,000 Toman
 
     return (
-        <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', py: 6 }}>
+        <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', py: 6, direction: 'rtl' }}>
             <Container>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: 'var(--color-primary)' }}>
-                    Shared Space Booking
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: 'var(--color-primary)', textAlign: 'right' }}>
+                    رزرو فضای مشترک
                 </Typography>
 
                 <Grid container spacing={3}>
@@ -24,12 +29,21 @@ const SharedSpaceBooking = () => {
                         <Grid container spacing={2}>
                             {desks.map((d) => (
                                 <Grid item xs={12} sm={6} md={4} key={d.deskNumber}>
-                                    <Card onClick={() => setSelected(d)} sx={{ cursor: 'pointer', border: selected?.deskNumber === d.deskNumber ? '2px solid var(--color-primary)' : '1px solid var(--color-accent-soft)' }}>
-                                        <CardContent>
-                                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Desk {d.deskNumber}</Typography>
-                                            <Typography color="text.secondary">Seat: {d.seatNumber}</Typography>
+                                    <Card 
+                                        onClick={() => setSelected(d)} 
+                                        sx={{ 
+                                            cursor: 'pointer', 
+                                            border: selected?.deskNumber === d.deskNumber ? '2px solid var(--color-primary)' : '1px solid var(--color-accent-soft)',
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column'
+                                        }}
+                                    >
+                                        <CardContent sx={{ textAlign: 'right', flexGrow: 1 }}>
+                                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>میز {d.deskNumber}</Typography>
+                                            <Typography color="text.secondary">صندلی: {d.seatNumber}</Typography>
                                             <Chip size="small" label={d.zone} sx={{ mt: 1 }} />
-                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
+                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1, justifyContent: 'flex-end' }}>
                                                 {d.amenities.map((a) => (
                                                     <Chip key={a} label={a} size="small" variant="outlined" />
                                                 ))}
@@ -41,28 +55,49 @@ const SharedSpaceBooking = () => {
                         </Grid>
                     </Grid>
                     <Grid item xs={12} md={4}>
-                        <Card>
-                            <CardContent>
-                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Selection Details</Typography>
+                        <Card sx={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-accent-soft)' }}>
+                            <CardContent sx={{ textAlign: 'right' }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>جزئیات انتخاب</Typography>
                                 {selected ? (
-                                    <Box>
-                                        <Typography>Desk Number: {selected.deskNumber}</Typography>
-                                        <Typography>Seat Number: {selected.seatNumber}</Typography>
-                                        <Typography>Zone: {selected.zone}</Typography>
-                                        <Typography sx={{ mb: 1 }}>Amenities: {selected.amenities.join(', ')}</Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                        <Typography><strong>شماره میز:</strong> {selected.deskNumber}</Typography>
+                                        <Typography><strong>صندلی:</strong> {selected.seatNumber}</Typography>
+                                        <Typography><strong>منطقه:</strong> {selected.zone}</Typography>
+                                        <Typography><strong>امکانات:</strong> {selected.amenities.join(', ')}</Typography>
                                         <TextField
-                                            label="Notes"
+                                            label="یادداشت‌ها"
                                             size="small"
                                             fullWidth
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
+                                            sx={{ mt: 1 }}
                                         />
-                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: 'var(--color-primary)' }}>
-                                            Reserve (UI only)
+                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: 'var(--color-primary)' }} onClick={() => {
+                                            if (selected) {
+                                                const deskReservation = {
+                                                    id: `desk-${Date.now()}`,
+                                                    type: 'desk',
+                                                    title: 'رزرو فضای مشترک',
+                                                    deskNumber: selected.deskNumber,
+                                                    zone: selected.zone,
+                                                    notes,
+                                                    quantity: 1,
+                                                    price: pricePerDesk
+                                                };
+                                                if (user) {
+                                                    localStorage.setItem('pendingReservation', JSON.stringify(deskReservation));
+                                                    navigate('/customer/cart');
+                                                } else {
+                                                    alert('لطفاً ابتدا وارد حساب کاربری خود شوید.');
+                                                    navigate('/login');
+                                                }
+                                            }
+                                        }}>
+                                            رزرو کنید
                                         </Button>
                                     </Box>
                                 ) : (
-                                    <Typography color="text.secondary">Select a desk to see details</Typography>
+                                    <Typography color="text.secondary">برای مشاهده جزئیات یک میز را انتخاب کنید</Typography>
                                 )}
                             </CardContent>
                         </Card>

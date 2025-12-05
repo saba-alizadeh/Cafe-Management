@@ -30,6 +30,3 @@ export default function Home() {
 
     );
 }
-//78jfrd8tkf7r8th
-//rhstdfdyhdfbg
-//add comment
