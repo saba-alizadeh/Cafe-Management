@@ -1,36 +1,62 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from datetime import timedelta
+from bson import ObjectId
 from app.database import get_database
-from app.models import UserCreate, UserLogin, UserResponse, Token
+from app.models import (
+    UserCreate, UserLogin, UserResponse, Token, 
+    PhoneLoginRequest, PhoneLoginComplete, ProfileUpdate, TokenData
+)
 from app.auth import verify_password, get_password_hash, create_access_token, get_current_user
 from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
+# Default OTP for testing
+DEFAULT_OTP = "123456"
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def signup(user_data: UserCreate):
     """
     Register a new user
+    Validates user information, creates a new user, generates a JWT, and returns the token
     """
     db = get_database()
     users_collection = db["users"]
     
-    # Check if username already exists
-    existing_user = await users_collection.find_one({"username": user_data.username})
-    if existing_user:
+    # Validate that either username+email+password OR phone is provided
+    if not user_data.phone and (not user_data.username or not user_data.email or not user_data.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            detail="Either phone number or username+email+password must be provided"
         )
     
-    # Check if email already exists
-    existing_email = await users_collection.find_one({"email": user_data.email})
-    if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+    # Check if username already exists (if provided)
+    if user_data.username:
+        existing_user = await users_collection.find_one({"username": user_data.username})
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered"
+            )
+    
+    # Check if email already exists (if provided)
+    if user_data.email:
+        existing_email = await users_collection.find_one({"email": user_data.email})
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+    
+    # Check if phone already exists (if provided)
+    if user_data.phone:
+        existing_phone = await users_collection.find_one({"phone": user_data.phone})
+        if existing_phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number already registered"
+            )
     
     # Validate role-specific requirements
     if user_data.role != "customer" and user_data.cafe_id is None:
@@ -42,13 +68,15 @@ async def signup(user_data: UserCreate):
     if user_data.role == "customer" and user_data.cafe_id is not None:
         user_data.cafe_id = None  # Customers don't belong to specific cafes
     
-    # Hash password
-    hashed_password = get_password_hash(user_data.password)
+    # Hash password if provided
+    hashed_password = None
+    if user_data.password:
+        hashed_password = get_password_hash(user_data.password)
     
     # Create user document
-    user_dict = user_data.model_dump()
-    user_dict["password"] = hashed_password
-    user_dict["created_at"] = user_dict.get("created_at", None) or None
+    user_dict = user_data.model_dump(exclude_none=True)
+    if hashed_password:
+        user_dict["password"] = hashed_password
     
     # Insert user into database
     result = await users_collection.insert_one(user_dict)
@@ -56,67 +84,206 @@ async def signup(user_data: UserCreate):
     # Fetch the created user
     created_user = await users_collection.find_one({"_id": result.inserted_id})
     
-    # Return user response (without password)
-    return UserResponse(
-        id=str(created_user["_id"]),
-        username=created_user["username"],
-        email=created_user["email"],
-        role=created_user["role"],
-        name=created_user["name"],
-        cafe_id=created_user.get("cafe_id"),
-        created_at=created_user.get("created_at"),
-        is_active=created_user.get("is_active", True)
-    )
-
-
-@router.post("/login", response_model=Token)
-async def login(credentials: UserLogin):
-    """
-    Authenticate user and return access token
-    """
-    db = get_database()
-    users_collection = db["users"]
-    
-    # Find user by username
-    user = await users_collection.find_one({"username": credentials.username})
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
-        )
-    
-    # Verify password
-    if not verify_password(credentials.password, user["password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
-        )
-    
-    # Check if user is active
-    if not user.get("is_active", True):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
-        )
-    
     # Create access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    token_data = {}
+    if created_user.get("username"):
+        token_data["sub"] = created_user["username"]
+    if created_user.get("phone"):
+        token_data["phone"] = created_user["phone"]
+    token_data["user_id"] = str(created_user["_id"])
+    token_data["role"] = created_user["role"]
+    
     access_token = create_access_token(
-        data={"sub": user["username"], "role": user["role"]},
+        data=token_data,
         expires_delta=access_token_expires
     )
     
     # Create user response
     user_response = UserResponse(
-        id=str(user["_id"]),
-        username=user["username"],
-        email=user["email"],
-        role=user["role"],
-        name=user["name"],
-        cafe_id=user.get("cafe_id"),
-        created_at=user.get("created_at"),
-        is_active=user.get("is_active", True)
+        id=str(created_user["_id"]),
+        username=created_user.get("username"),
+        email=created_user.get("email"),
+        phone=created_user.get("phone"),
+        role=created_user["role"],
+        name=created_user["name"],
+        firstName=created_user.get("firstName"),
+        lastName=created_user.get("lastName"),
+        address=created_user.get("address"),
+        details=created_user.get("details"),
+        cafe_id=created_user.get("cafe_id"),
+        created_at=created_user.get("created_at"),
+        is_active=created_user.get("is_active", True)
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user=user_response
+    )
+
+
+@router.post("/login")
+async def login(credentials: PhoneLoginRequest):
+    """
+    Phone-based authentication
+    Step 1: Send phone number, receive OTP (default: 123456)
+    Step 2: If user exists, verify OTP and return JWT
+    Step 3: If user doesn't exist, require additional info via PhoneLoginComplete
+    """
+    db = get_database()
+    users_collection = db["users"]
+    
+    # Normalize phone number (remove any non-digit characters except +)
+    phone = credentials.phone.replace("+", "").replace("-", "").replace(" ", "")
+    
+    # Find user by phone number
+    user = await users_collection.find_one({"phone": phone})
+    
+    # Step 1: If no OTP provided, send OTP (simulate SMS sending)
+    if not credentials.otp:
+        # In production, send SMS here with actual OTP
+        # For now, we return a message indicating OTP was sent
+        # The frontend should use the default OTP: 123456
+        return {
+            "message": "OTP sent to phone number",
+            "otp_required": True,
+            "default_otp": DEFAULT_OTP,  # For testing only
+            "user_exists": user is not None
+        }
+    
+    # Step 2: Verify OTP
+    if credentials.otp != DEFAULT_OTP:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid OTP code"
+        )
+    
+    # Step 3: If user exists, approve login and return JWT
+    if user:
+        # Check if user is active
+        if not user.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive"
+            )
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+        token_data = {}
+        if user.get("username"):
+            token_data["sub"] = user["username"]
+        token_data["phone"] = user["phone"]
+        token_data["user_id"] = str(user["_id"])
+        token_data["role"] = user["role"]
+        
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=access_token_expires
+        )
+        
+        # Create user response
+        user_response = UserResponse(
+            id=str(user["_id"]),
+            username=user.get("username"),
+            email=user.get("email"),
+            phone=user.get("phone"),
+            role=user["role"],
+            name=user["name"],
+            firstName=user.get("firstName"),
+            lastName=user.get("lastName"),
+            address=user.get("address"),
+            details=user.get("details"),
+            cafe_id=user.get("cafe_id"),
+            created_at=user.get("created_at"),
+            is_active=user.get("is_active", True)
+        )
+        
+        return Token(
+            access_token=access_token,
+            token_type="bearer",
+            user=user_response
+        )
+    
+    # Step 4: If user doesn't exist, require additional information
+    # This should be handled by a separate endpoint or the frontend should
+    # call signup with the additional info after OTP verification
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="User not found. Please complete registration with additional information."
+    )
+
+
+@router.post("/login/complete", response_model=Token)
+async def complete_login(profile_data: PhoneLoginComplete):
+    """
+    Complete login for new users after OTP verification
+    Requires: phone, firstName, lastName, address, and other details
+    """
+    db = get_database()
+    users_collection = db["users"]
+    
+    # Normalize phone number
+    phone = profile_data.phone.replace("+", "").replace("-", "").replace(" ", "")
+    
+    # Check if user already exists
+    existing_user = await users_collection.find_one({"phone": phone})
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already exists. Please use login endpoint."
+        )
+    
+    # Create new user with phone-based authentication
+    # Generate name from firstName and lastName if name not provided
+    name = f"{profile_data.firstName or ''} {profile_data.lastName or ''}".strip()
+    if not name:
+        name = phone  # Fallback to phone if no name provided
+    
+    user_dict = {
+        "phone": phone,
+        "role": "customer",  # Default role for phone-based signup
+        "name": name,
+        "firstName": profile_data.firstName,
+        "lastName": profile_data.lastName,
+        "address": profile_data.address,
+        "details": profile_data.details,
+        "cafe_id": None,
+        "is_active": True
+    }
+    
+    # Insert user into database
+    result = await users_collection.insert_one(user_dict)
+    
+    # Fetch the created user
+    created_user = await users_collection.find_one({"_id": result.inserted_id})
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={
+            "phone": created_user["phone"],
+            "user_id": str(created_user["_id"]),
+            "role": created_user["role"]
+        },
+        expires_delta=access_token_expires
+    )
+    
+    # Create user response
+    user_response = UserResponse(
+        id=str(created_user["_id"]),
+        username=created_user.get("username"),
+        email=created_user.get("email"),
+        phone=created_user.get("phone"),
+        role=created_user["role"],
+        name=created_user["name"],
+        firstName=created_user.get("firstName"),
+        lastName=created_user.get("lastName"),
+        address=created_user.get("address"),
+        details=created_user.get("details"),
+        cafe_id=created_user.get("cafe_id"),
+        created_at=created_user.get("created_at"),
+        is_active=created_user.get("is_active", True)
     )
     
     return Token(
@@ -127,14 +294,26 @@ async def login(credentials: UserLogin):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+async def get_current_user_info(current_user: TokenData = Depends(get_current_user)):
     """
     Get current authenticated user information
+    Identifies user from token and returns user information
+    Only works with a valid token
     """
     db = get_database()
     users_collection = db["users"]
     
-    user = await users_collection.find_one({"username": current_user.username})
+    # Find user by username, phone, or user_id
+    user = None
+    if current_user.user_id:
+        try:
+            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
+        except:
+            pass
+    if not user and current_user.username:
+        user = await users_collection.find_one({"username": current_user.username})
+    if not user and current_user.phone:
+        user = await users_collection.find_one({"phone": current_user.phone})
     
     if not user:
         raise HTTPException(
@@ -144,12 +323,113 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     
     return UserResponse(
         id=str(user["_id"]),
-        username=user["username"],
-        email=user["email"],
+        username=user.get("username"),
+        email=user.get("email"),
+        phone=user.get("phone"),
         role=user["role"],
         name=user["name"],
+        firstName=user.get("firstName"),
+        lastName=user.get("lastName"),
+        address=user.get("address"),
+        details=user.get("details"),
         cafe_id=user.get("cafe_id"),
         created_at=user.get("created_at"),
         is_active=user.get("is_active", True)
     )
 
+
+@router.put("/update", response_model=UserResponse)
+async def update_profile(
+    profile_update: ProfileUpdate,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Update user profile information
+    Validates security and permissions, saves changes, and returns updated user
+    """
+    db = get_database()
+    users_collection = db["users"]
+    
+    # Find user
+    user = None
+    if current_user.user_id:
+        try:
+            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
+        except:
+            pass
+    if not user and current_user.username:
+        user = await users_collection.find_one({"username": current_user.username})
+    if not user and current_user.phone:
+        user = await users_collection.find_one({"phone": current_user.phone})
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Check if user is active
+    if not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+    
+    # Prepare update data (only include fields that are provided)
+    update_data = {}
+    if profile_update.firstName is not None:
+        update_data["firstName"] = profile_update.firstName
+    if profile_update.lastName is not None:
+        update_data["lastName"] = profile_update.lastName
+    if profile_update.phone is not None:
+        # Check if phone is already taken by another user
+        phone = profile_update.phone.replace("+", "").replace("-", "").replace(" ", "")
+        existing_phone = await users_collection.find_one({
+            "phone": phone,
+            "_id": {"$ne": user["_id"]}
+        })
+        if existing_phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number already registered to another user"
+            )
+        update_data["phone"] = phone
+    if profile_update.address is not None:
+        update_data["address"] = profile_update.address
+    if profile_update.details is not None:
+        update_data["details"] = profile_update.details
+    if profile_update.name is not None:
+        update_data["name"] = profile_update.name
+    elif profile_update.firstName is not None or profile_update.lastName is not None:
+        # Update name if firstName or lastName changed
+        firstName = update_data.get("firstName", user.get("firstName", ""))
+        lastName = update_data.get("lastName", user.get("lastName", ""))
+        name = f"{firstName} {lastName}".strip()
+        if name:
+            update_data["name"] = name
+    
+    # Update user in database
+    if update_data:
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+    
+    # Fetch updated user
+    updated_user = await users_collection.find_one({"_id": user["_id"]})
+    
+    return UserResponse(
+        id=str(updated_user["_id"]),
+        username=updated_user.get("username"),
+        email=updated_user.get("email"),
+        phone=updated_user.get("phone"),
+        role=updated_user["role"],
+        name=updated_user["name"],
+        firstName=updated_user.get("firstName"),
+        lastName=updated_user.get("lastName"),
+        address=updated_user.get("address"),
+        details=updated_user.get("details"),
+        cafe_id=updated_user.get("cafe_id"),
+        created_at=updated_user.get("created_at"),
+        is_active=updated_user.get("is_active", True)
+    )

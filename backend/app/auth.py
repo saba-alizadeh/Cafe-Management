@@ -45,10 +45,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     )
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        username: str = payload.get("sub")
-        if username is None:
+        username: Optional[str] = payload.get("sub")
+        phone: Optional[str] = payload.get("phone")
+        user_id: Optional[str] = payload.get("user_id")
+        
+        if username is None and phone is None and user_id is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
+        
+        token_data = TokenData(username=username, phone=phone, user_id=user_id)
     except JWTError:
         raise credentials_exception
     return token_data
