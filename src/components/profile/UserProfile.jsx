@@ -5,12 +5,14 @@ import {
     TextField,
     Typography,
     Grid,
-    Button
+    Button,
+    Alert,
+    CircularProgress
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 
 const UserProfile = () => {
-    const { user, login } = useAuth();
+    const { user, login, token, fetchUserProfile, apiBaseUrl } = useAuth();
     const [profile, setProfile] = useState({
         firstName: '',
         lastName: '',
@@ -19,52 +21,132 @@ const UserProfile = () => {
         details: ''
     });
     const [saving, setSaving] = useState(false);
-
-    const storageKey = `cafeUserProfile_${user?.role || 'guest'}`;
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     useEffect(() => {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                setProfile((prev) => ({ ...prev, ...parsed }));
-            } catch {
-                // ignore malformed data
+        // Load user profile from backend if authenticated
+        const loadProfile = async () => {
+            setLoading(true);
+            setError('');
+
+            if (token) {
+                try {
+                    // Fetch fresh user profile from backend
+                    const response = await fetch(`${apiBaseUrl}/auth/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const userData = await response.json();
+                        setProfile({
+                            firstName: userData.firstName || '',
+                            lastName: userData.lastName || '',
+                            phone: userData.phone || '',
+                            address: userData.address || '',
+                            details: userData.details || ''
+                        });
+                    } else if (response.status === 401) {
+                        setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
+                    } else {
+                        setError('خطا در بارگیری اطلاعات پروفایل.');
+                    }
+                } catch (err) {
+                    console.error('Error loading profile:', err);
+                    setError('خطا در ارتباط با سرور.');
+                }
+            } else if (user) {
+                // Fallback if no token but user exists
+                setProfile({
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    phone: user.phone || '',
+                    address: user.address || '',
+                    details: user.details || ''
+                });
             }
-        } else if (user?.phone) {
-            setProfile((prev) => ({ ...prev, phone: user.phone }));
-        }
+
+            setLoading(false);
+        };
+
+        loadProfile();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [storageKey]);
+    }, [token, apiBaseUrl]);
 
     const handleChange = (field) => (event) => {
         setProfile((prev) => ({
             ...prev,
             [field]: event.target.value
         }));
+        if (error) setError('');
+        if (success) setSuccess('');
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
         setSaving(true);
+        setError('');
+        setSuccess('');
 
-        localStorage.setItem(storageKey, JSON.stringify(profile));
-
-        // Also keep the auth user in sync with profile info
-        if (user) {
-            login({
-                ...user,
-                firstName: profile.firstName,
-                lastName: profile.lastName,
-                phone: profile.phone || user.phone,
-                address: profile.address
-            });
+        if (!token) {
+            setError('لطفاً ابتدا وارد شوید.');
+            setSaving(false);
+            return;
         }
 
-        setTimeout(() => {
+        try {
+            // Send profile update to backend
+            const response = await fetch(`${apiBaseUrl}/auth/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(profile)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.message || 'خطا در ذخیره اطلاعات.');
+                setSaving(false);
+                return;
+            }
+
+            // Update local user state
+            if (user) {
+                login({
+                    ...user,
+                    firstName: profile.firstName,
+                    lastName: profile.lastName,
+                    phone: profile.phone,
+                    address: profile.address,
+                    details: profile.details
+                });
+            }
+
+            setSuccess('اطلاعات شما با موفقیت ذخیره شد.');
             setSaving(false);
-        }, 300);
+
+            // Clear success message after 3 seconds
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError('خطا در ارتباط با سرور.');
+            console.error('Error updating profile:', err);
+            setSaving(false);
+        }
     };
+
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ direction: 'rtl' }}>
@@ -74,6 +156,9 @@ const UserProfile = () => {
             <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
                 اطلاعات شخصی خود را برای تجربه بهتر در سامانه تکمیل کنید.
             </Typography>
+
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
             <Paper
                 elevation={3}
@@ -93,6 +178,7 @@ const UserProfile = () => {
                                 value={profile.firstName}
                                 onChange={handleChange('firstName')}
                                 margin="normal"
+                                disabled={saving}
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -102,6 +188,7 @@ const UserProfile = () => {
                                 value={profile.lastName}
                                 onChange={handleChange('lastName')}
                                 margin="normal"
+                                disabled={saving}
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -111,6 +198,7 @@ const UserProfile = () => {
                                 value={profile.phone}
                                 onChange={handleChange('phone')}
                                 margin="normal"
+                                disabled={saving}
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -120,6 +208,7 @@ const UserProfile = () => {
                                 value={profile.address}
                                 onChange={handleChange('address')}
                                 margin="normal"
+                                disabled={saving}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -131,11 +220,13 @@ const UserProfile = () => {
                                 margin="normal"
                                 multiline
                                 minRows={3}
+                                disabled={saving}
                             />
                         </Grid>
                     </Grid>
 
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 3, gap: 1 }}>
+                        {saving && <CircularProgress size={24} />}
                         <Button
                             type="submit"
                             variant="contained"

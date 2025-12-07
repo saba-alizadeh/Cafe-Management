@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
+const API_BASE_URL = 'http://localhost:5000/api'; // Update with your backend URL
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -10,26 +11,79 @@ export const useAuth = () => {
     return context;
 };
 
+// Helper function to attach JWT to API calls
+const fetchWithAuth = async (endpoint, options = {}) => {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    // Handle token expiration
+    if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('cafeUser');
+        window.dispatchEvent(new CustomEvent('authExpired'));
+    }
+
+    return response;
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [tempPhone, setTempPhone] = useState(null); // Temporarily store phone for unlogged users
+    const [tempPhone, setTempPhone] = useState(null);
+    const [token, setToken] = useState(null);
 
     useEffect(() => {
         // Check for stored authentication on app load
+        const storedToken = localStorage.getItem('authToken');
         const storedUser = localStorage.getItem('cafeUser');
-        const storedPhone = localStorage.getItem('cafeTempPhone');
-        if (storedUser) {
+        
+        if (storedToken) {
+            setToken(storedToken);
+            // Optionally, fetch fresh user data from backend
+            fetchUserProfile(storedToken);
+        } else if (storedUser) {
             setUser(JSON.parse(storedUser));
         }
-        if (storedPhone) {
-            setTempPhone(storedPhone);
-        }
+        
         setLoading(false);
     }, []);
 
+    const fetchUserProfile = async (authToken) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/me`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                localStorage.setItem('cafeUser', JSON.stringify(userData));
+            } else if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('cafeUser');
+                setToken(null);
+                setUser(null);
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+        }
+    };
+
     const login = (userData, isNewUser = false) => {
-        // Add isNewUser flag to track if profile completion is needed
         const userDataWithFlag = {
             ...userData,
             isNewUser,
@@ -37,13 +91,11 @@ export const AuthProvider = ({ children }) => {
         };
         setUser(userDataWithFlag);
         localStorage.setItem('cafeUser', JSON.stringify(userDataWithFlag));
-        // Clear temp phone once logged in
         localStorage.removeItem('cafeTempPhone');
         setTempPhone(null);
     };
 
     const setUnloggedPhone = (phone) => {
-        // Store phone for users who authenticated but not completed profile
         setTempPhone(phone);
         localStorage.setItem('cafeTempPhone', phone);
     };
@@ -56,11 +108,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const setAuthToken = (authToken) => {
+        setToken(authToken);
+        localStorage.setItem('authToken', authToken);
+    };
+
     const logout = () => {
         setUser(null);
         setTempPhone(null);
+        setToken(null);
         localStorage.removeItem('cafeUser');
         localStorage.removeItem('cafeTempPhone');
+        localStorage.removeItem('authToken');
     };
 
     const value = {
@@ -70,7 +129,12 @@ export const AuthProvider = ({ children }) => {
         loading,
         tempPhone,
         setUnloggedPhone,
-        markUserAsRegistered
+        markUserAsRegistered,
+        token,
+        setAuthToken,
+        fetchWithAuth,
+        fetchUserProfile,
+        apiBaseUrl: API_BASE_URL
     };
 
     return (
@@ -79,3 +143,5 @@ export const AuthProvider = ({ children }) => {
         </AuthContext.Provider>
     );
 };
+
+export { fetchWithAuth };
