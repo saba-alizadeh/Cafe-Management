@@ -64,6 +64,17 @@ const HeaderBar = ({ cartItems = 3 }) => {
                     </IconButton>
                     <Box sx={{ display: 'flex', gap: 1, marginRight: '7px' }}>
                         <Button
+                            variant="outlined"
+                            sx={{
+                                color: 'var(--color-primary)',
+                                borderColor: 'var(--color-primary)',
+                                '&:hover': { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }
+                            }}
+                            onClick={() => navigate('/admin-login')}
+                        >
+                            ورود مدیر / ادمین
+                        </Button>
+                        <Button
                             variant="contained"
                             sx={{ bgcolor: 'var(--color-primary)' }}
                             onClick={requireAuthAndGoProfile}

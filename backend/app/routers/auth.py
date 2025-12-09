@@ -4,7 +4,8 @@ from bson import ObjectId
 from app.database import get_database, connect_to_mongo
 from app.models import (
     UserCreate, UserLogin, UserResponse, Token, 
-    PhoneLoginRequest, PhoneLoginComplete, ProfileUpdate, TokenData, VerifyOTPRequest
+    PhoneLoginRequest, PhoneLoginComplete, ProfileUpdate, TokenData, VerifyOTPRequest,
+    EmployeeCreate, EmployeeResponse, EmployeeStatusUpdate
 )
 from app.auth import verify_password, get_password_hash, create_access_token, get_current_user
 from app.config import settings
@@ -13,6 +14,21 @@ router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 # Default OTP for testing
 DEFAULT_OTP = "123456"
+
+
+async def _get_request_user(db, current_user: TokenData):
+    users_collection = db["users"]
+    user = None
+    if current_user.user_id:
+        try:
+            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
+        except Exception:
+            user = None
+    if not user and current_user.username:
+        user = await users_collection.find_one({"username": current_user.username})
+    if not user and current_user.phone:
+        user = await users_collection.find_one({"phone": current_user.phone})
+    return user
 
 
 @router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -270,6 +286,90 @@ async def login(credentials: PhoneLoginRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
         )
+
+
+@router.post("/admin-login", response_model=Token)
+async def admin_login(credentials: UserLogin):
+    """
+    Username/password login for admin and manager roles.
+    """
+    if not credentials.username or not credentials.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username and password are required"
+        )
+
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available. Please check MongoDB connection."
+            )
+
+    users_collection = db["users"]
+
+    user = await users_collection.find_one({"username": credentials.username})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+    if user.get("role") not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied for this user"
+        )
+
+    if not user.get("password") or not verify_password(credentials.password, user.get("password")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+    if not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    token_data = {
+        "sub": user.get("username"),
+        "user_id": str(user["_id"]),
+        "role": user["role"],
+        "phone": user.get("phone")
+    }
+
+    access_token = create_access_token(
+        data=token_data,
+        expires_delta=access_token_expires
+    )
+
+    user_response = UserResponse(
+        id=str(user["_id"]),
+        username=user.get("username"),
+        email=user.get("email"),
+        phone=user.get("phone"),
+        role=user["role"],
+        name=user.get("name"),
+        firstName=user.get("firstName"),
+        lastName=user.get("lastName"),
+        address=user.get("address"),
+        details=user.get("details"),
+        cafe_id=user.get("cafe_id"),
+        created_at=user.get("created_at"),
+        is_active=user.get("is_active", True)
+    )
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user=user_response
+    )
 
 
 @router.post("/verify-otp")
@@ -618,3 +718,127 @@ async def update_profile(
         created_at=updated_user.get("created_at"),
         is_active=updated_user.get("is_active", True)
     )
+
+
+# --------------------
+# Employees (admin-only)
+# --------------------
+
+
+def _require_admin(user):
+    if not user or user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can manage employees"
+        )
+
+
+@router.get("/employees", response_model=list[EmployeeResponse])
+async def list_employees(current_user: TokenData = Depends(get_current_user)):
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+
+    user = await _get_request_user(db, current_user)
+    _require_admin(user)
+
+    employees_collection = db["employees"]
+    cursor = employees_collection.find({})
+    employees = []
+    async for doc in cursor:
+        doc["id"] = str(doc["_id"])
+        doc.pop("_id", None)
+        employees.append(EmployeeResponse(**doc))
+    return employees
+
+
+@router.post("/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+async def create_employee(employee: EmployeeCreate, current_user: TokenData = Depends(get_current_user)):
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+
+    user = await _get_request_user(db, current_user)
+    _require_admin(user)
+
+    employees_collection = db["employees"]
+
+    # Unique constraints: nationalId and phone
+    existing_nid = await employees_collection.find_one({"nationalId": employee.nationalId})
+    if existing_nid:
+        raise HTTPException(status_code=400, detail="کد ملی قبلا ثبت شده است.")
+    existing_phone = await employees_collection.find_one({"phone": employee.phone})
+    if existing_phone:
+        raise HTTPException(status_code=400, detail="شماره تلفن قبلا ثبت شده است.")
+
+    doc = employee.model_dump()
+    doc["created_at"] = datetime.utcnow()
+    result = await employees_collection.insert_one(doc)
+    created = await employees_collection.find_one({"_id": result.inserted_id})
+    created["id"] = str(created["_id"])
+    created.pop("_id", None)
+    return EmployeeResponse(**created)
+
+
+@router.delete("/employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_employee(employee_id: str, current_user: TokenData = Depends(get_current_user)):
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+
+    user = await _get_request_user(db, current_user)
+    _require_admin(user)
+
+    employees_collection = db["employees"]
+    try:
+        oid = ObjectId(employee_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="شناسه نامعتبر است.")
+
+    await employees_collection.delete_one({"_id": oid})
+    return None
+
+
+@router.patch("/employees/{employee_id}/status", response_model=EmployeeResponse)
+async def update_employee_status(
+    employee_id: str,
+    status_payload: EmployeeStatusUpdate,
+    current_user: TokenData = Depends(get_current_user)
+):
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+
+    user = await _get_request_user(db, current_user)
+    _require_admin(user)
+
+    employees_collection = db["employees"]
+    try:
+        oid = ObjectId(employee_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="شناسه نامعتبر است.")
+
+    update_result = await employees_collection.update_one(
+        {"_id": oid},
+        {"$set": {"is_active": status_payload.is_active}}
+    )
+
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="کارمند یافت نشد.")
+
+    updated = await employees_collection.find_one({"_id": oid})
+    updated["id"] = str(updated["_id"])
+    updated.pop("_id", None)
+    return EmployeeResponse(**updated)

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_to_mongo, close_mongo_connection
+from app.seed_defaults import ensure_default_users
 from app.routers import auth
 
 app = FastAPI(
@@ -25,6 +26,7 @@ app.include_router(auth.router)
 @app.on_event("startup")
 async def startup_event():
     await connect_to_mongo()
+    await ensure_default_users()
 
 
 @app.on_event("shutdown")

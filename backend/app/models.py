@@ -5,6 +5,9 @@ from datetime import datetime
 from bson import ObjectId
 
 
+EMPLOYEE_ROLES = ("waiter", "floor_staff", "bartender")
+
+
 class PyObjectId(ObjectId):
     @classmethod
     def __get_pydantic_core_schema__(
@@ -151,4 +154,68 @@ class ProfileUpdate(BaseModel):
     address: Optional[str] = None
     details: Optional[str] = None
     name: Optional[str] = None  # Full name can be updated
+
+
+class EmployeeBase(BaseModel):
+    nationalId: str = Field(..., min_length=5, max_length=32)
+    phone: str = Field(..., min_length=10, max_length=15)
+    firstName: str = Field(..., min_length=1, max_length=100)
+    lastName: str = Field(..., min_length=1, max_length=100)
+    role: str = Field(..., pattern="^(waiter|floor_staff|bartender)$")
+    is_active: bool = True
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_phone(cls, v: str) -> str:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) < 10 or len(digits) > 15:
+            raise ValueError("Phone must contain 10-15 digits")
+        return digits
+
+
+class EmployeeCreate(EmployeeBase):
+    pass
+
+
+class EmployeeResponse(EmployeeBase):
+    id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class EmployeeStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class EmployeeBase(BaseModel):
+    nationalId: str = Field(..., min_length=5, max_length=32)
+    phone: str = Field(..., min_length=10, max_length=15)
+    firstName: str = Field(..., min_length=1, max_length=100)
+    lastName: str = Field(..., min_length=1, max_length=100)
+    role: str = Field(..., pattern="^(waiter|floor_staff|bartender)$")
+    is_active: bool = True
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_phone(cls, v: str) -> str:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) < 10 or len(digits) > 15:
+            raise ValueError("Phone must contain 10-15 digits")
+        return digits
+
+
+class EmployeeCreate(EmployeeBase):
+    pass
+
+
+class EmployeeResponse(EmployeeBase):
+    id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class EmployeeStatusUpdate(BaseModel):
+    is_active: bool
 

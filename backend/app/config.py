@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     # Development bypass: when true, skip DB/OTP and return stub users
     bypass_auth: bool = False
+    # Default admin/manager bootstrap users
+    default_admin_username: str = "admin"
+    default_admin_password: str = "admin123"
+    default_manager_username: str = "manager"
+    default_manager_password: str = "manager123"
     
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -46,7 +46,6 @@ import CafeManagement from './components/CafeManagement';
 import SalesAnalytics from './components/SalesAnalytics';
 import SystemSettings from './components/SystemSettings';
 // Newly added admin pages
-import EmployeeManagement from './components/EmployeeManagement';
 import ShiftScheduling from './components/ShiftScheduling';
 import RewardsPenalties from './components/RewardsPenalties';
 import RulesManagement from './components/RulesManagement';
@@ -215,7 +214,7 @@ const AdminDashboard = () => {
 				<Routes>
 					<Route index element={<AdminOverview />} />
 					<Route path="analytics" element={<SalesAnalytics />} />
-					<Route path="employees" element={<EmployeeManagement />} />
+					<Route path="employees" element={<UserManagement />} />
 					<Route path="shifts" element={<ShiftScheduling />} />
 					<Route path="rewards" element={<RewardsPenalties />} />
 					<Route path="rules" element={<RulesManagement />} />
