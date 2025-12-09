@@ -31,7 +31,7 @@ const UserProfile = () => {
             setLoading(true);
             setError('');
 
-            if (token) {
+            if (token && token !== 'local-sample-token') {
                 try {
                     // Fetch fresh user profile from backend
                     const response = await fetch(`${apiBaseUrl}/auth/me`, {
@@ -97,10 +97,26 @@ const UserProfile = () => {
             return;
         }
 
+        // Demo/local token: skip backend, just update local state
+        if (token === 'local-sample-token') {
+            login({
+                ...user,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                phone: profile.phone,
+                address: profile.address,
+                details: profile.details
+            });
+            setSuccess('اطلاعات شما به صورت محلی ذخیره شد (توکن آزمایشی).');
+            setSaving(false);
+            setTimeout(() => setSuccess(''), 3000);
+            return;
+        }
+
         try {
             // Send profile update to backend
             const response = await fetch(`${apiBaseUrl}/auth/update`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -108,10 +124,19 @@ const UserProfile = () => {
                 body: JSON.stringify(profile)
             });
 
-            const data = await response.json();
+            // Try to parse JSON safely (backend may return empty body on errors)
+            let data = {};
+            try {
+                const text = await response.text();
+                if (text) {
+                    data = JSON.parse(text);
+                }
+            } catch (parseErr) {
+                console.warn('Profile update parse warning:', parseErr);
+            }
 
             if (!response.ok) {
-                setError(data.message || 'خطا در ذخیره اطلاعات.');
+                setError(data.message || data.detail || 'خطا در ذخیره اطلاعات.');
                 setSaving(false);
                 return;
             }

@@ -4,7 +4,7 @@ This document outlines all API endpoints and authentication flow implemented in 
 
 ## Base URL
 ```
-http://localhost:5000/api
+http://localhost:8000/api
 ```
 Update the `API_BASE_URL` in `src/context/AuthContext.jsx` if your backend runs on a different port/domain.
 

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from datetime import timedelta
+from datetime import timedelta, datetime
 from bson import ObjectId
-from app.database import get_database
+from app.database import get_database, connect_to_mongo
 from app.models import (
     UserCreate, UserLogin, UserResponse, Token, 
-    PhoneLoginRequest, PhoneLoginComplete, ProfileUpdate, TokenData
+    PhoneLoginRequest, PhoneLoginComplete, ProfileUpdate, TokenData, VerifyOTPRequest
 )
 from app.auth import verify_password, get_password_hash, create_access_token, get_current_user
 from app.config import settings
@@ -131,36 +131,217 @@ async def login(credentials: PhoneLoginRequest):
     Step 2: If user exists, verify OTP and return JWT
     Step 3: If user doesn't exist, require additional info via PhoneLoginComplete
     """
-    db = get_database()
-    users_collection = db["users"]
-    
-    # Normalize phone number (remove any non-digit characters except +)
-    phone = credentials.phone.replace("+", "").replace("-", "").replace(" ", "")
-    
-    # Find user by phone number
-    user = await users_collection.find_one({"phone": phone})
-    
-    # Step 1: If no OTP provided, send OTP (simulate SMS sending)
-    if not credentials.otp:
-        # In production, send SMS here with actual OTP
-        # For now, we return a message indicating OTP was sent
-        # The frontend should use the default OTP: 123456
-        return {
-            "message": "OTP sent to phone number",
-            "otp_required": True,
-            "default_otp": DEFAULT_OTP,  # For testing only
-            "user_exists": user is not None
-        }
-    
-    # Step 2: Verify OTP
-    if credentials.otp != DEFAULT_OTP:
+    try:
+        # Development bypass: skip DB/OTP entirely
+        if settings.bypass_auth:
+            return {
+                "message": "Auth bypass enabled (dev)",
+                "otp_required": False,
+                "default_otp": DEFAULT_OTP,
+                "user_exists": True,
+                "token": "dev-bypass-token",
+                "user": {
+                    "id": "dev-user-id",
+                    "phone": credentials.phone,
+                    "role": "customer",
+                    "name": credentials.phone,
+                    "is_active": True
+                }
+            }
+
+        db = get_database()
+        if db is None:
+            # Try to connect lazily in case startup hook failed or was skipped
+            await connect_to_mongo()
+            db = get_database()
+            if db is None:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Database connection not available. Please check MongoDB connection."
+                )
+        
+        users_collection = db["users"]
+        
+        # Phone already normalized by the model validator
+        phone = credentials.phone
+        
+        # Find user by phone number with timeout handling
+        try:
+            user = await users_collection.find_one({"phone": phone})
+        except Exception as db_error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Database query failed: {str(db_error)}"
+            )
+        
+        # Step 1: If no OTP provided, send OTP (simulate SMS sending)
+        if not credentials.otp:
+            # If user doesn't exist, create a basic user record with just phone number
+            if not user:
+                try:
+                    user_dict = {
+                        "phone": phone,
+                        "role": "customer",
+                        "name": phone,  # Temporary name, will be updated with personal info
+                        "is_active": True,
+                        "created_at": datetime.utcnow()
+                    }
+                    result = await users_collection.insert_one(user_dict)
+                    user = await users_collection.find_one({"_id": result.inserted_id})
+                    print(f"Created new user record for phone: {phone}")
+                except Exception as create_error:
+                    print(f"Error creating user: {create_error}")
+                    # Continue anyway - user might already exist from race condition
+            
+            # In production, send SMS here with actual OTP
+            # For now, we return a message indicating OTP was sent
+            # The frontend should use the default OTP: 123456
+            return {
+                "message": "OTP sent to phone number",
+                "otp_required": True,
+                "default_otp": DEFAULT_OTP,  # For testing only
+                "user_exists": user is not None
+            }
+        
+        # Step 2: Verify OTP
+        if credentials.otp != DEFAULT_OTP:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid OTP code"
+            )
+        
+        # Step 3: If user exists, approve login and return JWT
+        if user:
+            # Check if user is active
+            if not user.get("is_active", True):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User account is inactive"
+                )
+            
+            # Create access token
+            access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+            token_data = {}
+            if user.get("username"):
+                token_data["sub"] = user["username"]
+            token_data["phone"] = user["phone"]
+            token_data["user_id"] = str(user["_id"])
+            token_data["role"] = user["role"]
+            
+            access_token = create_access_token(
+                data=token_data,
+                expires_delta=access_token_expires
+            )
+            
+            # Create user response
+            user_response = UserResponse(
+                id=str(user["_id"]),
+                username=user.get("username"),
+                email=user.get("email"),
+                phone=user.get("phone"),
+                role=user["role"],
+                name=user["name"],
+                firstName=user.get("firstName"),
+                lastName=user.get("lastName"),
+                address=user.get("address"),
+                details=user.get("details"),
+                cafe_id=user.get("cafe_id"),
+                created_at=user.get("created_at"),
+                is_active=user.get("is_active", True)
+            )
+            
+            return Token(
+                access_token=access_token,
+                token_type="bearer",
+                user=user_response
+            )
+        
+        # Step 4: If user doesn't exist, require additional information
+        # This should be handled by a separate endpoint or the frontend should
+        # call signup with the additional info after OTP verification
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid OTP code"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found. Please complete registration with additional information."
         )
-    
-    # Step 3: If user exists, approve login and return JWT
-    if user:
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.post("/verify-otp")
+async def verify_otp(otp_request: VerifyOTPRequest):
+    """
+    Verify OTP code and return JWT token
+    Returns token, isNewUser flag, and user data
+    """
+    try:
+        if settings.bypass_auth:
+            # Return a stub token/user without DB or OTP checks
+            return {
+                "token": "dev-bypass-token",
+                "isNewUser": False,
+                "user": {
+                    "id": "dev-user-id",
+                    "phone": otp_request.phone,
+                    "role": "customer",
+                    "name": otp_request.phone,
+                    "is_active": True
+                }
+            }
+
+        db = get_database()
+        if db is None:
+            await connect_to_mongo()
+            db = get_database()
+            if db is None:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Database connection not available. Please check MongoDB connection."
+                )
+        
+        users_collection = db["users"]
+        
+        # Phone already normalized by the model validator
+        phone = otp_request.phone
+        
+        # Verify OTP code
+        if otp_request.code != DEFAULT_OTP:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired code"
+            )
+        
+        # Find user by phone number with error handling
+        try:
+            user = await users_collection.find_one({"phone": phone})
+        except Exception as db_error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Database connection error: {str(db_error)}. Please ensure MongoDB is running."
+            )
+        
+        # If user doesn't exist, create a basic user record
+        if not user:
+            try:
+                user_dict = {
+                    "phone": phone,
+                    "role": "customer",
+                    "name": phone,  # Temporary name
+                    "is_active": True,
+                    "created_at": datetime.utcnow()
+                }
+                result = await users_collection.insert_one(user_dict)
+                user = await users_collection.find_one({"_id": result.inserted_id})
+            except Exception as create_error:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Error creating user: {str(create_error)}"
+                )
+        
         # Check if user is active
         if not user.get("is_active", True):
             raise HTTPException(
@@ -168,7 +349,11 @@ async def login(credentials: PhoneLoginRequest):
                 detail="User account is inactive"
             )
         
-        # Create access token
+        # Check if user has complete information (firstName and lastName are required)
+        has_complete_info = user.get("firstName") and user.get("lastName")
+        is_new_user = not has_complete_info
+        
+        # Create access token (even for incomplete users, so they can complete registration)
         access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
         token_data = {}
         if user.get("username"):
@@ -189,7 +374,7 @@ async def login(credentials: PhoneLoginRequest):
             email=user.get("email"),
             phone=user.get("phone"),
             role=user["role"],
-            name=user["name"],
+            name=user.get("name", phone),
             firstName=user.get("firstName"),
             lastName=user.get("lastName"),
             address=user.get("address"),
@@ -199,19 +384,19 @@ async def login(credentials: PhoneLoginRequest):
             is_active=user.get("is_active", True)
         )
         
-        return Token(
-            access_token=access_token,
-            token_type="bearer",
-            user=user_response
+        # Return format expected by frontend
+        return {
+            "token": access_token,
+            "isNewUser": is_new_user,
+            "user": user_response.model_dump()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
         )
-    
-    # Step 4: If user doesn't exist, require additional information
-    # This should be handled by a separate endpoint or the frontend should
-    # call signup with the additional info after OTP verification
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="User not found. Please complete registration with additional information."
-    )
 
 
 @router.post("/login/complete", response_model=Token)

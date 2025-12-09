@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     secret_key: str = "your-secret-key-here-change-in-production-use-a-random-string"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    # Development bypass: when true, skip DB/OTP and return stub users
+    bypass_auth: bool = False
     
     model_config = SettingsConfigDict(
         env_file=".env",

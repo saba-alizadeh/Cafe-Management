@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
-const API_BASE_URL = 'http://localhost:5000/api'; // Update with your backend URL
+const API_BASE_URL = 'http://localhost:8000/api'; // Update with your backend URL
 
 export const useAuth = () => {
     const context = useContext(AuthContext);

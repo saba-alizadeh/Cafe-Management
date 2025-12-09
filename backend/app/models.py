@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from pydantic_core import core_schema
 from typing import Optional, Annotated
 from datetime import datetime
@@ -68,6 +68,39 @@ class UserCreate(BaseModel):
 class PhoneLoginRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     otp: Optional[str] = None  # OTP code for verification
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_phone(cls, v: str) -> str:
+        """Strip non-digits so inputs with +, spaces, or dashes don't 422."""
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) < 10 or len(digits) > 15:
+            raise ValueError("Phone must contain 10-15 digits")
+        return digits
+
+
+class VerifyOTPRequest(BaseModel):
+    phone: str
+    # Accept both `code` and `otp` keys; always coerce to a 6-char string
+    code: str = Field(..., min_length=6, max_length=6, alias="otp")
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_phone(cls, v: str) -> str:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) < 10 or len(digits) > 15:
+            raise ValueError("Phone must contain 10-15 digits")
+        return digits
+
+    @field_validator("code")
+    @classmethod
+    def normalize_code(cls, v: str) -> str:
+        code_str = str(v).strip()
+        if len(code_str) != 6 or not code_str.isdigit():
+            raise ValueError("Code must be a 6-digit string")
+        return code_str
+
+    model_config = {"populate_by_name": True}
 
 class PhoneLoginComplete(BaseModel):
     phone: str

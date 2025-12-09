@@ -11,7 +11,7 @@ import {
     Alert,
     CircularProgress
 } from '@mui/material';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 const FIXED_OTP = '123456';
@@ -23,7 +23,12 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated, onNewUser = null }) =
     const [submitting, setSubmitting] = useState(false);
     const [step, setStep] = useState(1); // 1 = phone, 2 = otp
     const [error, setError] = useState('');
-    const [isNewUser, setIsNewUser] = useState(false);
+    const [token, setToken] = useState(null);
+
+    // Debug: Log step changes
+    useEffect(() => {
+        console.log('Step changed to:', step);
+    }, [step]);
 
     const resetState = () => {
         setPhone('');
@@ -31,7 +36,7 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated, onNewUser = null }) =
         setStep(1);
         setError('');
         setSubmitting(false);
-        setIsNewUser(false);
+        setToken(null);
     };
 
     const handleSubmit = async (event) => {
@@ -43,37 +48,32 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated, onNewUser = null }) =
                 return;
             }
 
-            setSubmitting(true);
+            // Move to step 2 immediately - don't wait for backend
             setError('');
+            setSubmitting(false);
+            setStep(2);
+            console.log('Moving to OTP step for phone:', phone.trim());
 
-            try {
-                // Call POST /api/auth/login to send SMS
-                const response = await fetch(`${apiBaseUrl}/auth/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        phone: phone.trim()
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    setError(data.message || 'خطا در ارسال کد. دوباره تلاش کنید.');
-                    setSubmitting(false);
-                    return;
+            // Save phone number to backend in background (non-blocking)
+            fetch(`${apiBaseUrl}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    phone: phone.trim()
+                })
+            }).then(response => {
+                if (response.ok) {
+                    console.log('Phone number saved successfully');
+                } else {
+                    console.warn('Failed to save phone number, but continuing anyway');
                 }
-
-                // Successfully sent SMS code
-                setStep(2);
-                setSubmitting(false);
-            } catch (err) {
-                setError('خطا در ارتباط با سرور. دوباره تلاش کنید.');
-                setSubmitting(false);
-                console.error('Login error:', err);
-            }
+            }).catch(err => {
+                console.warn('Error saving phone number (non-critical):', err);
+                // Don't show error to user - we've already moved to next step
+            });
+            
             return;
         }
 
@@ -87,50 +87,55 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated, onNewUser = null }) =
         setError('');
 
         try {
-            // Call endpoint to verify OTP and get JWT
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
             const response = await fetch(`${apiBaseUrl}/auth/verify-otp`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     phone: phone.trim(),
                     code: otp.trim()
-                })
+                }),
+                signal: controller.signal
             });
 
-            const data = await response.json();
+            clearTimeout(timeoutId);
+
+            let data = {};
+            try {
+                const text = await response.text();
+                if (text) {
+                    data = JSON.parse(text);
+                }
+            } catch (err) {
+                console.error('OTP parse error:', err);
+            }
 
             if (!response.ok) {
-                setError(data.message || 'کد نادرست است.');
+                setError(data.message || data.detail || `کد نادرست است (کد وضعیت: ${response.status}).`);
                 setSubmitting(false);
                 return;
             }
 
-            // Successful verification
-            const { token, isNewUser: isNew, user } = data;
-
-            // Store JWT
-            setAuthToken(token);
-
-            // Check if new user
-            if (isNew) {
-                setIsNewUser(true);
-                login(user || { phone: phone.trim(), role: 'customer' }, true);
-                if (onNewUser) {
-                    onNewUser(user || { phone: phone.trim() });
-                }
-            } else {
-                login(user || { phone: phone.trim(), role: 'customer' }, false);
-                if (onAuthenticated) {
-                    onAuthenticated(user || { phone: phone.trim() });
-                }
+            const { token: authToken, user } = data;
+            setToken(authToken);
+            if (authToken) {
+                setAuthToken(authToken);
             }
 
+            login(user || { phone: phone.trim(), role: 'customer' }, false);
+            onAuthenticated && onAuthenticated(user || { phone: phone.trim() });
             resetState();
             onClose();
         } catch (err) {
-            setError('خطا در تایید کد. دوباره تلاش کنید.');
+            if (err.name === 'AbortError') {
+                setError('زمان اتصال به سرور به پایان رسید. لطفاً اتصال اینترنت خود را بررسی کنید.');
+            } else if (err instanceof TypeError && err.message.includes('fetch')) {
+                setError('خطا در اتصال به سرور. لطفاً مطمئن شوید سرور در حال اجرا است.');
+            } else {
+                setError('خطا در تایید کد. دوباره تلاش کنید.');
+            }
             console.error('OTP verification error:', err);
             setSubmitting(false);
         }
