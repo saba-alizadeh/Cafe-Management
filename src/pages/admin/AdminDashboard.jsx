@@ -55,6 +55,7 @@ import DiscountCodes from './components/DiscountCodes';
 import Reservations from './components/Reservations';
 import ProductManagement from './components/ProductManagement';
 import UserManagement from './components/UserManagement';
+import EmployeeManagement from './components/EmployeeManagement';
 import CustomerFeedback from './components/CustomerFeedback';
 
 const drawerWidth = 240;
@@ -214,7 +215,7 @@ const AdminDashboard = () => {
 				<Routes>
 					<Route index element={<AdminOverview />} />
 					<Route path="analytics" element={<SalesAnalytics />} />
-					<Route path="employees" element={<UserManagement />} />
+					<Route path="employees" element={<EmployeeManagement />} />
 					<Route path="shifts" element={<ShiftScheduling />} />
 					<Route path="rewards" element={<RewardsPenalties />} />
 					<Route path="rules" element={<RulesManagement />} />

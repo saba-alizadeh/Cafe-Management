@@ -188,34 +188,105 @@ class EmployeeStatusUpdate(BaseModel):
     is_active: bool
 
 
-class EmployeeBase(BaseModel):
-    nationalId: str = Field(..., min_length=5, max_length=32)
-    phone: str = Field(..., min_length=10, max_length=15)
-    firstName: str = Field(..., min_length=1, max_length=100)
-    lastName: str = Field(..., min_length=1, max_length=100)
-    role: str = Field(..., pattern="^(waiter|floor_staff|bartender)$")
-    is_active: bool = True
-
-    @field_validator("phone")
-    @classmethod
-    def normalize_phone(cls, v: str) -> str:
-        digits = "".join(ch for ch in v if ch.isdigit())
-        if len(digits) < 10 or len(digits) > 15:
-            raise ValueError("Phone must contain 10-15 digits")
-        return digits
+# Shift Scheduling Models
+class ShiftSchedulingBase(BaseModel):
+    employee_id: str = Field(..., description="Employee ID")
+    date: str = Field(..., description="Shift date (YYYY-MM-DD)")
+    start_time: str = Field(..., description="Shift start time (HH:MM)")
+    end_time: str = Field(..., description="Shift end time (HH:MM)")
 
 
-class EmployeeCreate(EmployeeBase):
+class ShiftSchedulingCreate(ShiftSchedulingBase):
     pass
 
 
-class EmployeeResponse(EmployeeBase):
+class ShiftSchedulingResponse(ShiftSchedulingBase):
     id: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
 
-class EmployeeStatusUpdate(BaseModel):
-    is_active: bool
+# Inventory Models
+class InventoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    quantity: float = Field(..., ge=0, description="Current quantity")
+    unit: str = Field(..., min_length=1, max_length=50, description="Unit of measurement")
+    min_quantity: Optional[float] = Field(None, ge=0, description="Minimum stock level")
+
+
+class InventoryCreate(InventoryBase):
+    pass
+
+
+class InventoryUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    quantity: Optional[float] = Field(None, ge=0)
+    unit: Optional[str] = Field(None, min_length=1, max_length=50)
+    min_quantity: Optional[float] = Field(None, ge=0)
+
+
+class InventoryResponse(InventoryBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Discount Code Models
+class OffCodeBase(BaseModel):
+    code: str = Field(..., min_length=3, max_length=50, description="Discount code")
+    percent: float = Field(..., ge=0, le=100, description="Discount percentage")
+    max_uses: Optional[int] = Field(None, ge=1, description="Maximum number of uses")
+    current_uses: int = Field(default=0, ge=0, description="Current number of uses")
+    is_active: bool = Field(default=True, description="Whether the code is active")
+    expires_at: Optional[datetime] = Field(None, description="Expiration date")
+
+
+class OffCodeCreate(OffCodeBase):
+    current_uses: int = 0
+
+
+class OffCodeUpdate(BaseModel):
+    percent: Optional[float] = Field(None, ge=0, le=100)
+    max_uses: Optional[int] = Field(None, ge=1)
+    is_active: Optional[bool] = None
+    expires_at: Optional[datetime] = None
+
+
+class OffCodeResponse(OffCodeBase):
+    id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# Product Models
+class ProductBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    price: float = Field(..., ge=0, description="Product price")
+    is_active: bool = Field(default=True, description="Whether the product is active")
+    description: Optional[str] = Field(None, max_length=1000)
+    image_url: Optional[str] = None
+
+
+class ProductCreate(ProductBase):
+    pass
+
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    price: Optional[float] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+    description: Optional[str] = Field(None, max_length=1000)
+    image_url: Optional[str] = None
+
+
+class ProductResponse(ProductBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
 
