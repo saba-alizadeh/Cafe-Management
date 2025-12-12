@@ -290,3 +290,47 @@ class ProductResponse(ProductBase):
 
     model_config = {"from_attributes": True}
 
+
+# Reward Models
+class RewardBase(BaseModel):
+    employee_id: str = Field(..., description="Target employee ID")
+    title: Optional[str] = Field(None, max_length=200)
+    reason: Optional[str] = Field(None, max_length=500)
+    amount: float = Field(..., ge=0)
+    reward_type: str = Field(..., pattern="^(bonus|penalty)$")
+    note: Optional[str] = Field(None, max_length=1000)
+    date: Optional[str] = Field(None, description="YYYY-MM-DD")
+
+
+class RewardCreate(RewardBase):
+    pass
+
+
+class RewardResponse(RewardBase):
+    id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# Rule Models
+class RuleBase(BaseModel):
+    text: str = Field(..., min_length=3, max_length=1000)
+    is_active: bool = Field(default=True)
+
+
+class RuleCreate(RuleBase):
+    pass
+
+
+class RuleUpdate(BaseModel):
+    text: Optional[str] = Field(None, min_length=3, max_length=1000)
+    is_active: Optional[bool] = None
+
+
+class RuleResponse(RuleBase):
+    id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+

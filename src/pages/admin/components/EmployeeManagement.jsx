@@ -32,6 +32,7 @@ const roles = [
 const EmployeeManagement = () => {
 	const { apiBaseUrl, token } = useAuth();
 	const [employees, setEmployees] = useState([]);
+	const [rewards, setRewards] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
@@ -45,6 +46,7 @@ const EmployeeManagement = () => {
 
 	useEffect(() => {
 		if (token) fetchEmployees();
+		if (token) fetchRewards();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [token, apiBaseUrl]);
 
@@ -68,6 +70,20 @@ const EmployeeManagement = () => {
 			setError('خطا در ارتباط با سرور');
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const fetchRewards = async () => {
+		try {
+			const res = await fetch(`${apiBaseUrl}/rewards`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (res.ok) {
+				const data = await res.json();
+				setRewards(data);
+			}
+		} catch (err) {
+			console.error(err);
 		}
 	};
 
@@ -150,6 +166,18 @@ const EmployeeManagement = () => {
 			console.error(err);
 			setError('خطا در ارتباط با سرور');
 		}
+	};
+
+	const rewardSummary = (employeeId) => {
+		let bonus = 0;
+		let penalty = 0;
+		rewards.forEach((r) => {
+			if (r.employee_id === employeeId) {
+				if (r.reward_type === 'bonus') bonus += r.amount;
+				else penalty += r.amount;
+			}
+		});
+		return { bonus, penalty };
 	};
 
 	return (
@@ -262,6 +290,7 @@ const EmployeeManagement = () => {
 											<TableCell>نام و نام خانوادگی</TableCell>
 											<TableCell>شماره تماس</TableCell>
 											<TableCell>نقش</TableCell>
+											<TableCell>پاداش / جریمه</TableCell>
 											<TableCell>وضعیت</TableCell>
 											<TableCell align="right">حذف</TableCell>
 										</TableRow>
@@ -272,9 +301,20 @@ const EmployeeManagement = () => {
 												<TableCell>{e.nationalId}</TableCell>
 												<TableCell>{`${e.firstName} ${e.lastName}`}</TableCell>
 												<TableCell>{e.phone}</TableCell>
-												<TableCell>
-													<Chip size="small" label={roles.find((r) => r.value === e.role)?.label || e.role} />
-												</TableCell>
+											<TableCell>
+												<Chip size="small" label={roles.find((r) => r.value === e.role)?.label || e.role} />
+											</TableCell>
+											<TableCell>
+												{(() => {
+													const { bonus, penalty } = rewardSummary(e.id);
+													return (
+														<Stack direction="row" spacing={1}>
+															<Chip size="small" color="success" label={`+${bonus}`} />
+															<Chip size="small" color="warning" label={`-${penalty}`} />
+														</Stack>
+													);
+												})()}
+											</TableCell>
 												<TableCell>
 													<Stack direction="row" alignItems="center" spacing={1}>
 														<Typography variant="body2">غیرفعال</Typography>

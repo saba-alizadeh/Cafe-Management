@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_to_mongo, close_mongo_connection
 from app.seed_defaults import ensure_default_users
-from app.routers import auth, shifts, inventory, discounts, products, users
+from app.routers import auth, shifts, inventory, discounts, products, users, rewards, rules
 
 app = FastAPI(
     title="Cafe Management API",
@@ -26,6 +26,8 @@ app.include_router(inventory.router)
 app.include_router(discounts.router)
 app.include_router(products.router)
 app.include_router(users.router)
+app.include_router(rewards.router)
+app.include_router(rules.router)
 
 
 @app.on_event("startup")
