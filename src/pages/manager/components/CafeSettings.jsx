@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
     Box,
     Typography,
@@ -7,274 +8,768 @@ import {
     Paper,
     TextField,
     Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    IconButton,
+    Chip,
+    Alert,
+    CircularProgress,
     Switch,
     FormControlLabel,
     Divider,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemSecondaryAction,
-    IconButton
+    Stack
 } from '@mui/material';
 import {
-    Settings,
     Business,
-    Schedule,
-    Menu,
-    Notifications,
-    Security,
+    Add,
     Edit,
     Delete,
-    Add
+    LocationOn,
+    Phone,
+    Email,
+    Person,
+    Check,
+    Close,
+    Refresh
 } from '@mui/icons-material';
+import { useAuth } from '../../../context/AuthContext';
 
 const CafeSettings = () => {
-    const cafeInfo = {
-        name: 'کافه اکسیر',
-        address: 'تهران، خیابان انقلاب، کوچه سپید، پلاک ۱۲',
-        phone: '۰۲۱-۸۸۷۷۶۶۵۵',
-        email: 'hello@cafexir.ir',
-        hours: '۸:۰۰ الی ۲۳:۳۰',
-        capacity: 52,
-        wifiPassword: 'CafeXir1403'
+    const { apiBaseUrl, token } = useAuth();
+    const [cafes, setCafes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [openDialog, setOpenDialog] = useState(false);
+    const [editingCafe, setEditingCafe] = useState(null);
+    
+    // Get token from localStorage as fallback
+    const getToken = () => {
+        return token || localStorage.getItem('authToken');
+    };
+    
+    // Form state
+    const [formData, setFormData] = useState({
+        name: '',
+        location: '',
+        phone: '',
+        email: '',
+        details: '',
+        hours: '',
+        capacity: '',
+        wifi_password: '',
+        is_active: true,
+        admin_username: '',
+        admin_password: '',
+        admin_name: '',
+        admin_email: '',
+        admin_phone: ''
+    });
+
+    useEffect(() => {
+        const authToken = getToken();
+        if (authToken) {
+            fetchCafes();
+        } else {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            setLoading(false);
+        }
+    }, [token, apiBaseUrl]);
+
+    const fetchCafes = async () => {
+        setLoading(true);
+        setError('');
+        const authToken = getToken();
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            setLoading(false);
+            return;
+        }
+        try {
+            console.log('Fetching cafes from:', `${apiBaseUrl}/cafes`);
+            const res = await fetch(`${apiBaseUrl}/cafes`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            console.log('Fetch cafes response status:', res.status);
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error('Fetch cafes error:', data);
+                setError(data.detail || data.message || 'خطا در بارگذاری کافه‌ها');
+                setLoading(false);
+                return;
+            }
+            const data = await res.json();
+            console.log('Fetched cafes:', data);
+            setCafes(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Fetch cafes exception:', err);
+            setError('خطا در ارتباط با سرور: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const menuItems = [
-        { id: 1, name: 'کاپوچینو کاراملی', price: 185000, category: 'نوشیدنی گرم', available: true },
-        { id: 2, name: 'لاته زعفرانی', price: 195000, category: 'نوشیدنی گرم', available: true },
-        { id: 3, name: 'اسپرسو دوبل', price: 110000, category: 'نوشیدنی گرم', available: true },
-        { id: 4, name: 'چیزکیک پسته', price: 245000, category: 'دسر', available: false }
-    ];
+    const handleOpenDialog = (cafe = null) => {
+        if (cafe) {
+            setEditingCafe(cafe);
+            setFormData({
+                name: cafe.name || '',
+                location: cafe.location || '',
+                phone: cafe.phone || '',
+                email: cafe.email || '',
+                details: cafe.details || '',
+                hours: cafe.hours || '',
+                capacity: cafe.capacity || '',
+                wifi_password: cafe.wifi_password || '',
+                is_active: cafe.is_active !== undefined ? cafe.is_active : true,
+                admin_username: '',
+                admin_password: '',
+                admin_name: '',
+                admin_email: '',
+                admin_phone: ''
+            });
+        } else {
+            setEditingCafe(null);
+            setFormData({
+                name: '',
+                location: '',
+                phone: '',
+                email: '',
+                details: '',
+                hours: '',
+                capacity: '',
+                wifi_password: '',
+                is_active: true,
+                admin_username: '',
+                admin_password: '',
+                admin_name: '',
+                admin_email: '',
+                admin_phone: ''
+            });
+        }
+        setOpenDialog(true);
+        setError('');
+        setSuccess('');
+    };
+
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
+        setEditingCafe(null);
+        setError('');
+        setSuccess('');
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    // Helper: trim strings and convert empty to null
+    const cleanValue = (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed === '' ? null : trimmed;
+        }
+        return value;
+    };
+
+    const handleSubmit = async () => {
+        setSaving(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            if (editingCafe) {
+                // Update existing cafe
+                if (!formData.name || formData.name.trim() === '') {
+                    setError('لطفاً نام کافه را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                const updateData = {
+                    name: formData.name.trim(),
+                    location: cleanValue(formData.location),
+                    phone: cleanValue(formData.phone),
+                    email: cleanValue(formData.email),
+                    details: cleanValue(formData.details),
+                    hours: cleanValue(formData.hours),
+                    capacity: formData.capacity && formData.capacity.trim() !== '' ? parseInt(formData.capacity) : null,
+                    wifi_password: cleanValue(formData.wifi_password),
+                    is_active: formData.is_active
+                };
+
+                const authToken = getToken();
+                if (!authToken) {
+                    setError('لطفاً ابتدا وارد سیستم شوید');
+                    setSaving(false);
+                    return;
+                }
+                const res = await fetch(`${apiBaseUrl}/cafes/${editingCafe.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const errorMsg = data.detail || data.message || JSON.stringify(data) || 'خطا در بروزرسانی کافه';
+                    console.error('Update cafe error:', errorMsg, data);
+                    setError(errorMsg);
+                    setSaving(false);
+                    return;
+                }
+
+                setSuccess('کافه با موفقیت بروزرسانی شد');
+                await fetchCafes();
+                setTimeout(() => {
+                    handleCloseDialog();
+                }, 1500);
+            } else {
+                // Create new cafe
+                if (!formData.name || formData.name.trim() === '') {
+                    setError('لطفاً نام کافه را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_username || formData.admin_username.trim() === '') {
+                    setError('لطفاً نام کاربری مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_password || formData.admin_password.trim() === '') {
+                    setError('لطفاً رمز عبور مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_name || formData.admin_name.trim() === '') {
+                    setError('لطفاً نام کامل مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                // Build request data, ensuring empty strings become null for optional fields
+                const requestData = {
+                    name: formData.name.trim(),
+                    location: cleanValue(formData.location),
+                    phone: cleanValue(formData.phone),
+                    email: cleanValue(formData.email) || null,
+                    details: cleanValue(formData.details),
+                    hours: cleanValue(formData.hours),
+                    capacity: formData.capacity && formData.capacity.toString().trim() !== '' 
+                        ? parseInt(formData.capacity.toString().trim()) 
+                        : null,
+                    wifi_password: cleanValue(formData.wifi_password),
+                    is_active: formData.is_active,
+                    admin_username: formData.admin_username.trim(),
+                    admin_password: formData.admin_password,
+                    admin_name: formData.admin_name.trim(),
+                    admin_email: cleanValue(formData.admin_email) || null,
+                    admin_phone: cleanValue(formData.admin_phone)
+                };
+                
+                // Remove null/undefined values for cleaner request (optional)
+                Object.keys(requestData).forEach(key => {
+                    if (requestData[key] === null || requestData[key] === undefined || requestData[key] === '') {
+                        // Keep null for optional fields, but ensure they're explicitly null
+                        if (['email', 'admin_email', 'phone', 'admin_phone', 'location', 'details', 'hours', 'wifi_password', 'capacity'].includes(key)) {
+                            requestData[key] = null;
+                        }
+                    }
+                });
+
+                const authToken = getToken();
+                console.log('Creating cafe with data:', { ...requestData, admin_password: '***' });
+                console.log('Token exists:', !!authToken);
+                console.log('API Base URL:', apiBaseUrl);
+
+                if (!authToken) {
+                    setError('شما وارد سیستم نشده‌اید. لطفاً دوباره وارد شوید.');
+                    setSaving(false);
+                    return;
+                }
+
+                const res = await fetch(`${apiBaseUrl}/cafes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('Response status:', res.status);
+                console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    console.error('Failed to parse error response:', e);
+                    data = { detail: 'خطا در پردازش پاسخ سرور' };
+                }
+                
+                if (!res.ok) {
+                    // Handle validation errors
+                    let errorMsg = data.detail || data.message;
+                    if (data.detail && Array.isArray(data.detail)) {
+                        // Pydantic validation errors
+                        errorMsg = data.detail.map(err => {
+                            const field = err.loc ? err.loc.join('.') : 'field';
+                            return `${field}: ${err.msg}`;
+                        }).join(', ');
+                    } else if (typeof data.detail === 'object' && data.detail !== null && !Array.isArray(data.detail)) {
+                        errorMsg = JSON.stringify(data.detail);
+                    }
+                    errorMsg = errorMsg || JSON.stringify(data) || 'خطا در ایجاد کافه';
+                    console.error('Create cafe error:', errorMsg, data, res.status);
+                    setError(errorMsg);
+                    setSaving(false);
+                    return;
+                }
+
+                console.log('Cafe created successfully:', data);
+                setSuccess('کافه و حساب مدیر با موفقیت ایجاد شد');
+                // Close dialog first, then refresh list
+                handleCloseDialog();
+                // Wait a bit then refresh to ensure backend has processed
+                setTimeout(async () => {
+                    await fetchCafes();
+                }, 500);
+            }
+        } catch (err) {
+            console.error('Network error:', err);
+            setError('خطا در ارتباط با سرور: ' + err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (cafeId) => {
+        if (!window.confirm('آیا از حذف این کافه مطمئن هستید؟ حساب مدیر نیز غیرفعال خواهد شد.')) {
+            return;
+        }
+
+        const authToken = getToken();
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            return;
+        }
+        try {
+            const res = await fetch(`${apiBaseUrl}/cafes/${cafeId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'حذف کافه ناموفق بود');
+                return;
+            }
+
+            setSuccess('کافه با موفقیت حذف شد');
+            // Refresh the list
+            await fetchCafes();
+        } catch (err) {
+            console.error('Delete cafe error:', err);
+            setError('خطا در ارتباط با سرور: ' + err.message);
+        }
+    };
+
+    const getStatusColor = (isActive) => {
+        return isActive ? 'success' : 'error';
+    };
 
     return (
         <Box sx={{ direction: 'rtl' }}>
-            <Typography variant="h4" gutterBottom>
-                تنظیمات کافه
-            </Typography>
-            <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-                مدیریت اطلاعات شعبه، منو و تنظیمات عملیاتی
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Box>
+                    <Typography variant="h4" gutterBottom>
+                        مدیریت کافه‌ها
+                    </Typography>
+                    <Typography variant="subtitle1" color="text.secondary">
+                        ایجاد و مدیریت کافه‌های متعدد و حساب‌های مدیر مربوطه
+                        {cafes.length > 0 && ` (${cafes.length} کافه)`}
+                    </Typography>
+                </Box>
+                <Box display="flex" gap={2}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<Refresh />}
+                        onClick={fetchCafes}
+                        disabled={loading}
+                    >
+                        بروزرسانی
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<Add />}
+                        onClick={() => handleOpenDialog()}
+                        sx={{ backgroundColor: 'var(--color-accent)' }}
+                    >
+                        افزودن کافه جدید
+                    </Button>
+                </Box>
+            </Box>
 
-            <Grid container spacing={3}>
-                {/* Basic Information */}
-                <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2 }}>
-                        <Box display="flex" alignItems="center" mb={2}>
-                            <Business sx={{ mr: 1 }} />
-                            <Typography variant="h6">اطلاعات پایه</Typography>
-                        </Box>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <TextField
-                                    fullWidth
-                                    label="نام کافه"
-                                    defaultValue={cafeInfo.name}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <TextField
-                                    fullWidth
-                                    label="آدرس"
-                                    defaultValue={cafeInfo.address}
-                                    multiline
-                                    rows={2}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <TextField
-                                    fullWidth
-                                    label="تلفن تماس"
-                                    defaultValue={cafeInfo.phone}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <TextField
-                                    fullWidth
-                                    label="ایمیل"
-                                    defaultValue={cafeInfo.email}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <TextField
-                                    fullWidth
-                                    label="ساعات کاری"
-                                    defaultValue={cafeInfo.hours}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <TextField
-                                    fullWidth
-                                    label="ظرفیت (نفر)"
-                                    type="number"
-                                    defaultValue={cafeInfo.capacity}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                        </Grid>
-                    </Paper>
-                </Grid>
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+                    {error}
+                </Alert>
+            )}
 
-                {/* Operational Settings */}
-                <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2 }}>
-                        <Box display="flex" alignItems="center" mb={2}>
-                            <Settings sx={{ mr: 1 }} />
-                            <Typography variant="h6">تنظیمات عملیاتی</Typography>
-                        </Box>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch defaultChecked />}
-                                    label="دریافت سفارش آنلاین"
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch defaultChecked />}
-                                    label="امکان رزرو میز"
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch />}
-                                    label="ارسال بیرون‌بر فعال باشد"
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <TextField
-                                    fullWidth
-                                    label="رمز وای‌فای"
-                                    defaultValue={cafeInfo.wifiPassword}
-                                    type="password"
-                                    inputProps={{ dir: 'ltr' }}
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <TextField
-                                    fullWidth
-                                    label="حداکثر مدت رزرو (ساعت)"
-                                    type="number"
-                                    defaultValue={2}
-                                    inputProps={{ dir: 'rtl' }}
-                                />
-                            </Grid>
-                        </Grid>
-                    </Paper>
-                </Grid>
+            {success && (
+                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+                    {success}
+                </Alert>
+            )}
 
-                {/* Menu Management */}
-                <Grid item xs={12}>
-                    <Paper sx={{ p: 2 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                            <Box display="flex" alignItems="center">
-                                <Menu sx={{ mr: 1 }} />
-                            <Typography variant="h6">مدیریت منو</Typography>
-                            </Box>
-                            <Button variant="contained" startIcon={<Add />}>
-                                آیتم جدید
-                            </Button>
-                        </Box>
-                        <List>
-                            {menuItems.map((item) => (
-                                <ListItem key={item.id} divider>
-                                    <ListItemText
-                                        primary={item.name}
-                                        secondary={`${item.category} • ${item.price.toLocaleString('fa-IR')} تومان`}
-                                    />
-                                    <ListItemSecondaryAction>
-                                        <IconButton size="small">
+            {loading ? (
+                <Box display="flex" justifyContent="center" p={4}>
+                    <CircularProgress />
+                </Box>
+            ) : cafes.length === 0 ? (
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Business sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                        هیچ کافه‌ای ثبت نشده است
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        برای شروع، اولین کافه خود را اضافه کنید
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        startIcon={<Add />}
+                        onClick={() => handleOpenDialog()}
+                    >
+                        افزودن کافه جدید
+                    </Button>
+                </Paper>
+            ) : (
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>نام کافه</TableCell>
+                                <TableCell>موقعیت</TableCell>
+                                <TableCell>اطلاعات تماس</TableCell>
+                                <TableCell>ساعات کاری</TableCell>
+                                <TableCell>ظرفیت</TableCell>
+                                <TableCell>وضعیت</TableCell>
+                                <TableCell align="center">عملیات</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {cafes.map((cafe) => (
+                                <TableRow key={cafe.id} hover>
+                                    <TableCell>
+                                        <Box display="flex" alignItems="center">
+                                            <Business sx={{ mr: 1, color: 'primary.main' }} />
+                                            <Typography variant="body1" fontWeight="medium">
+                                                {cafe.name}
+                                            </Typography>
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                        {cafe.location ? (
+                                            <Box display="flex" alignItems="center">
+                                                <LocationOn sx={{ mr: 0.5, fontSize: 'small', color: 'text.secondary' }} />
+                                                <Typography variant="body2">
+                                                    {cafe.location}
+                                                </Typography>
+                                            </Box>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                تعریف نشده
+                                            </Typography>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Stack spacing={0.5}>
+                                            {cafe.phone && (
+                                                <Box display="flex" alignItems="center">
+                                                    <Phone sx={{ mr: 0.5, fontSize: 'small', color: 'text.secondary' }} />
+                                                    <Typography variant="body2">{cafe.phone}</Typography>
+                                                </Box>
+                                            )}
+                                            {cafe.email && (
+                                                <Box display="flex" alignItems="center">
+                                                    <Email sx={{ mr: 0.5, fontSize: 'small', color: 'text.secondary' }} />
+                                                    <Typography variant="body2">{cafe.email}</Typography>
+                                                </Box>
+                                            )}
+                                        </Stack>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2">
+                                            {cafe.hours || 'تعریف نشده'}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2">
+                                            {cafe.capacity ? `${cafe.capacity} نفر` : 'تعریف نشده'}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={cafe.is_active ? 'فعال' : 'غیرفعال'}
+                                            color={getStatusColor(cafe.is_active)}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <IconButton
+                                            size="small"
+                                            color="primary"
+                                            onClick={() => handleOpenDialog(cafe)}
+                                        >
                                             <Edit />
                                         </IconButton>
-                                        <IconButton size="small" color="error">
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={() => handleDelete(cafe.id)}
+                                        >
                                             <Delete />
                                         </IconButton>
-                                    </ListItemSecondaryAction>
-                                </ListItem>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </List>
-                    </Paper>
-                </Grid>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
-                {/* Notification Settings */}
-                <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2 }}>
-                        <Box display="flex" alignItems="center" mb={2}>
-                            <Notifications sx={{ mr: 1 }} />
-                            <Typography variant="h6">اعلان‌ها</Typography>
-                        </Box>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch defaultChecked />}
-                                    label="اعلان سفارش جدید"
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch defaultChecked />}
-                                    label="هشدار رزرو"
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch />}
-                                    label="هشدار موجودی"
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Switch defaultChecked />}
-                                    label="دیدگاه مشتریان"
-                                />
-                            </Grid>
+            {/* Create/Edit Dialog */}
+            <Dialog
+                open={openDialog}
+                onClose={handleCloseDialog}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{ sx: { direction: 'rtl' } }}
+            >
+                <DialogTitle>
+                    {editingCafe ? 'ویرایش کافه' : 'افزودن کافه جدید'}
+                </DialogTitle>
+                <DialogContent>
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+                    )}
+                    {success && (
+                        <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>
+                    )}
+
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12}>
+                            <Typography variant="h6" gutterBottom>
+                                اطلاعات کافه
+                            </Typography>
+                            <Divider sx={{ mb: 2 }} />
                         </Grid>
-                    </Paper>
-                </Grid>
 
-                {/* Security Settings */}
-                <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2 }}>
-                        <Box display="flex" alignItems="center" mb={2}>
-                            <Security sx={{ mr: 1 }} />
-                            <Typography variant="h6">امنیت و دسترسی</Typography>
-                        </Box>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <Button variant="outlined" fullWidth>
-                                    تغییر رمز مدیر
-                                </Button>
-                            </Grid>
-                            <Grid item xs={12}>
-                                <Button variant="outlined" fullWidth>
-                                    مدیریت دسترسی پرسنل
-                                </Button>
-                            </Grid>
-                            <Grid item xs={12}>
-                                <Button variant="outlined" fullWidth>
-                                    مشاهده گزارش دسترسی
-                                </Button>
-                            </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="نام کافه *"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleInputChange}
+                                required
+                            />
                         </Grid>
-                    </Paper>
-                </Grid>
 
-                {/* Save Button */}
-                <Grid item xs={12}>
-                    <Box display="flex" justifyContent="flex-end" gap={2}>
-                        <Button variant="outlined">
-                            بازنشانی
-                        </Button>
-                        <Button variant="contained">
-                            ذخیره تغییرات
-                        </Button>
-                    </Box>
-                </Grid>
-            </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="موقعیت"
+                                name="location"
+                                value={formData.location}
+                                onChange={handleInputChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="تلفن تماس"
+                                name="phone"
+                                value={formData.phone}
+                                onChange={handleInputChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="ایمیل"
+                                name="email"
+                                type="email"
+                                value={formData.email}
+                                onChange={handleInputChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="ساعات کاری"
+                                name="hours"
+                                value={formData.hours}
+                                onChange={handleInputChange}
+                                placeholder="مثال: ۸:۰۰ الی ۲۳:۳۰"
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="ظرفیت (نفر)"
+                                name="capacity"
+                                type="number"
+                                value={formData.capacity}
+                                onChange={handleInputChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                label="جزئیات"
+                                name="details"
+                                value={formData.details}
+                                onChange={handleInputChange}
+                                multiline
+                                rows={3}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="رمز وای‌فای"
+                                name="wifi_password"
+                                type="password"
+                                value={formData.wifi_password}
+                                onChange={handleInputChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.is_active}
+                                        onChange={handleInputChange}
+                                        name="is_active"
+                                    />
+                                }
+                                label="فعال"
+                            />
+                        </Grid>
+
+                        {!editingCafe && (
+                            <>
+                                <Grid item xs={12} sx={{ mt: 2 }}>
+                                    <Typography variant="h6" gutterBottom>
+                                        اطلاعات حساب مدیر
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                        یک حساب مدیر به صورت خودکار برای این کافه ایجاد خواهد شد
+                                    </Typography>
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="نام کاربری مدیر *"
+                                        name="admin_username"
+                                        value={formData.admin_username}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="رمز عبور مدیر *"
+                                        name="admin_password"
+                                        type="password"
+                                        value={formData.admin_password}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="نام کامل مدیر *"
+                                        name="admin_name"
+                                        value={formData.admin_name}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="ایمیل مدیر"
+                                        name="admin_email"
+                                        type="email"
+                                        value={formData.admin_email}
+                                        onChange={handleInputChange}
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <TextField
+                                        fullWidth
+                                        label="تلفن مدیر"
+                                        name="admin_phone"
+                                        value={formData.admin_phone}
+                                        onChange={handleInputChange}
+                                    />
+                                </Grid>
+                            </>
+                        )}
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseDialog} disabled={saving}>
+                        انصراف
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        variant="contained"
+                        disabled={saving}
+                        startIcon={saving ? <CircularProgress size={20} /> : <Check />}
+                    >
+                        {saving ? 'در حال ذخیره...' : editingCafe ? 'ذخیره تغییرات' : 'ایجاد کافه'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

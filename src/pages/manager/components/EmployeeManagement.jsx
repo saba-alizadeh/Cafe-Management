@@ -1,9 +1,7 @@
+import { useEffect, useState } from 'react';
 import {
     Box,
     Typography,
-    Grid,
-    Card,
-    CardContent,
     Paper,
     Table,
     TableBody,
@@ -14,233 +12,177 @@ import {
     Button,
     IconButton,
     Chip,
-    Avatar,
-    TextField,
-    InputAdornment
+    CircularProgress,
+    Alert,
+    Stack
 } from '@mui/material';
 import {
-    Search,
-    Add,
-    Edit,
     Delete,
-    Person,
-    Schedule,
-    Star,
+    Refresh,
     Phone,
-    Email
+    Email,
+    Shield
 } from '@mui/icons-material';
+import { useAuth } from '../../../context/AuthContext';
 
-const EmployeeManagement = () => {
-    // Mock data - in real app, this would come from API
-    const employees = [
-        {
-            id: 1,
-            name: 'شیوا احمدی',
-            role: 'سرپرست باریستا',
-            email: 'ahmadi@cafecode.ir',
-            phone: '۰۹۱۲۳۴۵۶۷۸۹',
-            rating: 4.9,
-            hours: 40,
-            status: 'Active',
-            shift: 'morning'
-        },
-        {
-            id: 2,
-            name: 'کاوه مرادی',
-            role: 'صندوقدار ارشد',
-            email: 'moradi@cafecode.ir',
-            phone: '۰۹۳۵۴۳۲۱۰۹۸',
-            rating: 4.7,
-            hours: 36,
-            status: 'Active',
-            shift: 'evening'
-        },
-        {
-            id: 3,
-            name: 'مینا صادقی',
-            role: 'کارشناس تدارکات',
-            email: 'sadeghi@cafecode.ir',
-            phone: '۰۹۱۹۸۷۶۵۴۳۲',
-            rating: 4.8,
-            hours: 32,
-            status: 'On Leave',
-            shift: 'morning'
-        },
-        {
-            id: 4,
-            name: 'بهمن نیک‌فر',
-            role: 'مدیر شعبه',
-            email: 'nikfar@cafecode.ir',
-            phone: '۰۹۱۲۲۱۱۲۳۳۴',
-            rating: 4.9,
-            hours: 44,
-            status: 'Active',
-            shift: 'full'
+const AdminManagement = () => {
+    const { apiBaseUrl, token } = useAuth();
+    const [admins, setAdmins] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const getToken = () => token || localStorage.getItem('authToken');
+
+    const fetchAdmins = async () => {
+        setLoading(true);
+        setError('');
+        const authToken = getToken();
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            setLoading(false);
+            return;
         }
-    ];
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Active': return 'success';
-            case 'On Leave': return 'warning';
-            case 'Inactive': return 'error';
-            default: return 'default';
+        try {
+            const res = await fetch(`${apiBaseUrl}/admins`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'خطا در بارگذاری مدیران');
+                setLoading(false);
+                return;
+            }
+            const data = await res.json();
+            setAdmins(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error(err);
+            setError('خطا در ارتباط با سرور');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const shiftLabels = {
-        morning: 'صبح',
-        evening: 'عصر',
-        night: 'شب',
-        full: 'تمام وقت'
-    };
+    useEffect(() => {
+        fetchAdmins();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, apiBaseUrl]);
 
-    const statusLabels = {
-        Active: 'فعال',
-        'On Leave': 'مرخصی',
-        Inactive: 'غیرفعال'
+    const handleDelete = async (adminId) => {
+        if (!window.confirm('آیا از غیرفعال کردن این مدیر مطمئن هستید؟')) return;
+        const authToken = getToken();
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            return;
+        }
+        try {
+            const res = await fetch(`${apiBaseUrl}/admins/${adminId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'غیرفعالسازی مدیر ناموفق بود');
+                return;
+            }
+            setSuccess('مدیر غیرفعال شد');
+            await fetchAdmins();
+        } catch (err) {
+            console.error(err);
+            setError('خطا در ارتباط با سرور');
+        }
     };
-
-    const formatNumber = (value) => new Intl.NumberFormat('fa-IR').format(value);
 
     return (
         <Box sx={{ direction: 'rtl' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h4">مدیریت کارکنان</Typography>
-                <Button variant="contained" startIcon={<Add />}>
-                    افزودن کارمند
+            <Box display="flex" justifyContent="space_between" alignItems="center" mb={3}>
+                <Box>
+                    <Typography variant="h4">مدیریت مدیران (Admins)</Typography>
+                    <Typography variant="subtitle1" color="text.secondary">
+                        مدیر هر کافه به صورت خودکار هنگام ثبت کافه ایجاد می‌شود
+                    </Typography>
+                </Box>
+                <Button variant="outlined" startIcon={<Refresh />} onClick={fetchAdmins} disabled={loading}>
+                    بروزرسانی
                 </Button>
             </Box>
 
-            {/* Search and Stats */}
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
-                    <TextField
-                        fullWidth
-                        placeholder="جستجوی کارمند..."
-                        inputProps={{ dir: 'rtl' }}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <Search />
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={12} md={2}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" color="textSecondary">
-                                تعداد کل
-                            </Typography>
-                            <Typography variant="h4">{formatNumber(employees.length)}</Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={2}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" color="textSecondary">
-                                فعال
-                            </Typography>
-                            <Typography variant="h4">
-                                {formatNumber(employees.filter(e => e.status === 'Active').length)}
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={2}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" color="textSecondary">
-                                میانگین امتیاز
-                            </Typography>
-                            <Typography variant="h4">
-                                {(employees.reduce((sum, emp) => sum + emp.rating, 0) / employees.length).toFixed(1)}
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
+            {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
-            {/* Employees Table */}
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell align="right">کارمند</TableCell>
-                            <TableCell align="right">سمت</TableCell>
-                            <TableCell align="right">اطلاعات تماس</TableCell>
-                            <TableCell align="right">امتیاز</TableCell>
-                            <TableCell align="right">ساعت هفتگی</TableCell>
-                            <TableCell align="right">شیفت</TableCell>
-                            <TableCell align="right">وضعیت</TableCell>
-                            <TableCell align="right">عملیات</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {employees.map((employee) => (
-                            <TableRow key={employee.id}>
-                                <TableCell align="right">
-                                    <Box display="flex" alignItems="center" justifyContent="flex-end" gap={2}>
-                                        <Box textAlign="right">
-                                            <Typography variant="subtitle2">{employee.name}</Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                کد پرسنلی {formatNumber(employee.id)}
-                                            </Typography>
-                                        </Box>
-                                        <Avatar>
-                                            {employee.name.split(' ').map(n => n[0]).join('')}
-                                        </Avatar>
-                                    </Box>
-                                </TableCell>
-                                <TableCell align="right">{employee.role}</TableCell>
-                                <TableCell align="right">
-                                    <Box textAlign="right">
-                                        <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1} sx={{ mb: 0.5 }}>
-                                            {employee.email}
-                                            <Email sx={{ fontSize: 'small' }} />
-                                        </Box>
-                                        <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                                            {employee.phone}
-                                            <Phone sx={{ fontSize: 'small' }} />
-                                        </Box>
-                                    </Box>
-                                </TableCell>
-                                <TableCell align="right">
-                                    <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                                        {employee.rating}
-                                        <Star sx={{ fontSize: 'small', color: 'warning.main' }} />
-                                    </Box>
-                                </TableCell>
-                                <TableCell align="right">{formatNumber(employee.hours)} ساعت</TableCell>
-                                <TableCell align="right">{shiftLabels[employee.shift] ?? employee.shift}</TableCell>
-                                <TableCell align="right">
-                                    <Chip
-                                        label={statusLabels[employee.status] ?? employee.status}
-                                        color={getStatusColor(employee.status)}
-                                        size="small"
-                                    />
-                                </TableCell>
-                                <TableCell align="right">
-                                    <IconButton size="small" color="primary">
-                                        <Edit />
-                                    </IconButton>
-                                    <IconButton size="small" color="secondary">
-                                        <Schedule />
-                                    </IconButton>
-                                    <IconButton size="small" color="error">
-                                        <Delete />
-                                    </IconButton>
-                                </TableCell>
+            {loading ? (
+                <Box display="flex" justifyContent="center" p={4}>
+                    <CircularProgress />
+                </Box>
+            ) : admins.length === 0 ? (
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                        مدیری ثبت نشده است
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        با ایجاد کافه جدید، مدیر مربوطه نیز ایجاد می‌شود
+                    </Typography>
+                </Paper>
+            ) : (
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>نام مدیر</TableCell>
+                                <TableCell>نام کاربری</TableCell>
+                                <TableCell>کافه</TableCell>
+                                <TableCell>اطلاعات تماس</TableCell>
+                                <TableCell>وضعیت</TableCell>
+                                <TableCell align="center">عملیات</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {admins.map((adm) => (
+                                <TableRow key={adm.id} hover>
+                                    <TableCell>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Shield fontSize="small" color="primary" />
+                                            <Typography>{adm.name}</Typography>
+                                        </Stack>
+                                    </TableCell>
+                                    <TableCell>{adm.username}</TableCell>
+                                    <TableCell>{adm.cafe_id ?? '—'}</TableCell>
+                                    <TableCell>
+                                        <Stack spacing={0.5}>
+                                            {adm.phone && (
+                                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                                    <Phone fontSize="small" />
+                                                    <Typography variant="body2">{adm.phone}</Typography>
+                                                </Stack>
+                                            )}
+                                            {adm.email && (
+                                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                                    <Email fontSize="small" />
+                                                    <Typography variant="body2">{adm.email}</Typography>
+                                                </Stack>
+                                            )}
+                                        </Stack>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={adm.is_active ? 'فعال' : 'غیرفعال'}
+                                            color={adm.is_active ? 'success' : 'default'}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <IconButton color="error" onClick={() => handleDelete(adm.id)}>
+                                            <Delete />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
         </Box>
     );
 };
 
-export default EmployeeManagement;
+export default AdminManagement;

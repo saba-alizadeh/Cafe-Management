@@ -334,3 +334,107 @@ class RuleResponse(RuleBase):
 
     model_config = {"from_attributes": True}
 
+
+# Cafe Models
+class CafeBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200, description="Cafe name")
+    location: Optional[str] = Field(default=None, max_length=500, description="Cafe location/address")
+    phone: Optional[str] = Field(default=None, max_length=15, description="Contact phone number")
+    email: Optional[EmailStr] = Field(default=None, description="Contact email")
+    details: Optional[str] = Field(default=None, max_length=1000, description="Additional cafe details")
+    hours: Optional[str] = Field(default=None, max_length=100, description="Operating hours")
+    capacity: Optional[int] = Field(default=None, ge=0, description="Maximum capacity")
+    wifi_password: Optional[str] = Field(default=None, max_length=100, description="WiFi password")
+    is_active: bool = Field(default=True, description="Whether the cafe is active")
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            # Remove non-digits for validation
+            digits = "".join(ch for ch in v if ch.isdigit())
+            if len(digits) < 10 or len(digits) > 15:
+                raise ValueError("Phone must contain 10-15 digits")
+            return digits
+        return v
+    
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            trimmed = v.strip()
+            if trimmed == "":
+                return None
+            return trimmed
+        return v
+    
+    @field_validator("capacity", mode="before")
+    @classmethod
+    def validate_capacity(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except ValueError:
+                return None
+        return v
+
+
+class CafeCreate(CafeBase):
+    # Admin account details for the cafe
+    admin_username: str = Field(..., min_length=3, max_length=50, description="Username for cafe admin")
+    admin_password: str = Field(..., min_length=6, description="Password for cafe admin")
+    admin_name: str = Field(..., min_length=1, max_length=100, description="Full name of cafe admin")
+    admin_email: Optional[EmailStr] = Field(default=None, description="Email for cafe admin")
+    admin_phone: Optional[str] = Field(default=None, max_length=15, description="Phone for cafe admin")
+    
+    @field_validator("admin_email", mode="before")
+    @classmethod
+    def validate_admin_email(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            trimmed = v.strip()
+            if trimmed == "":
+                return None
+            return trimmed
+        return v
+    
+    @field_validator("admin_phone", mode="before")
+    @classmethod
+    def validate_admin_phone(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            # Remove non-digits for validation
+            digits = "".join(ch for ch in v if ch.isdigit())
+            if len(digits) < 10 or len(digits) > 15:
+                raise ValueError("Admin phone must contain 10-15 digits")
+            return digits
+        return v
+
+
+class CafeUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    location: Optional[str] = Field(None, max_length=500)
+    phone: Optional[str] = Field(None, min_length=10, max_length=15)
+    email: Optional[EmailStr] = None
+    details: Optional[str] = Field(None, max_length=1000)
+    hours: Optional[str] = Field(None, max_length=100)
+    capacity: Optional[int] = Field(None, ge=0)
+    wifi_password: Optional[str] = Field(None, max_length=100)
+    is_active: Optional[bool] = None
+
+
+class CafeResponse(CafeBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    admin_id: Optional[str] = Field(None, description="ID of the cafe admin user")
+
+    model_config = {"from_attributes": True}
