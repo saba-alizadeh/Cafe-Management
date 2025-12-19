@@ -617,9 +617,9 @@ const DrinkCustomizer = () => {
       <PhoneAuthDialog
         open={authDialogOpen}
         onClose={() => setAuthDialogOpen(false)}
-        onAuthenticated={() => {
+        onAuthenticated={(user) => {
           setAuthDialogOpen(false);
-          navigate('/customer/profile');
+          navigate('/customer');
         }}
       />
     </Container>

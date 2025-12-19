@@ -20,10 +20,7 @@ import {
 import {
     Menu as MenuIcon,
     Dashboard,
-    Analytics,
     People,
-    Inventory,
-    Campaign,
     Settings,
     Logout,
     AccountCircle
@@ -33,10 +30,7 @@ import UserProfile from '../../components/profile/UserProfile';
 
 // Manager Components
 import ManagerOverview from './components/ManagerOverview';
-import SalesReports from './components/SalesReports';
 import EmployeeManagement from './components/EmployeeManagement';
-import InventoryManagement from './components/InventoryManagement';
-import Promotions from './components/Promotions';
 import CafeSettings from './components/CafeSettings';
 
 const drawerWidth = 240;
@@ -52,10 +46,7 @@ const ManagerDashboard = () => {
 
     const menuItems = [
         { text: 'نمای کلی', icon: <Dashboard />, to: basePath },
-        { text: 'گزارش‌های فروش', icon: <Analytics />, to: `${basePath}/reports` },
         { text: 'مدیریت کارکنان', icon: <People />, to: `${basePath}/employees` },
-        { text: 'مدیریت موجودی', icon: <Inventory />, to: `${basePath}/inventory` },
-        { text: 'کمپین‌ها و تخفیف‌ها', icon: <Campaign />, to: `${basePath}/promotions` },
         { text: 'تنظیمات کافه', icon: <Settings />, to: `${basePath}/settings` },
         { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
     ];
@@ -191,10 +182,7 @@ const ManagerDashboard = () => {
                 <Toolbar />
                 <Routes>
                     <Route index element={<ManagerOverview />} />
-                    <Route path="reports" element={<SalesReports />} />
                     <Route path="employees" element={<EmployeeManagement />} />
-                    <Route path="inventory" element={<InventoryManagement />} />
-                    <Route path="promotions" element={<Promotions />} />
                     <Route path="settings" element={<CafeSettings />} />
                     <Route path="profile" element={<UserProfile />} />
                 </Routes>

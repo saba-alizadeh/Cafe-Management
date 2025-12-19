@@ -1,12 +1,9 @@
 import { Box, Grid, Typography } from '@mui/material';
 import {
 	FavoriteRounded,
-	ShoppingBagRounded,
 	ScheduleRounded,
 	LocalOfferRounded,
-	AccountBalanceWalletRounded,
-	StarBorderRounded,
-	HistoryRounded
+	StarBorderRounded
 } from '@mui/icons-material';
 
 import OverviewCard from '../../../components/dashboard/OverviewCard';
@@ -36,21 +33,6 @@ const cards = [
 				{ label: 'امروز', value: '1 مورد جدید', trend: 'up' },
 				{ label: '۷ روز گذشته', value: '3 بروزرسانی', trend: 'up' },
 				{ label: 'یک ماه گذشته', value: '8 کافه فعال', trend: 'up' }
-			]
-		}
-	},
-	{
-		id: 'completed-orders',
-		grid: { xs: 12, sm: 6, md: 4 },
-		props: {
-			title: 'سفارش‌های تکمیل شده',
-			icon: <ShoppingBagRounded sx={{ fontSize: 28 }} />,
-			accentColor: palette.accent,
-			background: palette.sageTint,
-			metrics: [
-				{ label: 'امروز', value: '4', trend: 'up' },
-				{ label: '۷ روز گذشته', value: '19', trend: 'up' },
-				{ label: 'یک ماه گذشته', value: '76', trend: 'up' }
 			]
 		}
 	},
@@ -85,21 +67,6 @@ const cards = [
 		}
 	},
 	{
-		id: 'wallet-balance',
-		grid: { xs: 12, md: 6 },
-		props: {
-			title: 'کیف پول و امتیاز',
-			icon: <AccountBalanceWalletRounded sx={{ fontSize: 28 }} />,
-			accentColor: palette.accentAlt,
-			background: palette.coral,
-			metrics: [
-				{ label: 'امروز', value: '245,000 ریال', trend: 'up' },
-				{ label: '۷ روز گذشته', value: '1,380,000 ریال', trend: 'up' },
-				{ label: 'یک ماه گذشته', value: '4,360,000 ریال', trend: 'up' }
-			]
-		}
-	},
-	{
 		id: 'rating-activity',
 		grid: { xs: 12, sm: 6, md: 6 },
 		props: {
@@ -114,21 +81,7 @@ const cards = [
 			]
 		}
 	},
-	{
-		id: 'history-overview',
-		grid: { xs: 12, sm: 6, md: 6 },
-		props: {
-			title: 'مرور سفارش‌ها',
-			icon: <HistoryRounded sx={{ fontSize: 28 }} />,
-			accentColor: palette.accentAlt,
-			background: palette.sand,
-			metrics: [
-				{ label: 'امروز', value: '2 سفارش در صف', trend: 'neutral' },
-				{ label: '۷ روز گذشته', value: '9 دسته سفارش', trend: 'up' },
-				{ label: 'یک ماه گذشته', value: '36 تجربه', trend: 'up' }
-			]
-		}
-	}
+	// Order-related summary cards removed as per requirements
 ];
 
 const CustomerOverview = () => (
@@ -138,7 +91,7 @@ const CustomerOverview = () => (
 				نمای کلی مشتری
 			</Typography>
 			<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-				خلاصه‌ای از سفارش‌ها، رزروها و مزایای فعال شما
+				خلاصه‌ای از رزروها، پیشنهادها و فعالیت‌های شما
 			</Typography>
 
 			<Grid container spacing={3}>

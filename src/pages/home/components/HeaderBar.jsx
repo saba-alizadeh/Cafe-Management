@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Box, Typography, Button, IconButton, Badge } from '@mui/material';
-import { Search, ShoppingCart, Favorite, Home, Menu } from '@mui/icons-material';
+import { AppBar, Toolbar, Box, Typography, Button, IconButton } from '@mui/material';
+import { Search, Favorite, Home } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
-const HeaderBar = ({ cartItems = 3 }) => {
+const HeaderBar = () => {
     const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -18,21 +18,6 @@ const HeaderBar = ({ cartItems = 3 }) => {
         }
     };
 
-    const handleOrdersClick = () => {
-        if (user) {
-            navigate('/customer/order');
-        } else {
-            setAuthDialogOpen(true);
-        }
-    };
-
-    const handleCartClick = () => {
-        if (user) {
-            navigate('/customer/order');
-        } else {
-            setAuthDialogOpen(true);
-        }
-    };
 
     const handleFavoritesClick = () => {
         if (user) {
@@ -52,11 +37,7 @@ const HeaderBar = ({ cartItems = 3 }) => {
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 3, mr: 'auto', direction: 'rtl', marginRight: '30px', '& .MuiButton-startIcon': { marginLeft: '5px', marginRight: 0, } }}>
                             <Button startIcon={<Home />} sx={{ color: 'var(--color-primary)' }} onClick={() => navigate('/')}>خانه</Button>
-                            <Button startIcon={<Menu />} sx={{ color: 'var(--color-primary)' }} onClick={handleOrdersClick}>سفارشات</Button>
                             <Button startIcon={<Favorite />} sx={{ color: 'var(--color-primary)' }} onClick={handleFavoritesClick}>مورد علاقه ها</Button>
-                            <Badge badgeContent={cartItems} color="error">
-                                <Button startIcon={<ShoppingCart />} sx={{ color: 'var(--color-primary)' }} onClick={handleCartClick}>سبد خرید</Button>
-                            </Badge>
                         </Box>
                     </Box>
                     <IconButton sx={{ bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }}>
@@ -88,9 +69,12 @@ const HeaderBar = ({ cartItems = 3 }) => {
             <PhoneAuthDialog
                 open={authDialogOpen}
                 onClose={() => setAuthDialogOpen(false)}
-                onAuthenticated={() => {
+                onAuthenticated={(user) => {
                     setAuthDialogOpen(false);
-                    navigate('/customer/profile');
+                    // Redirect regular users (customers) to /customer
+                    if (user && user.role === 'customer') {
+                        navigate('/customer');
+                    }
                 }}
             />
         </>

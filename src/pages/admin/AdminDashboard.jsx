@@ -22,7 +22,6 @@ import {
 	Dashboard,
 	Business,
 	Analytics,
-	Settings,
 	Logout,
 	People,
 	Schedule,
@@ -35,7 +34,8 @@ import {
 	ShoppingBag,
 	Group,
 	RateReview,
-	AccountCircle
+	AccountCircle,
+	TableRestaurant
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import UserProfile from '../../components/profile/UserProfile';
@@ -44,7 +44,6 @@ import UserProfile from '../../components/profile/UserProfile';
 import AdminOverview from './components/AdminOverview';
 import CafeManagement from './components/CafeManagement';
 import SalesAnalytics from './components/SalesAnalytics';
-import SystemSettings from './components/SystemSettings';
 // Newly added admin pages
 import ShiftScheduling from './components/ShiftScheduling';
 import RewardsPenalties from './components/RewardsPenalties';
@@ -57,6 +56,7 @@ import ProductManagement from './components/ProductManagement';
 import UserManagement from './components/UserManagement';
 import EmployeeManagement from './components/EmployeeManagement';
 import CustomerFeedback from './components/CustomerFeedback';
+import TableManagement from './components/TableManagement';
 
 const drawerWidth = 240;
 
@@ -84,7 +84,7 @@ const AdminDashboard = () => {
 		{ text: 'مدیریت کاربران', icon: <Group />, to: `${basePath}/users` },
 		{ text: 'بازخورد مشتریان', icon: <RateReview />, to: `${basePath}/feedback` },
 		{ text: 'مدیریت کافه', icon: <Business />, to: `${basePath}/cafes` },
-		{ text: 'تنظیمات سیستم', icon: <Settings />, to: `${basePath}/settings` },
+		{ text: 'مدیریت میزها', icon: <TableRestaurant />, to: `${basePath}/tables` },
 		{ text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
 	];
 
@@ -227,7 +227,7 @@ const AdminDashboard = () => {
 					<Route path="users" element={<UserManagement />} />
 					<Route path="feedback" element={<CustomerFeedback />} />
 					<Route path="cafes" element={<CafeManagement />} />
-					<Route path="settings" element={<SystemSettings />} />
+					<Route path="tables" element={<TableManagement />} />
 					<Route path="profile" element={<UserProfile />} />
 				</Routes>
 			</Box>

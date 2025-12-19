@@ -70,9 +70,20 @@ const CafeSettings = () => {
         is_active: true,
         admin_username: '',
         admin_password: '',
-        admin_name: '',
         admin_email: '',
-        admin_phone: ''
+        admin_phone: '',
+        admin_first_name: '',
+        admin_last_name: '',
+        admin_national_id: '',
+        admin_registration_date: '',
+        admin_commitment_image_url: '',
+        admin_business_license_image_url: '',
+        admin_national_id_image_url: ''
+    });
+    const [uploadingDocs, setUploadingDocs] = useState({
+        commitment: false,
+        business_license: false,
+        national_id: false
     });
 
     useEffect(() => {
@@ -135,7 +146,14 @@ const CafeSettings = () => {
                 admin_password: '',
                 admin_name: '',
                 admin_email: '',
-                admin_phone: ''
+                admin_phone: '',
+                admin_first_name: '',
+                admin_last_name: '',
+                admin_national_id: '',
+                admin_registration_date: '',
+                admin_commitment_image_url: '',
+                admin_business_license_image_url: '',
+                admin_national_id_image_url: ''
             });
         } else {
             setEditingCafe(null);
@@ -153,7 +171,14 @@ const CafeSettings = () => {
                 admin_password: '',
                 admin_name: '',
                 admin_email: '',
-                admin_phone: ''
+                admin_phone: '',
+                admin_first_name: '',
+                admin_last_name: '',
+                admin_national_id: '',
+                admin_registration_date: '',
+                admin_commitment_image_url: '',
+                admin_business_license_image_url: '',
+                admin_national_id_image_url: ''
             });
         }
         setOpenDialog(true);
@@ -174,6 +199,60 @@ const CafeSettings = () => {
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
+    };
+
+    const handleAdminDocUpload = async (event, docType) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const authToken = getToken();
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            return;
+        }
+
+        setError('');
+        setSuccess('');
+        setUploadingDocs(prev => ({ ...prev, [docType]: true }));
+
+        try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', file);
+
+            const res = await fetch(`${apiBaseUrl}/cafes/upload-admin-document?doc_type=${docType}`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${authToken}`
+                },
+                body: formDataUpload
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = data.detail || data.message || 'خطا در آپلود تصویر';
+                console.error('Admin doc upload error:', msg, data);
+                setError(msg);
+                return;
+            }
+
+            const url = data.url;
+            if (!url) {
+                setError('آدرس فایل بازگشتی نامعتبر است');
+                return;
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                admin_commitment_image_url: docType === 'commitment' ? url : prev.admin_commitment_image_url,
+                admin_business_license_image_url: docType === 'business_license' ? url : prev.admin_business_license_image_url,
+                admin_national_id_image_url: docType === 'national_id' ? url : prev.admin_national_id_image_url
+            }));
+        } catch (err) {
+            console.error('Admin doc upload exception:', err);
+            setError('خطا در ارتباط با سرور هنگام آپلود تصویر: ' + err.message);
+        } finally {
+            setUploadingDocs(prev => ({ ...prev, [docType]: false }));
+        }
     };
 
     // Helper: trim strings and convert empty to null
@@ -261,8 +340,57 @@ const CafeSettings = () => {
                     return;
                 }
 
-                if (!formData.admin_name || formData.admin_name.trim() === '') {
-                    setError('لطفاً نام کامل مدیر را وارد کنید');
+
+                if (!formData.admin_first_name || formData.admin_first_name.trim() === '') {
+                    setError('لطفاً نام (کوچک) مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_last_name || formData.admin_last_name.trim() === '') {
+                    setError('لطفاً نام خانوادگی مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_phone || formData.admin_phone.trim() === '') {
+                    setError('لطفاً شماره همراه مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_email || formData.admin_email.trim() === '') {
+                    setError('لطفاً ایمیل مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_national_id || formData.admin_national_id.trim() === '') {
+                    setError('لطفاً کد ملی مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_registration_date || formData.admin_registration_date.trim() === '') {
+                    setError('لطفاً تاریخ ثبت‌نام مدیر را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_commitment_image_url || formData.admin_commitment_image_url.trim() === '') {
+                    setError('لطفاً آدرس تصویر تعهدنامه/قرارداد را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_business_license_image_url || formData.admin_business_license_image_url.trim() === '') {
+                    setError('لطفاً آدرس تصویر مجوز کسب‌وکار را وارد کنید');
+                    setSaving(false);
+                    return;
+                }
+
+                if (!formData.admin_national_id_image_url || formData.admin_national_id_image_url.trim() === '') {
+                    setError('لطفاً آدرس تصویر کارت ملی مدیر را وارد کنید');
                     setSaving(false);
                     return;
                 }
@@ -282,9 +410,15 @@ const CafeSettings = () => {
                     is_active: formData.is_active,
                     admin_username: formData.admin_username.trim(),
                     admin_password: formData.admin_password,
-                    admin_name: formData.admin_name.trim(),
                     admin_email: cleanValue(formData.admin_email) || null,
-                    admin_phone: cleanValue(formData.admin_phone)
+                    admin_phone: cleanValue(formData.admin_phone),
+                    admin_first_name: formData.admin_first_name.trim(),
+                    admin_last_name: formData.admin_last_name.trim(),
+                    admin_national_id: formData.admin_national_id.trim(),
+                    admin_registration_date: formData.admin_registration_date.trim(),
+                    admin_commitment_image_url: cleanValue(formData.admin_commitment_image_url),
+                    admin_business_license_image_url: cleanValue(formData.admin_business_license_image_url),
+                    admin_national_id_image_url: cleanValue(formData.admin_national_id_image_url)
                 };
                 
                 // Remove null/undefined values for cleaner request (optional)
@@ -720,13 +854,12 @@ const CafeSettings = () => {
                                         required
                                     />
                                 </Grid>
-
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         fullWidth
-                                        label="نام کامل مدیر *"
-                                        name="admin_name"
-                                        value={formData.admin_name}
+                                        label="نام (کوچک) مدیر *"
+                                        name="admin_first_name"
+                                        value={formData.admin_first_name}
                                         onChange={handleInputChange}
                                         required
                                     />
@@ -735,22 +868,131 @@ const CafeSettings = () => {
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         fullWidth
-                                        label="ایمیل مدیر"
+                                        label="نام خانوادگی مدیر *"
+                                        name="admin_last_name"
+                                        value={formData.admin_last_name}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="ایمیل مدیر *"
                                         name="admin_email"
                                         type="email"
                                         value={formData.admin_email}
                                         onChange={handleInputChange}
+                                        required
                                     />
                                 </Grid>
 
                                 <Grid item xs={12}>
                                     <TextField
                                         fullWidth
-                                        label="تلفن مدیر"
+                                        label="تلفن مدیر *"
                                         name="admin_phone"
                                         value={formData.admin_phone}
                                         onChange={handleInputChange}
+                                        required
                                     />
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="کد ملی مدیر *"
+                                        name="admin_national_id"
+                                        value={formData.admin_national_id}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="تاریخ ثبت‌نام مدیر *"
+                                        name="admin_registration_date"
+                                        type="date"
+                                        value={formData.admin_registration_date}
+                                        onChange={handleInputChange}
+                                        required
+                                        InputLabelProps={{ shrink: true }}
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                        تصویر تعهدنامه/قرارداد مدیر *
+                                    </Typography>
+                                    <Button
+                                        variant="outlined"
+                                        component="label"
+                                        disabled={uploadingDocs.commitment}
+                                    >
+                                        {uploadingDocs.commitment ? 'در حال آپلود...' : 'انتخاب و آپلود تصویر'}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            hidden
+                                            onChange={(e) => handleAdminDocUpload(e, 'commitment')}
+                                        />
+                                    </Button>
+                                    {formData.admin_commitment_image_url && (
+                                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                                            فایل آپلود شده ثبت شد.
+                                        </Typography>
+                                    )}
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                        تصویر مجوز کسب‌وکار *
+                                    </Typography>
+                                    <Button
+                                        variant="outlined"
+                                        component="label"
+                                        disabled={uploadingDocs.business_license}
+                                    >
+                                        {uploadingDocs.business_license ? 'در حال آپلود...' : 'انتخاب و آپلود تصویر'}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            hidden
+                                            onChange={(e) => handleAdminDocUpload(e, 'business_license')}
+                                        />
+                                    </Button>
+                                    {formData.admin_business_license_image_url && (
+                                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                                            فایل آپلود شده ثبت شد.
+                                        </Typography>
+                                    )}
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                        تصویر کارت ملی مدیر *
+                                    </Typography>
+                                    <Button
+                                        variant="outlined"
+                                        component="label"
+                                        disabled={uploadingDocs.national_id}
+                                    >
+                                        {uploadingDocs.national_id ? 'در حال آپلود...' : 'انتخاب و آپلود تصویر'}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            hidden
+                                            onChange={(e) => handleAdminDocUpload(e, 'national_id')}
+                                        />
+                                    </Button>
+                                    {formData.admin_national_id_image_url && (
+                                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                                            فایل آپلود شده ثبت شد.
+                                        </Typography>
+                                    )}
                                 </Grid>
                             </>
                         )}

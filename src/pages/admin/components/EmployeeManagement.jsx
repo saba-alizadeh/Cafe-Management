@@ -18,9 +18,13 @@ import {
 	Switch,
 	IconButton,
 	Alert,
-	CircularProgress
+	CircularProgress,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, Edit } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const roles = [
@@ -36,12 +40,29 @@ const EmployeeManagement = () => {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
+	const [editDialogOpen, setEditDialogOpen] = useState(false);
+	const [editingEmployee, setEditingEmployee] = useState(null);
 	const [form, setForm] = useState({
 		nationalId: '',
 		phone: '',
 		firstName: '',
 		lastName: '',
-		role: 'waiter'
+		role: 'waiter',
+		iban: '',
+		father_name: '',
+		date_of_birth: '',
+		address: ''
+	});
+	const [editForm, setEditForm] = useState({
+		nationalId: '',
+		phone: '',
+		firstName: '',
+		lastName: '',
+		role: 'waiter',
+		iban: '',
+		father_name: '',
+		date_of_birth: '',
+		address: ''
 	});
 
 	useEffect(() => {
@@ -97,13 +118,21 @@ const EmployeeManagement = () => {
 		setSaving(true);
 		setError('');
 		try {
+			// Clean form data: convert empty strings to null for optional fields
+			const formData = {
+				...form,
+				iban: form.iban?.trim() || null,
+				father_name: form.father_name?.trim() || null,
+				date_of_birth: form.date_of_birth?.trim() || null,
+				address: form.address?.trim() || null
+			};
 			const res = await fetch(`${apiBaseUrl}/auth/employees`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`
 				},
-				body: JSON.stringify(form)
+				body: JSON.stringify(formData)
 			});
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
@@ -117,7 +146,11 @@ const EmployeeManagement = () => {
 				phone: '',
 				firstName: '',
 				lastName: '',
-				role: 'waiter'
+				role: 'waiter',
+				iban: '',
+				father_name: '',
+				date_of_birth: '',
+				address: ''
 			});
 		} catch (err) {
 			console.error(err);
@@ -178,6 +211,72 @@ const EmployeeManagement = () => {
 			}
 		});
 		return { bonus, penalty };
+	};
+
+	const handleEditClick = (employee) => {
+		setEditingEmployee(employee);
+		setEditForm({
+			nationalId: employee.nationalId || '',
+			phone: employee.phone || '',
+			firstName: employee.firstName || '',
+			lastName: employee.lastName || '',
+			role: employee.role || 'waiter',
+			iban: employee.iban || '',
+			father_name: employee.father_name || '',
+			date_of_birth: employee.date_of_birth || '',
+			address: employee.address || ''
+		});
+		setEditDialogOpen(true);
+		setError('');
+	};
+
+	const handleEditChange = (field) => (e) => {
+		setEditForm((prev) => ({ ...prev, [field]: e.target.value }));
+		if (error) setError('');
+	};
+
+	const handleEditSave = async () => {
+		if (!editingEmployee) return;
+		setSaving(true);
+		setError('');
+		try {
+			// Clean form data: convert empty strings to null for optional fields
+			const formData = {
+				...editForm,
+				iban: editForm.iban?.trim() || null,
+				father_name: editForm.father_name?.trim() || null,
+				date_of_birth: editForm.date_of_birth?.trim() || null,
+				address: editForm.address?.trim() || null
+			};
+			const res = await fetch(`${apiBaseUrl}/auth/employees/${editingEmployee.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(formData)
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				setError(data.detail || data.message || 'خطا در بروزرسانی کارمند');
+				setSaving(false);
+				return;
+			}
+			setEmployees((prev) => prev.map((e) => (e.id === editingEmployee.id ? data : e)));
+			setEditDialogOpen(false);
+			setEditingEmployee(null);
+		} catch (err) {
+			console.error(err);
+			setError('خطا در ارتباط با سرور');
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const handleEditClose = () => {
+		setEditDialogOpen(false);
+		setEditingEmployee(null);
+		setError('');
 	};
 
 	return (
@@ -250,7 +349,48 @@ const EmployeeManagement = () => {
 											))}
 										</TextField>
 									</Grid>
-									<Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+									<Grid item xs={12} md={6}>
+										<TextField
+											label="شماره شبا (IBAN)"
+											fullWidth
+											value={form.iban}
+											onChange={handleChange('iban')}
+											disabled={saving}
+											placeholder="IR..."
+										/>
+									</Grid>
+									<Grid item xs={12} md={6}>
+										<TextField
+											label="نام پدر"
+											fullWidth
+											value={form.father_name}
+											onChange={handleChange('father_name')}
+											disabled={saving}
+										/>
+									</Grid>
+									<Grid item xs={12} md={6}>
+										<TextField
+											label="تاریخ تولد"
+											fullWidth
+											type="date"
+											value={form.date_of_birth}
+											onChange={handleChange('date_of_birth')}
+											disabled={saving}
+											InputLabelProps={{ shrink: true }}
+										/>
+									</Grid>
+									<Grid item xs={12}>
+										<TextField
+											label="آدرس"
+											fullWidth
+											multiline
+											rows={3}
+											value={form.address}
+											onChange={handleChange('address')}
+											disabled={saving}
+										/>
+									</Grid>
+									<Grid item xs={12} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
 										{saving && <CircularProgress size={22} />}
 										<Button
 											type="submit"
@@ -292,7 +432,7 @@ const EmployeeManagement = () => {
 											<TableCell>نقش</TableCell>
 											<TableCell>پاداش / جریمه</TableCell>
 											<TableCell>وضعیت</TableCell>
-											<TableCell align="right">حذف</TableCell>
+											<TableCell align="right">عملیات</TableCell>
 										</TableRow>
 									</TableHead>
 									<TableBody>
@@ -327,9 +467,14 @@ const EmployeeManagement = () => {
 													</Stack>
 												</TableCell>
 												<TableCell align="right">
+													<Stack direction="row" spacing={1} justifyContent="flex-end">
+														<IconButton color="primary" onClick={() => handleEditClick(e)}>
+															<Edit />
+														</IconButton>
 													<IconButton color="error" onClick={() => handleDelete(e.id)}>
 														<Delete />
 													</IconButton>
+													</Stack>
 												</TableCell>
 											</TableRow>
 										))}
@@ -340,6 +485,130 @@ const EmployeeManagement = () => {
 					</Card>
 				</Grid>
 			</Grid>
+
+			{/* Edit Dialog */}
+			<Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="md" fullWidth>
+				<DialogTitle>ویرایش اطلاعات کارمند</DialogTitle>
+				<DialogContent>
+					{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+					<Grid container spacing={2} sx={{ mt: 1 }}>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="کد ملی"
+								fullWidth
+								value={editForm.nationalId}
+								onChange={handleEditChange('nationalId')}
+								required
+								disabled={saving}
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="شماره تماس"
+								fullWidth
+								value={editForm.phone}
+								onChange={handleEditChange('phone')}
+								required
+								disabled={saving}
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="نام"
+								fullWidth
+								value={editForm.firstName}
+								onChange={handleEditChange('firstName')}
+								required
+								disabled={saving}
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="نام خانوادگی"
+								fullWidth
+								value={editForm.lastName}
+								onChange={handleEditChange('lastName')}
+								required
+								disabled={saving}
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								select
+								label="نقش"
+								fullWidth
+								value={editForm.role}
+								onChange={handleEditChange('role')}
+								required
+								disabled={saving}
+							>
+								{roles.map((r) => (
+									<MenuItem key={r.value} value={r.value}>
+										{r.label}
+									</MenuItem>
+								))}
+							</TextField>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="شماره شبا (IBAN)"
+								fullWidth
+								value={editForm.iban}
+								onChange={handleEditChange('iban')}
+								disabled={saving}
+								placeholder="IR..."
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="نام پدر"
+								fullWidth
+								value={editForm.father_name}
+								onChange={handleEditChange('father_name')}
+								disabled={saving}
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="تاریخ تولد"
+								fullWidth
+								type="date"
+								value={editForm.date_of_birth}
+								onChange={handleEditChange('date_of_birth')}
+								disabled={saving}
+								InputLabelProps={{ shrink: true }}
+							/>
+						</Grid>
+						<Grid item xs={12}>
+							<TextField
+								label="آدرس"
+								fullWidth
+								multiline
+								rows={3}
+								value={editForm.address}
+								onChange={handleEditChange('address')}
+								disabled={saving}
+							/>
+						</Grid>
+					</Grid>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={handleEditClose} disabled={saving}>
+						انصراف
+					</Button>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						{saving && <CircularProgress size={20} />}
+						<Button
+							onClick={handleEditSave}
+							variant="contained"
+							disabled={saving || !editForm.nationalId || !editForm.phone || !editForm.firstName || !editForm.lastName}
+							sx={{ backgroundColor: 'var(--color-accent)' }}
+						>
+							ذخیره
+						</Button>
+					</Box>
+				</DialogActions>
+			</Dialog>
 		</Box>
 	);
 };

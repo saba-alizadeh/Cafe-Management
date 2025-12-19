@@ -46,6 +46,7 @@ class User(BaseModel):
     cafe_id: Optional[int] = None  # None for customers
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_active: bool = True
+    profile_image_url: Optional[str] = None  # URL to profile picture (optional)
 
     model_config = {
         "populate_by_name": True,
@@ -132,6 +133,7 @@ class UserResponse(BaseModel):
     cafe_id: Optional[int] = None
     created_at: datetime
     is_active: bool
+    profile_image_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -151,6 +153,7 @@ class ProfileUpdate(BaseModel):
     firstName: Optional[str] = None
     lastName: Optional[str] = None
     phone: Optional[str] = None
+    email: Optional[EmailStr] = None
     address: Optional[str] = None
     details: Optional[str] = None
     name: Optional[str] = None  # Full name can be updated
@@ -163,6 +166,10 @@ class EmployeeBase(BaseModel):
     lastName: str = Field(..., min_length=1, max_length=100)
     role: str = Field(..., pattern="^(waiter|floor_staff|bartender)$")
     is_active: bool = True
+    iban: Optional[str] = Field(default=None, max_length=34, description="IBAN (Sheba number)")
+    father_name: Optional[str] = Field(default=None, max_length=100, description="Father's name")
+    date_of_birth: Optional[str] = Field(default=None, max_length=10, description="Date of birth (YYYY-MM-DD)")
+    address: Optional[str] = Field(default=None, max_length=500, description="Address")
 
     @field_validator("phone")
     @classmethod
@@ -175,6 +182,30 @@ class EmployeeBase(BaseModel):
 
 class EmployeeCreate(EmployeeBase):
     pass
+
+
+class EmployeeUpdate(BaseModel):
+    nationalId: Optional[str] = Field(default=None, min_length=5, max_length=32)
+    phone: Optional[str] = Field(default=None, min_length=10, max_length=15)
+    firstName: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    lastName: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    role: Optional[str] = Field(default=None, pattern="^(waiter|floor_staff|bartender)$")
+    iban: Optional[str] = Field(default=None, max_length=34, description="IBAN (Sheba number)")
+    father_name: Optional[str] = Field(default=None, max_length=100, description="Father's name")
+    date_of_birth: Optional[str] = Field(default=None, max_length=10, description="Date of birth (YYYY-MM-DD)")
+    address: Optional[str] = Field(default=None, max_length=500, description="Address")
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            digits = "".join(ch for ch in v if ch.isdigit())
+            if len(digits) < 10 or len(digits) > 15:
+                raise ValueError("Phone must contain 10-15 digits")
+            return digits
+        return v
 
 
 class EmployeeResponse(EmployeeBase):
@@ -389,9 +420,16 @@ class CafeCreate(CafeBase):
     # Admin account details for the cafe
     admin_username: str = Field(..., min_length=3, max_length=50, description="Username for cafe admin")
     admin_password: str = Field(..., min_length=6, description="Password for cafe admin")
-    admin_name: str = Field(..., min_length=1, max_length=100, description="Full name of cafe admin")
     admin_email: Optional[EmailStr] = Field(default=None, description="Email for cafe admin")
     admin_phone: Optional[str] = Field(default=None, max_length=15, description="Phone for cafe admin")
+    # Extended KYC fields for admin registration (all required at cafe creation time)
+    admin_first_name: str = Field(..., min_length=1, max_length=100, description="Admin first name")
+    admin_last_name: str = Field(..., min_length=1, max_length=100, description="Admin last name")
+    admin_national_id: str = Field(..., min_length=5, max_length=32, description="Admin national ID")
+    admin_registration_date: str = Field(..., min_length=4, max_length=20, description="Admin registration date")
+    admin_commitment_image_url: str = Field(..., min_length=1, max_length=500, description="URL of commitment/contract image")
+    admin_business_license_image_url: str = Field(..., min_length=1, max_length=500, description="URL of business license image")
+    admin_national_id_image_url: str = Field(..., min_length=1, max_length=500, description="URL of national ID card image")
     
     @field_validator("admin_email", mode="before")
     @classmethod
@@ -436,5 +474,33 @@ class CafeResponse(CafeBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     admin_id: Optional[str] = Field(None, description="ID of the cafe admin user")
+
+    model_config = {"from_attributes": True}
+
+
+# Table Management Models
+class TableBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Table name or number")
+    capacity: int = Field(..., ge=1, le=50, description="Seating capacity")
+    status: str = Field(default="available", pattern="^(available|reserved)$", description="Table status")
+    cafe_id: Optional[int] = Field(default=None, description="Cafe ID this table belongs to")
+    is_active: bool = Field(default=True, description="Whether the table is active")
+
+
+class TableCreate(TableBase):
+    pass
+
+
+class TableUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100, description="Table name or number")
+    capacity: Optional[int] = Field(default=None, ge=1, le=50, description="Seating capacity")
+    status: Optional[str] = Field(default=None, pattern="^(available|reserved)$", description="Table status")
+    is_active: Optional[bool] = Field(default=None, description="Whether the table is active")
+
+
+class TableResponse(TableBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

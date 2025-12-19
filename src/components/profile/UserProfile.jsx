@@ -7,7 +7,8 @@ import {
     Grid,
     Button,
     Alert,
-    CircularProgress
+    CircularProgress,
+    Avatar
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,10 +17,14 @@ const UserProfile = () => {
     const [profile, setProfile] = useState({
         firstName: '',
         lastName: '',
+        email: '',
         phone: '',
         address: '',
         details: ''
     });
+    const [createdAt, setCreatedAt] = useState('');
+    const [profileImageUrl, setProfileImageUrl] = useState('');
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -45,10 +50,16 @@ const UserProfile = () => {
                         setProfile({
                             firstName: userData.firstName || '',
                             lastName: userData.lastName || '',
+                            email: userData.email || '',
                             phone: userData.phone || '',
                             address: userData.address || '',
                             details: userData.details || ''
                         });
+                        setProfileImageUrl(userData.profile_image_url || '');
+                        if (userData.created_at) {
+                            const d = new Date(userData.created_at);
+                            setCreatedAt(d.toLocaleDateString('fa-IR'));
+                        }
                     } else if (response.status === 401) {
                         setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
                     } else {
@@ -63,10 +74,12 @@ const UserProfile = () => {
                 setProfile({
                     firstName: user.firstName || '',
                     lastName: user.lastName || '',
+                    email: user.email || '',
                     phone: user.phone || '',
                     address: user.address || '',
                     details: user.details || ''
                 });
+                setProfileImageUrl(user.profile_image_url || '');
             }
 
             setLoading(false);
@@ -103,6 +116,7 @@ const UserProfile = () => {
                 ...user,
                 firstName: profile.firstName,
                 lastName: profile.lastName,
+                email: profile.email,
                 phone: profile.phone,
                 address: profile.address,
                 details: profile.details
@@ -115,13 +129,22 @@ const UserProfile = () => {
 
         try {
             // Send profile update to backend
+            const payload = {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                email: profile.email,
+                phone: profile.phone,
+                address: profile.address,
+                details: profile.details
+            };
+
             const response = await fetch(`${apiBaseUrl}/auth/update`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(profile)
+                body: JSON.stringify(payload)
             });
 
             // Try to parse JSON safely (backend may return empty body on errors)
@@ -147,6 +170,7 @@ const UserProfile = () => {
                     ...user,
                     firstName: profile.firstName,
                     lastName: profile.lastName,
+                    email: profile.email,
                     phone: profile.phone,
                     address: profile.address,
                     details: profile.details
@@ -162,6 +186,44 @@ const UserProfile = () => {
             setError('خطا در ارتباط با سرور.');
             console.error('Error updating profile:', err);
             setSaving(false);
+        }
+    };
+
+    const handleImageChange = async (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        if (!token) {
+            setError('لطفاً ابتدا وارد شوید.');
+            return;
+        }
+        setUploadingImage(true);
+        setError('');
+        setSuccess('');
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch(`${apiBaseUrl}/auth/profile-image`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                setError(data.detail || data.message || 'خطا در بارگذاری تصویر پروفایل.');
+                setUploadingImage(false);
+                return;
+            }
+            if (data.profile_image_url) {
+                setProfileImageUrl(data.profile_image_url);
+            }
+            setSuccess('تصویر پروفایل با موفقیت بروزرسانی شد.');
+        } catch (err) {
+            console.error('Upload error:', err);
+            setError('خطا در ارتباط با سرور هنگام بارگذاری تصویر.');
+        } finally {
+            setUploadingImage(false);
         }
     };
 
@@ -195,6 +257,40 @@ const UserProfile = () => {
                 }}
             >
                 <Box component="form" onSubmit={handleSubmit}>
+                    <Grid container spacing={2} sx={{ mb: 2 }} alignItems="center">
+                        <Grid item>
+                            <Avatar
+                                src={profileImageUrl ? `${apiBaseUrl.replace('/api', '')}${profileImageUrl}` : undefined}
+                                alt="Profile"
+                                sx={{ width: 72, height: 72 }}
+                            >
+                                {(!profileImageUrl && (profile.firstName || profile.lastName)) &&
+                                    (profile.firstName?.[0] || '') + (profile.lastName?.[0] || '')}
+                            </Avatar>
+                        </Grid>
+                        <Grid item xs={12} sm="auto">
+                            <Button
+                                variant="outlined"
+                                component="label"
+                                disabled={uploadingImage || saving}
+                                sx={{ mr: 2 }}
+                            >
+                                انتخاب تصویر پروفایل
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={handleImageChange}
+                                />
+                            </Button>
+                            {uploadingImage && <CircularProgress size={20} />}
+                            {createdAt && (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: { xs: 1, sm: 0 } }}>
+                                    تاریخ ثبت نام: {createdAt}
+                                </Typography>
+                            )}
+                        </Grid>
+                    </Grid>
                     <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
                             <TextField
@@ -212,6 +308,17 @@ const UserProfile = () => {
                                 label="نام خانوادگی"
                                 value={profile.lastName}
                                 onChange={handleChange('lastName')}
+                                margin="normal"
+                                disabled={saving}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="ایمیل"
+                                type="email"
+                                value={profile.email}
+                                onChange={handleChange('email')}
                                 margin="normal"
                                 disabled={saving}
                             />

@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Response
 from datetime import timedelta, datetime
 from bson import ObjectId
 from app.database import get_database, connect_to_mongo
 from app.models import (
     UserCreate, UserLogin, UserResponse, Token, 
     PhoneLoginRequest, PhoneLoginComplete, ProfileUpdate, TokenData, VerifyOTPRequest,
-    EmployeeCreate, EmployeeResponse, EmployeeStatusUpdate
+    EmployeeCreate, EmployeeResponse, EmployeeStatusUpdate, EmployeeUpdate
 )
 from app.auth import verify_password, get_password_hash, create_access_token, get_current_user
 from app.config import settings
+import os
+import base64
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -129,7 +131,8 @@ async def signup(user_data: UserCreate):
         details=created_user.get("details"),
         cafe_id=created_user.get("cafe_id"),
         created_at=created_user.get("created_at"),
-        is_active=created_user.get("is_active", True)
+        is_active=created_user.get("is_active", True),
+        profile_image_url=created_user.get("profile_image_url")
     )
     
     return Token(
@@ -137,6 +140,142 @@ async def signup(user_data: UserCreate):
         token_type="bearer",
         user=user_response
     )
+
+
+@router.post("/profile-image", response_model=UserResponse)
+async def upload_profile_image(
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Upload a profile image for the current user.
+    Stores file under static/profile_images and saves URL on the user document.
+    """
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only image files are allowed"
+        )
+
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+
+    users_collection = db["users"]
+
+    user = None
+    if current_user.user_id:
+        try:
+            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
+        except Exception:
+            user = None
+    if not user and current_user.username:
+        user = await users_collection.find_one({"username": current_user.username})
+    if not user and current_user.phone:
+        user = await users_collection.find_one({"phone": current_user.phone})
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Read file contents
+    contents = await file.read()
+    
+    # Convert to base64
+    image_base64 = base64.b64encode(contents).decode('utf-8')
+    image_data_url = f"data:{file.content_type};base64,{image_base64}"
+    
+    # Store in images collection
+    images_collection = db["images"]
+    image_doc = {
+        "user_id": user["_id"],
+        "type": "profile_image",
+        "content_type": file.content_type,
+        "data": image_data_url,
+        "created_at": datetime.utcnow()
+    }
+    image_result = await images_collection.insert_one(image_doc)
+    image_id = str(image_result.inserted_id)
+    
+    # Store image ID reference in user document
+    profile_url = f"/api/auth/image/{image_id}"
+
+    await users_collection.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"profile_image_url": profile_url}}
+    )
+
+    updated_user = await users_collection.find_one({"_id": user["_id"]})
+
+    return UserResponse(
+        id=str(updated_user["_id"]),
+        username=updated_user.get("username"),
+        email=updated_user.get("email"),
+        phone=updated_user.get("phone"),
+        role=updated_user["role"],
+        name=updated_user["name"],
+        firstName=updated_user.get("firstName"),
+        lastName=updated_user.get("lastName"),
+        address=updated_user.get("address"),
+        details=updated_user.get("details"),
+        cafe_id=updated_user.get("cafe_id"),
+        created_at=updated_user.get("created_at"),
+        is_active=updated_user.get("is_active", True),
+        profile_image_url=updated_user.get("profile_image_url")
+    )
+
+
+@router.get("/image/{image_id}")
+async def get_image(image_id: str):
+    """
+    Retrieve an image from the database by ID.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+    
+    images_collection = db["images"]
+    try:
+        image_doc = await images_collection.find_one({"_id": ObjectId(image_id)})
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+    
+    if not image_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+    
+    # Extract base64 data from data URL
+    data_url = image_doc.get("data", "")
+    if data_url.startswith("data:"):
+        # Extract base64 part
+        base64_data = data_url.split(",")[1]
+        image_bytes = base64.b64decode(base64_data)
+        content_type = image_doc.get("content_type", "image/jpeg")
+        return Response(content=image_bytes, media_type=content_type)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Invalid image data format"
+        )
 
 
 @router.post("/login")
@@ -249,28 +388,29 @@ async def login(credentials: PhoneLoginRequest):
                 expires_delta=access_token_expires
             )
             
-            # Create user response
-            user_response = UserResponse(
-                id=str(user["_id"]),
-                username=user.get("username"),
-                email=user.get("email"),
-                phone=user.get("phone"),
-                role=user["role"],
-                name=user["name"],
-                firstName=user.get("firstName"),
-                lastName=user.get("lastName"),
-                address=user.get("address"),
-                details=user.get("details"),
-                cafe_id=user.get("cafe_id"),
-                created_at=user.get("created_at"),
-                is_active=user.get("is_active", True)
-            )
-            
-            return Token(
-                access_token=access_token,
-                token_type="bearer",
-                user=user_response
-            )
+        # Create user response
+        user_response = UserResponse(
+            id=str(user["_id"]),
+            username=user.get("username"),
+            email=user.get("email"),
+            phone=user.get("phone"),
+            role=user["role"],
+            name=user["name"],
+            firstName=user.get("firstName"),
+            lastName=user.get("lastName"),
+            address=user.get("address"),
+            details=user.get("details"),
+            cafe_id=user.get("cafe_id"),
+            created_at=user.get("created_at"),
+            is_active=user.get("is_active", True),
+            profile_image_url=user.get("profile_image_url")
+        )
+
+        return Token(
+            access_token=access_token,
+            token_type="bearer",
+            user=user_response
+        )
         
         # Step 4: If user doesn't exist, require additional information
         # This should be handled by a separate endpoint or the frontend should
@@ -362,7 +502,8 @@ async def admin_login(credentials: UserLogin):
         details=user.get("details"),
         cafe_id=user.get("cafe_id"),
         created_at=user.get("created_at"),
-        is_active=user.get("is_active", True)
+        is_active=user.get("is_active", True),
+        profile_image_url=user.get("profile_image_url")
     )
 
     return Token(
@@ -568,7 +709,8 @@ async def complete_login(profile_data: PhoneLoginComplete):
         details=created_user.get("details"),
         cafe_id=created_user.get("cafe_id"),
         created_at=created_user.get("created_at"),
-        is_active=created_user.get("is_active", True)
+        is_active=created_user.get("is_active", True),
+        profile_image_url=created_user.get("profile_image_url")
     )
     
     return Token(
@@ -619,7 +761,8 @@ async def get_current_user_info(current_user: TokenData = Depends(get_current_us
         details=user.get("details"),
         cafe_id=user.get("cafe_id"),
         created_at=user.get("created_at"),
-        is_active=user.get("is_active", True)
+        is_active=user.get("is_active", True),
+        profile_image_url=user.get("profile_image_url")
     )
 
 
@@ -679,6 +822,18 @@ async def update_profile(
                 detail="Phone number already registered to another user"
             )
         update_data["phone"] = phone
+    # Email update with uniqueness check
+    if profile_update.email is not None:
+        existing_email = await users_collection.find_one({
+            "email": profile_update.email,
+            "_id": {"$ne": user["_id"]}
+        })
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered to another user"
+            )
+        update_data["email"] = profile_update.email
     if profile_update.address is not None:
         update_data["address"] = profile_update.address
     if profile_update.details is not None:
@@ -716,7 +871,8 @@ async def update_profile(
         details=updated_user.get("details"),
         cafe_id=updated_user.get("cafe_id"),
         created_at=updated_user.get("created_at"),
-        is_active=updated_user.get("is_active", True)
+        is_active=updated_user.get("is_active", True),
+        profile_image_url=updated_user.get("profile_image_url")
     )
 
 
@@ -833,6 +989,74 @@ async def update_employee_status(
     update_result = await employees_collection.update_one(
         {"_id": oid},
         {"$set": {"is_active": status_payload.is_active}}
+    )
+
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="کارمند یافت نشد.")
+
+    updated = await employees_collection.find_one({"_id": oid})
+    updated["id"] = str(updated["_id"])
+    updated.pop("_id", None)
+    return EmployeeResponse(**updated)
+
+
+@router.put("/employees/{employee_id}", response_model=EmployeeResponse)
+async def update_employee(
+    employee_id: str,
+    employee_update: EmployeeUpdate,
+    current_user: TokenData = Depends(get_current_user)
+):
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+
+    user = await _get_request_user(db, current_user)
+    _require_admin(user)
+
+    employees_collection = db["employees"]
+    try:
+        oid = ObjectId(employee_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="شناسه نامعتبر است.")
+
+    # Check if employee exists
+    existing = await employees_collection.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="کارمند یافت نشد.")
+
+    # Build update dict with only provided fields
+    update_data = {}
+    employee_dict = employee_update.model_dump(exclude_unset=True)
+    
+    # Check for unique constraints if updating nationalId or phone
+    if "nationalId" in employee_dict and employee_dict["nationalId"]:
+        existing_nid = await employees_collection.find_one({"nationalId": employee_dict["nationalId"], "_id": {"$ne": oid}})
+        if existing_nid:
+            raise HTTPException(status_code=400, detail="کد ملی قبلا ثبت شده است.")
+        update_data["nationalId"] = employee_dict["nationalId"]
+
+    if "phone" in employee_dict and employee_dict["phone"]:
+        existing_phone = await employees_collection.find_one({"phone": employee_dict["phone"], "_id": {"$ne": oid}})
+        if existing_phone:
+            raise HTTPException(status_code=400, detail="شماره تلفن قبلا ثبت شده است.")
+        update_data["phone"] = employee_dict["phone"]
+
+    # Add other fields
+    for field in ["firstName", "lastName", "role", "iban", "father_name", "date_of_birth", "address"]:
+        if field in employee_dict:
+            update_data[field] = employee_dict[field]
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="هیچ فیلدی برای بروزرسانی ارسال نشده است.")
+
+    update_data["updated_at"] = datetime.utcnow()
+
+    update_result = await employees_collection.update_one(
+        {"_id": oid},
+        {"$set": update_data}
     )
 
     if update_result.matched_count == 0:

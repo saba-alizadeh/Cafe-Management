@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Response
 from typing import List
 from bson import ObjectId
 from datetime import datetime
@@ -8,6 +8,9 @@ from app.models import (
 )
 from app.auth import get_current_user, get_password_hash
 from app.routers.auth import _get_request_user
+import os
+from uuid import uuid4
+import base64
 
 router = APIRouter(prefix="/api/cafes", tags=["cafes"])
 
@@ -93,6 +96,59 @@ async def list_cafes(current_user: TokenData = Depends(get_current_user)):
     return cafes
 
 
+@router.post("/upload-admin-document")
+async def upload_admin_document(
+    file: UploadFile = File(...),
+    doc_type: str = "generic",
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Upload an admin KYC document (commitment, business license, national ID card).
+    Returns a URL that can be stored in the cafe/admin records.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+
+    # Only managers or admins can upload these documents
+    await _ensure_manager_or_admin(db, current_user)
+
+    allowed_types = {"commitment", "business_license", "national_id"}
+    if doc_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid document type"
+        )
+
+    # Read file contents
+    contents = await file.read()
+    
+    # Convert to base64
+    image_base64 = base64.b64encode(contents).decode('utf-8')
+    image_data_url = f"data:{file.content_type};base64,{image_base64}"
+    
+    # Store in images collection
+    images_collection = db["images"]
+    image_doc = {
+        "type": f"admin_{doc_type}",
+        "content_type": file.content_type,
+        "data": image_data_url,
+        "created_at": datetime.utcnow()
+    }
+    image_result = await images_collection.insert_one(image_doc)
+    image_id = str(image_result.inserted_id)
+    
+    # Return URL that points to the image retrieval endpoint
+    url = f"/api/cafes/image/{image_id}"
+    return {"url": url}
+
+
 @router.post("", response_model=CafeResponse, status_code=status.HTTP_201_CREATED)
 async def create_cafe(
     cafe_data: CafeCreate,
@@ -146,11 +202,41 @@ async def create_cafe(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Admin password is required"
         )
-    
-    if not cafe_data.admin_name or not cafe_data.admin_name.strip():
+    # Extended admin KYC required fields
+    if not cafe_data.admin_first_name or not cafe_data.admin_first_name.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Admin name is required"
+            detail="Admin first name is required"
+        )
+    if not cafe_data.admin_last_name or not cafe_data.admin_last_name.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin last name is required"
+        )
+    if not cafe_data.admin_national_id or not cafe_data.admin_national_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin national ID is required"
+        )
+    if not cafe_data.admin_registration_date or not cafe_data.admin_registration_date.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin registration date is required"
+        )
+    if not cafe_data.admin_commitment_image_url or not cafe_data.admin_commitment_image_url.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Commitment/contract image URL is required"
+        )
+    if not cafe_data.admin_business_license_image_url or not cafe_data.admin_business_license_image_url.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Business license image URL is required"
+        )
+    if not cafe_data.admin_national_id_image_url or not cafe_data.admin_national_id_image_url.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="National ID card image URL is required"
         )
     
     # Check if cafe name already exists
@@ -209,8 +295,10 @@ async def create_cafe(
         "password": hashed_password,
         "email": clean_value(cafe_data.admin_email),
         "phone": clean_value(cafe_data.admin_phone),
+        "name": f"{cafe_data.admin_first_name.strip()} {cafe_data.admin_last_name.strip()}".strip(),
         "role": "admin",
-        "name": cafe_data.admin_name.strip(),
+        "firstName": cafe_data.admin_first_name.strip(),
+        "lastName": cafe_data.admin_last_name.strip(),
         "cafe_id": new_cafe_id,
         "is_active": True,
         "created_at": datetime.utcnow()
@@ -221,10 +309,17 @@ async def create_cafe(
     # Create a separate admin record (admins collection)
     admin_doc = {
         "user_id": user_id,
-        "name": cafe_data.admin_name.strip(),
+        "name": f"{cafe_data.admin_first_name.strip()} {cafe_data.admin_last_name.strip()}".strip(),
         "username": cafe_data.admin_username.strip(),
         "email": clean_value(cafe_data.admin_email),
         "phone": clean_value(cafe_data.admin_phone),
+        "firstName": cafe_data.admin_first_name.strip(),
+        "lastName": cafe_data.admin_last_name.strip(),
+        "nationalId": cafe_data.admin_national_id.strip(),
+        "registration_date": cafe_data.admin_registration_date.strip(),
+        "commitment_image_url": clean_value(cafe_data.admin_commitment_image_url),
+        "business_license_image_url": clean_value(cafe_data.admin_business_license_image_url),
+        "national_id_image_url": clean_value(cafe_data.admin_national_id_image_url),
         "cafe_id": new_cafe_id,
         "is_active": True,
         "created_at": datetime.utcnow(),
@@ -418,6 +513,7 @@ async def delete_cafe(
     
     cafes_collection = db["cafes"]
     users_collection = db["users"]
+    admins_collection = db["admins"]
     
     try:
         cafe = await cafes_collection.find_one({"_id": ObjectId(cafe_id)})
@@ -476,4 +572,49 @@ async def delete_cafe(
     )
     
     return None
+
+
+@router.get("/image/{image_id}")
+async def get_admin_document_image(image_id: str):
+    """
+    Retrieve an admin document image from the database by ID.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+    
+    images_collection = db["images"]
+    try:
+        image_doc = await images_collection.find_one({"_id": ObjectId(image_id)})
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+    
+    if not image_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+    
+    # Extract base64 data from data URL
+    data_url = image_doc.get("data", "")
+    if data_url.startswith("data:"):
+        # Extract base64 part
+        base64_data = data_url.split(",")[1]
+        image_bytes = base64.b64decode(base64_data)
+        content_type = image_doc.get("content_type", "image/jpeg")
+        return Response(content=image_bytes, media_type=content_type)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Invalid image data format"
+        )
 
