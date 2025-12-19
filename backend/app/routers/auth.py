@@ -9,6 +9,11 @@ from app.models import (
 )
 from app.auth import verify_password, get_password_hash, create_access_token, get_current_user
 from app.config import settings
+from app.db_helpers import (
+    get_user_collection_by_role, get_user_from_persons, get_persons_users_collection,
+    get_persons_admins_collection, get_persons_managers_collection,
+    get_cafe_employees_collection, require_cafe_access
+)
 import os
 import base64
 
@@ -19,17 +24,13 @@ DEFAULT_OTP = "123456"
 
 
 async def _get_request_user(db, current_user: TokenData):
-    users_collection = db["users"]
-    user = None
-    if current_user.user_id:
-        try:
-            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
-        except Exception:
-            user = None
-    if not user and current_user.username:
-        user = await users_collection.find_one({"username": current_user.username})
-    if not user and current_user.phone:
-        user = await users_collection.find_one({"phone": current_user.phone})
+    """Get user from the new persons structure (searches across users, admins, managers)"""
+    user, collection_name = await get_user_from_persons(
+        db,
+        user_id=current_user.user_id,
+        username=current_user.username,
+        phone=current_user.phone
+    )
     return user
 
 
@@ -40,18 +41,14 @@ async def signup(user_data: UserCreate):
     Validates user information, creates a new user, generates a JWT, and returns the token
     """
     db = get_database()
-    users_collection = db["users"]
     
-    # Validate that either username+email+password OR phone is provided
-    if not user_data.phone and (not user_data.username or not user_data.email or not user_data.password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either phone number or username+email+password must be provided"
-        )
+    # Get the appropriate persons collection based on role
+    persons_collection = get_user_collection_by_role(db, user_data.role)
     
+    # Also check across all persons collections for uniqueness
     # Check if username already exists (if provided)
     if user_data.username:
-        existing_user = await users_collection.find_one({"username": user_data.username})
+        existing_user, _ = await get_user_from_persons(db, username=user_data.username)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,16 +57,19 @@ async def signup(user_data: UserCreate):
     
     # Check if email already exists (if provided)
     if user_data.email:
-        existing_email = await users_collection.find_one({"email": user_data.email})
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
+        # Search in all persons collections for email uniqueness
+        for col_name in ["users", "admins", "managers"]:
+            col = get_user_collection_by_role(db, col_name if col_name != "users" else "customer")
+            existing_email = await col.find_one({"email": user_data.email})
+            if existing_email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered"
+                )
     
     # Check if phone already exists (if provided)
     if user_data.phone:
-        existing_phone = await users_collection.find_one({"phone": user_data.phone})
+        existing_phone, _ = await get_user_from_persons(db, phone=user_data.phone)
         if existing_phone:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -96,11 +96,11 @@ async def signup(user_data: UserCreate):
     if hashed_password:
         user_dict["password"] = hashed_password
     
-    # Insert user into database
-    result = await users_collection.insert_one(user_dict)
+    # Insert user into the appropriate persons collection
+    result = await persons_collection.insert_one(user_dict)
     
     # Fetch the created user
-    created_user = await users_collection.find_one({"_id": result.inserted_id})
+    created_user = await persons_collection.find_one({"_id": result.inserted_id})
     
     # Create access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
@@ -167,18 +167,13 @@ async def upload_profile_image(
                 detail="Database connection not available"
             )
 
-    users_collection = db["users"]
-
-    user = None
-    if current_user.user_id:
-        try:
-            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
-        except Exception:
-            user = None
-    if not user and current_user.username:
-        user = await users_collection.find_one({"username": current_user.username})
-    if not user and current_user.phone:
-        user = await users_collection.find_one({"phone": current_user.phone})
+    # Get user from persons structure
+    user, collection_name = await get_user_from_persons(
+        db,
+        user_id=current_user.user_id,
+        username=current_user.username,
+        phone=current_user.phone
+    )
 
     if not user:
         raise HTTPException(
@@ -208,12 +203,15 @@ async def upload_profile_image(
     # Store image ID reference in user document
     profile_url = f"/api/auth/image/{image_id}"
 
-    await users_collection.update_one(
+    # Get the appropriate collection based on user role
+    user_collection = get_user_collection_by_role(db, user.get("role", "customer"))
+    
+    await user_collection.update_one(
         {"_id": user["_id"]},
         {"$set": {"profile_image_url": profile_url}}
     )
 
-    updated_user = await users_collection.find_one({"_id": user["_id"]})
+    updated_user = await user_collection.find_one({"_id": user["_id"]})
 
     return UserResponse(
         id=str(updated_user["_id"]),
@@ -315,14 +313,12 @@ async def login(credentials: PhoneLoginRequest):
                     detail="Database connection not available. Please check MongoDB connection."
                 )
         
-        users_collection = db["users"]
-        
         # Phone already normalized by the model validator
         phone = credentials.phone
         
-        # Find user by phone number with timeout handling
+        # Find user by phone number with timeout handling (searches across all persons collections)
         try:
-            user = await users_collection.find_one({"phone": phone})
+            user, _ = await get_user_from_persons(db, phone=phone)
         except Exception as db_error:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -341,8 +337,10 @@ async def login(credentials: PhoneLoginRequest):
                         "is_active": True,
                         "created_at": datetime.utcnow()
                     }
-                    result = await users_collection.insert_one(user_dict)
-                    user = await users_collection.find_one({"_id": result.inserted_id})
+                    # Insert into persons_users collection
+                    users_col = get_persons_users_collection(db)
+                    result = await users_col.insert_one(user_dict)
+                    user = await users_col.find_one({"_id": result.inserted_id})
                     print(f"Created new user record for phone: {phone}")
                 except Exception as create_error:
                     print(f"Error creating user: {create_error}")
@@ -449,9 +447,8 @@ async def admin_login(credentials: UserLogin):
                 detail="Database connection not available. Please check MongoDB connection."
             )
 
-    users_collection = db["users"]
-
-    user = await users_collection.find_one({"username": credentials.username})
+    # Search for user across all persons collections (admins and managers can login with username)
+    user, _ = await get_user_from_persons(db, username=credentials.username)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -544,8 +541,6 @@ async def verify_otp(otp_request: VerifyOTPRequest):
                     detail="Database connection not available. Please check MongoDB connection."
                 )
         
-        users_collection = db["users"]
-        
         # Phone already normalized by the model validator
         phone = otp_request.phone
         
@@ -556,9 +551,9 @@ async def verify_otp(otp_request: VerifyOTPRequest):
                 detail="Invalid or expired code"
             )
         
-        # Find user by phone number with error handling
+        # Find user by phone number with error handling (searches across all persons collections)
         try:
-            user = await users_collection.find_one({"phone": phone})
+            user, _ = await get_user_from_persons(db, phone=phone)
         except Exception as db_error:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -575,8 +570,10 @@ async def verify_otp(otp_request: VerifyOTPRequest):
                     "is_active": True,
                     "created_at": datetime.utcnow()
                 }
-                result = await users_collection.insert_one(user_dict)
-                user = await users_collection.find_one({"_id": result.inserted_id})
+                # Insert into persons_users collection
+                users_col = get_persons_users_collection(db)
+                result = await users_col.insert_one(user_dict)
+                user = await users_col.find_one({"_id": result.inserted_id})
             except Exception as create_error:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -647,13 +644,12 @@ async def complete_login(profile_data: PhoneLoginComplete):
     Requires: phone, firstName, lastName, address, and other details
     """
     db = get_database()
-    users_collection = db["users"]
     
     # Normalize phone number
     phone = profile_data.phone.replace("+", "").replace("-", "").replace(" ", "")
     
-    # Check if user already exists
-    existing_user = await users_collection.find_one({"phone": phone})
+    # Check if user already exists (searches across all persons collections)
+    existing_user, _ = await get_user_from_persons(db, phone=phone)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -678,11 +674,12 @@ async def complete_login(profile_data: PhoneLoginComplete):
         "is_active": True
     }
     
-    # Insert user into database
-    result = await users_collection.insert_one(user_dict)
+    # Insert user into persons_users collection (customers go here)
+    users_col = get_persons_users_collection(db)
+    result = await users_col.insert_one(user_dict)
     
     # Fetch the created user
-    created_user = await users_collection.find_one({"_id": result.inserted_id})
+    created_user = await users_col.find_one({"_id": result.inserted_id})
     
     # Create access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
@@ -728,19 +725,14 @@ async def get_current_user_info(current_user: TokenData = Depends(get_current_us
     Only works with a valid token
     """
     db = get_database()
-    users_collection = db["users"]
     
-    # Find user by username, phone, or user_id
-    user = None
-    if current_user.user_id:
-        try:
-            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
-        except:
-            pass
-    if not user and current_user.username:
-        user = await users_collection.find_one({"username": current_user.username})
-    if not user and current_user.phone:
-        user = await users_collection.find_one({"phone": current_user.phone})
+    # Find user by username, phone, or user_id (searches across all persons collections)
+    user, collection_name = await get_user_from_persons(
+        db,
+        user_id=current_user.user_id,
+        username=current_user.username,
+        phone=current_user.phone
+    )
     
     if not user:
         raise HTTPException(
@@ -776,19 +768,14 @@ async def update_profile(
     Validates security and permissions, saves changes, and returns updated user
     """
     db = get_database()
-    users_collection = db["users"]
     
-    # Find user
-    user = None
-    if current_user.user_id:
-        try:
-            user = await users_collection.find_one({"_id": ObjectId(current_user.user_id)})
-        except:
-            pass
-    if not user and current_user.username:
-        user = await users_collection.find_one({"username": current_user.username})
-    if not user and current_user.phone:
-        user = await users_collection.find_one({"phone": current_user.phone})
+    # Find user (searches across all persons collections)
+    user, collection_name = await get_user_from_persons(
+        db,
+        user_id=current_user.user_id,
+        username=current_user.username,
+        phone=current_user.phone
+    )
     
     if not user:
         raise HTTPException(
@@ -810,29 +797,29 @@ async def update_profile(
     if profile_update.lastName is not None:
         update_data["lastName"] = profile_update.lastName
     if profile_update.phone is not None:
-        # Check if phone is already taken by another user
+        # Check if phone is already taken by another user (search across all persons collections)
         phone = profile_update.phone.replace("+", "").replace("-", "").replace(" ", "")
-        existing_phone = await users_collection.find_one({
-            "phone": phone,
-            "_id": {"$ne": user["_id"]}
-        })
-        if existing_phone:
+        existing_phone, _ = await get_user_from_persons(db, phone=phone)
+        if existing_phone and str(existing_phone["_id"]) != str(user["_id"]):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Phone number already registered to another user"
             )
         update_data["phone"] = phone
-    # Email update with uniqueness check
+    # Email update with uniqueness check (search across all persons collections)
     if profile_update.email is not None:
-        existing_email = await users_collection.find_one({
-            "email": profile_update.email,
-            "_id": {"$ne": user["_id"]}
-        })
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered to another user"
-            )
+        # Check email uniqueness across all collections
+        for col_name in ["users", "admins", "managers"]:
+            col = get_user_collection_by_role(db, col_name if col_name != "users" else "customer")
+            existing_email = await col.find_one({
+                "email": profile_update.email,
+                "_id": {"$ne": user["_id"]}
+            })
+            if existing_email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered to another user"
+                )
         update_data["email"] = profile_update.email
     if profile_update.address is not None:
         update_data["address"] = profile_update.address
@@ -848,15 +835,16 @@ async def update_profile(
         if name:
             update_data["name"] = name
     
-    # Update user in database
+    # Update user in database (use the appropriate collection based on user role)
+    user_collection = get_user_collection_by_role(db, user.get("role", "customer"))
     if update_data:
-        await users_collection.update_one(
+        await user_collection.update_one(
             {"_id": user["_id"]},
             {"$set": update_data}
         )
     
     # Fetch updated user
-    updated_user = await users_collection.find_one({"_id": user["_id"]})
+    updated_user = await user_collection.find_one({"_id": user["_id"]})
     
     return UserResponse(
         id=str(updated_user["_id"]),
@@ -891,6 +879,7 @@ def _require_admin(user):
 
 @router.get("/employees", response_model=list[EmployeeResponse])
 async def list_employees(current_user: TokenData = Depends(get_current_user)):
+    """Get all employees for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -900,8 +889,11 @@ async def list_employees(current_user: TokenData = Depends(get_current_user)):
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    employees_collection = db["employees"]
+    employees_collection = get_cafe_employees_collection(db, cafe_id)
     cursor = employees_collection.find({})
     employees = []
     async for doc in cursor:
@@ -913,6 +905,7 @@ async def list_employees(current_user: TokenData = Depends(get_current_user)):
 
 @router.post("/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
 async def create_employee(employee: EmployeeCreate, current_user: TokenData = Depends(get_current_user)):
+    """Create a new employee for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -922,10 +915,13 @@ async def create_employee(employee: EmployeeCreate, current_user: TokenData = De
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    employees_collection = db["employees"]
+    employees_collection = get_cafe_employees_collection(db, cafe_id)
 
-    # Unique constraints: nationalId and phone
+    # Unique constraints: nationalId and phone (within this café)
     existing_nid = await employees_collection.find_one({"nationalId": employee.nationalId})
     if existing_nid:
         raise HTTPException(status_code=400, detail="کد ملی قبلا ثبت شده است.")
@@ -934,6 +930,7 @@ async def create_employee(employee: EmployeeCreate, current_user: TokenData = De
         raise HTTPException(status_code=400, detail="شماره تلفن قبلا ثبت شده است.")
 
     doc = employee.model_dump()
+    doc["cafe_id"] = cafe_id  # Store café ID for reference
     doc["created_at"] = datetime.utcnow()
     result = await employees_collection.insert_one(doc)
     created = await employees_collection.find_one({"_id": result.inserted_id})
@@ -944,6 +941,7 @@ async def create_employee(employee: EmployeeCreate, current_user: TokenData = De
 
 @router.delete("/employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_employee(employee_id: str, current_user: TokenData = Depends(get_current_user)):
+    """Delete an employee from the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -953,14 +951,19 @@ async def delete_employee(employee_id: str, current_user: TokenData = Depends(ge
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    employees_collection = db["employees"]
+    employees_collection = get_cafe_employees_collection(db, cafe_id)
     try:
         oid = ObjectId(employee_id)
     except Exception:
         raise HTTPException(status_code=400, detail="شناسه نامعتبر است.")
 
-    await employees_collection.delete_one({"_id": oid})
+    result = await employees_collection.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="کارمند یافت نشد.")
     return None
 
 
@@ -970,6 +973,7 @@ async def update_employee_status(
     status_payload: EmployeeStatusUpdate,
     current_user: TokenData = Depends(get_current_user)
 ):
+    """Update employee status in the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -979,8 +983,11 @@ async def update_employee_status(
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    employees_collection = db["employees"]
+    employees_collection = get_cafe_employees_collection(db, cafe_id)
     try:
         oid = ObjectId(employee_id)
     except Exception:
@@ -1006,6 +1013,7 @@ async def update_employee(
     employee_update: EmployeeUpdate,
     current_user: TokenData = Depends(get_current_user)
 ):
+    """Update an employee in the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -1015,14 +1023,17 @@ async def update_employee(
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    employees_collection = db["employees"]
+    employees_collection = get_cafe_employees_collection(db, cafe_id)
     try:
         oid = ObjectId(employee_id)
     except Exception:
         raise HTTPException(status_code=400, detail="شناسه نامعتبر است.")
 
-    # Check if employee exists
+    # Check if employee exists in this café
     existing = await employees_collection.find_one({"_id": oid})
     if not existing:
         raise HTTPException(status_code=404, detail="کارمند یافت نشد.")
@@ -1031,7 +1042,7 @@ async def update_employee(
     update_data = {}
     employee_dict = employee_update.model_dump(exclude_unset=True)
     
-    # Check for unique constraints if updating nationalId or phone
+    # Check for unique constraints if updating nationalId or phone (within this café)
     if "nationalId" in employee_dict and employee_dict["nationalId"]:
         existing_nid = await employees_collection.find_one({"nationalId": employee_dict["nationalId"], "_id": {"$ne": oid}})
         if existing_nid:

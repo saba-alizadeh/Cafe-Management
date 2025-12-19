@@ -5,13 +5,16 @@ from app.database import get_database, connect_to_mongo
 from app.models import ShiftSchedulingCreate, ShiftSchedulingResponse
 from app.auth import get_current_user, TokenData
 from app.routers.auth import _get_request_user, _require_admin
+from app.db_helpers import (
+    get_cafe_shift_schedules_collection, get_cafe_employees_collection, require_cafe_access
+)
 
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 
 
 @router.get("", response_model=list[ShiftSchedulingResponse])
 async def list_shifts(current_user: TokenData = Depends(get_current_user)):
-    """Get all shifts"""
+    """Get all shifts for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -21,8 +24,11 @@ async def list_shifts(current_user: TokenData = Depends(get_current_user)):
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    shifts_collection = db["shiftscheduling"]
+    shifts_collection = get_cafe_shift_schedules_collection(db, cafe_id)
     cursor = shifts_collection.find({}).sort("date", -1)
     shifts = []
     async for doc in cursor:
@@ -34,7 +40,7 @@ async def list_shifts(current_user: TokenData = Depends(get_current_user)):
 
 @router.post("", response_model=ShiftSchedulingResponse, status_code=201)
 async def create_shift(shift: ShiftSchedulingCreate, current_user: TokenData = Depends(get_current_user)):
-    """Create a new shift"""
+    """Create a new shift for an employee in the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -44,9 +50,12 @@ async def create_shift(shift: ShiftSchedulingCreate, current_user: TokenData = D
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    # Verify employee exists
-    employees_collection = db["employees"]
+    # Verify employee exists in this café
+    employees_collection = get_cafe_employees_collection(db, cafe_id)
     try:
         employee = await employees_collection.find_one({"_id": ObjectId(shift.employee_id)})
         if not employee:
@@ -54,8 +63,9 @@ async def create_shift(shift: ShiftSchedulingCreate, current_user: TokenData = D
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid employee ID")
 
-    shifts_collection = db["shiftscheduling"]
+    shifts_collection = get_cafe_shift_schedules_collection(db, cafe_id)
     doc = shift.model_dump()
+    doc["cafe_id"] = cafe_id  # Store café ID for reference
     doc["created_at"] = datetime.utcnow()
     result = await shifts_collection.insert_one(doc)
     created = await shifts_collection.find_one({"_id": result.inserted_id})
@@ -66,7 +76,7 @@ async def create_shift(shift: ShiftSchedulingCreate, current_user: TokenData = D
 
 @router.delete("/{shift_id}", status_code=204)
 async def delete_shift(shift_id: str, current_user: TokenData = Depends(get_current_user)):
-    """Delete a shift"""
+    """Delete a shift from the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -76,8 +86,11 @@ async def delete_shift(shift_id: str, current_user: TokenData = Depends(get_curr
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    shifts_collection = db["shiftscheduling"]
+    shifts_collection = get_cafe_shift_schedules_collection(db, cafe_id)
     try:
         oid = ObjectId(shift_id)
     except Exception:
@@ -87,4 +100,3 @@ async def delete_shift(shift_id: str, current_user: TokenData = Depends(get_curr
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Shift not found")
     return None
-

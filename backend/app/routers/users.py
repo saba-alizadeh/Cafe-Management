@@ -4,13 +4,14 @@ from app.database import get_database, connect_to_mongo
 from app.models import UserResponse
 from app.auth import get_current_user, TokenData
 from app.routers.auth import _get_request_user, _require_admin
+from app.db_helpers import get_persons_users_collection
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 @router.get("", response_model=list[UserResponse])
 async def list_users(current_user: TokenData = Depends(get_current_user)):
-    """Get all users (admin only)"""
+    """Get all users (admin only) - reads from persons_users collection"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -21,7 +22,7 @@ async def list_users(current_user: TokenData = Depends(get_current_user)):
     user = await _get_request_user(db, current_user)
     _require_admin(user)
 
-    users_collection = db["users"]
+    users_collection = get_persons_users_collection(db)
     cursor = users_collection.find({}).sort("created_at", -1)
     users = []
     async for doc in cursor:
@@ -29,4 +30,3 @@ async def list_users(current_user: TokenData = Depends(get_current_user)):
         doc.pop("_id", None)
         users.append(UserResponse(**doc))
     return users
-

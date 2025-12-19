@@ -8,30 +8,17 @@ from app.models import (
 )
 from app.auth import get_current_user
 from app.routers.auth import _get_request_user
+from app.db_helpers import require_cafe_access, get_cafe_tables_collection
 
 router = APIRouter(prefix="/api/tables", tags=["tables"])
 
 
-async def _ensure_admin(db, current_user: TokenData):
-    """Ensure the current user is an admin"""
-    user = await _get_request_user(db, current_user)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
-        )
-    if user.get("role") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can access this resource"
-        )
-    return user
 
 
 @router.get("", response_model=List[TableResponse])
 async def list_tables(current_user: TokenData = Depends(get_current_user)):
     """
-    List all tables. Only admins can access this.
+    List all tables for the current user's cafe.
     """
     db = get_database()
     if db is None:
@@ -43,9 +30,8 @@ async def list_tables(current_user: TokenData = Depends(get_current_user)):
                 detail="Database connection not available"
             )
     
-    await _ensure_admin(db, current_user)
-    
-    tables_collection = db["tables"]
+    cafe_id = await require_cafe_access(db, current_user)
+    tables_collection = get_cafe_tables_collection(db, cafe_id)
     tables: List[TableResponse] = []
     
     async for table in tables_collection.find({"is_active": {"$ne": False}}):
@@ -55,7 +41,7 @@ async def list_tables(current_user: TokenData = Depends(get_current_user)):
                 name=table.get("name"),
                 capacity=table.get("capacity"),
                 status=table.get("status", "available"),
-                cafe_id=table.get("cafe_id"),
+                cafe_id=int(cafe_id) if cafe_id else None,
                 is_active=table.get("is_active", True),
                 created_at=table.get("created_at", datetime.utcnow()),
                 updated_at=table.get("updated_at")
@@ -72,7 +58,7 @@ async def create_table(
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Create a new table. Only admins can create tables.
+    Create a new table for the current user's cafe.
     """
     db = get_database()
     if db is None:
@@ -84,14 +70,12 @@ async def create_table(
                 detail="Database connection not available"
             )
 
-    await _ensure_admin(db, current_user)
+    cafe_id = await require_cafe_access(db, current_user)
+    tables_collection = get_cafe_tables_collection(db, cafe_id)
 
-    tables_collection = db["tables"]
-
-    # Check if table name already exists for the same cafe
+    # Check if table name already exists for this cafe
     existing_table = await tables_collection.find_one({
         "name": table_data.name.strip(),
-        "cafe_id": table_data.cafe_id,
         "is_active": {"$ne": False}
     })
     if existing_table:
@@ -105,7 +89,6 @@ async def create_table(
         "name": table_data.name.strip(),
         "capacity": table_data.capacity,
         "status": table_data.status,
-        "cafe_id": table_data.cafe_id,
         "is_active": table_data.is_active,
         "created_at": datetime.utcnow(),
         "updated_at": None
@@ -121,7 +104,7 @@ async def create_table(
         name=created_table.get("name"),
         capacity=created_table.get("capacity"),
         status=created_table.get("status", "available"),
-        cafe_id=created_table.get("cafe_id"),
+        cafe_id=int(cafe_id) if cafe_id else None,
         is_active=created_table.get("is_active", True),
         created_at=created_table.get("created_at", datetime.utcnow()),
         updated_at=created_table.get("updated_at")
@@ -135,7 +118,7 @@ async def update_table(
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Update a table. Only admins can update tables.
+    Update a table for the current user's cafe.
     """
     db = get_database()
     if db is None:
@@ -147,9 +130,8 @@ async def update_table(
                 detail="Database connection not available"
             )
 
-    await _ensure_admin(db, current_user)
-
-    tables_collection = db["tables"]
+    cafe_id = await require_cafe_access(db, current_user)
+    tables_collection = get_cafe_tables_collection(db, cafe_id)
     
     try:
         oid = ObjectId(table_id)
@@ -167,10 +149,8 @@ async def update_table(
     
     # Check for unique constraints if updating name
     if "name" in table_dict and table_dict["name"]:
-        cafe_id = existing.get("cafe_id")
         existing_table = await tables_collection.find_one({
             "name": table_dict["name"].strip(),
-            "cafe_id": cafe_id,
             "_id": {"$ne": oid},
             "is_active": {"$ne": False}
         })
@@ -205,7 +185,7 @@ async def update_table(
         name=updated.get("name"),
         capacity=updated.get("capacity"),
         status=updated.get("status", "available"),
-        cafe_id=updated.get("cafe_id"),
+        cafe_id=int(cafe_id) if cafe_id else None,
         is_active=updated.get("is_active", True),
         created_at=updated.get("created_at", datetime.utcnow()),
         updated_at=updated.get("updated_at")
@@ -218,7 +198,7 @@ async def delete_table(
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Soft delete a table (set is_active to False). Only admins can delete tables.
+    Soft delete a table (set is_active to False) for the current user's cafe.
     """
     db = get_database()
     if db is None:
@@ -230,9 +210,8 @@ async def delete_table(
                 detail="Database connection not available"
             )
 
-    await _ensure_admin(db, current_user)
-
-    tables_collection = db["tables"]
+    cafe_id = await require_cafe_access(db, current_user)
+    tables_collection = get_cafe_tables_collection(db, cafe_id)
     
     try:
         oid = ObjectId(table_id)

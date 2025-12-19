@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
 	Box,
@@ -35,7 +35,10 @@ import {
 	Group,
 	RateReview,
 	AccountCircle,
-	TableRestaurant
+	TableRestaurant,
+	Movie,
+	Work,
+	Event
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import UserProfile from '../../components/profile/UserProfile';
@@ -57,17 +60,55 @@ import UserManagement from './components/UserManagement';
 import EmployeeManagement from './components/EmployeeManagement';
 import CustomerFeedback from './components/CustomerFeedback';
 import TableManagement from './components/TableManagement';
+import CinemaManagement from './components/CinemaManagement';
+import CoworkingManagement from './components/CoworkingManagement';
+import EventsManagement from './components/EventsManagement';
 
 const drawerWidth = 240;
 
 const AdminDashboard = () => {
 	const theme = useTheme();
 	const [mobileOpen, setMobileOpen] = useState(false);
-	const { logout } = useAuth();
+	const { logout, apiBaseUrl, token } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
+	const [cafeFeatures, setCafeFeatures] = useState({
+		has_cinema: false,
+		has_coworking: false,
+		has_events: false
+	});
 
 	const basePath = '/admin';
+
+	// Fetch cafe features on mount
+	useEffect(() => {
+		const fetchCafeInfo = async () => {
+			const authToken = token || localStorage.getItem('authToken');
+			if (!authToken) return;
+			try {
+				// Get user's cafe info - we need to get cafe_id from user first
+				// For now, we'll fetch from cafes endpoint and find the user's cafe
+				const cafesRes = await fetch(`${apiBaseUrl}/cafes`, {
+					headers: { Authorization: `Bearer ${authToken}` }
+				});
+				if (cafesRes.ok) {
+					const cafes = await cafesRes.json();
+					// Get the first cafe (admin belongs to one cafe)
+					if (cafes.length > 0) {
+						const cafe = cafes[0];
+						setCafeFeatures({
+							has_cinema: cafe.has_cinema || false,
+							has_coworking: cafe.has_coworking || false,
+							has_events: cafe.has_events || false
+						});
+					}
+				}
+			} catch (err) {
+				console.error('Error fetching cafe info:', err);
+			}
+		};
+		fetchCafeInfo();
+	}, [token, apiBaseUrl]);
 
 	const menuItems = [
 		{ text: 'نمای کلی', icon: <Dashboard />, to: basePath },
@@ -85,6 +126,9 @@ const AdminDashboard = () => {
 		{ text: 'بازخورد مشتریان', icon: <RateReview />, to: `${basePath}/feedback` },
 		{ text: 'مدیریت کافه', icon: <Business />, to: `${basePath}/cafes` },
 		{ text: 'مدیریت میزها', icon: <TableRestaurant />, to: `${basePath}/tables` },
+		...(cafeFeatures.has_cinema ? [{ text: 'مدیریت سینما', icon: <Movie />, to: `${basePath}/cinema` }] : []),
+		...(cafeFeatures.has_coworking ? [{ text: 'مدیریت فضای همکاری', icon: <Work />, to: `${basePath}/coworking` }] : []),
+		...(cafeFeatures.has_events ? [{ text: 'مدیریت رویدادها', icon: <Event />, to: `${basePath}/events` }] : []),
 		{ text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
 	];
 
@@ -228,6 +272,9 @@ const AdminDashboard = () => {
 					<Route path="feedback" element={<CustomerFeedback />} />
 					<Route path="cafes" element={<CafeManagement />} />
 					<Route path="tables" element={<TableManagement />} />
+					<Route path="cinema" element={<CinemaManagement />} />
+					<Route path="coworking" element={<CoworkingManagement />} />
+					<Route path="events" element={<EventsManagement />} />
 					<Route path="profile" element={<UserProfile />} />
 				</Routes>
 			</Box>

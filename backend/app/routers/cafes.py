@@ -8,6 +8,13 @@ from app.models import (
 )
 from app.auth import get_current_user, get_password_hash
 from app.routers.auth import _get_request_user
+from app.db_helpers import (
+    get_persons_admins_collection, get_user_from_persons,
+    get_cafe_information_collection, get_cafe_employees_collection,
+    get_cafe_inventory_collection, get_cafe_offcodes_collection,
+    get_cafe_products_collection, get_cafe_rewards_collection,
+    get_cafe_rules_collection, get_cafe_shift_schedules_collection
+)
 import os
 from uuid import uuid4
 import base64
@@ -48,46 +55,50 @@ async def list_cafes(current_user: TokenData = Depends(get_current_user)):
     
     await _ensure_manager_or_admin(db, current_user)
     
-    cafes_collection = db["cafes"]
-    users_collection = db["users"]
-    admins_collection = db["admins"]
-    admins_collection = db["admins"]
-    admins_collection = db["admins"]
-    admins_collection = db["admins"]
-    admins_collection = db["admins"]
-    
+    cafes_master = db["cafes_master"]
     cafes = []
-    # Only active cafes
-    async for cafe in cafes_collection.find({"is_active": {"$ne": False}}):
-        # Find the admin user for this cafe
-        admin_id = cafe.get("admin_id")
-        admin_user = None
-        if admin_id:
-            try:
-                admin_user = await users_collection.find_one({"_id": ObjectId(admin_id)})
-            except Exception as e:
-                print(f"Error finding admin user: {e}")
-                pass
+    
+    # Iterate through all cafes in master list
+    async for master_entry in cafes_master.find({}):
+        cafe_id = master_entry.get("cafe_id")
+        if cafe_id is None:
+            continue
+        
+        # Get café information from café-specific collection
+        cafe_info_collection = get_cafe_information_collection(db, str(cafe_id))
+        cafe_info = await cafe_info_collection.find_one({})
+        
+        if not cafe_info:
+            continue
+        
+        # Only include active cafes
+        if cafe_info.get("is_active") is False:
+            continue
         
         try:
             cafe_response = CafeResponse(
-                id=str(cafe["_id"]),
-                name=cafe.get("name", ""),
-                location=cafe.get("location"),
-                phone=cafe.get("phone"),
-                email=cafe.get("email"),
-                details=cafe.get("details"),
-                hours=cafe.get("hours"),
-                capacity=cafe.get("capacity"),
-                wifi_password=cafe.get("wifi_password"),
-                is_active=cafe.get("is_active", True),
-                created_at=cafe.get("created_at", datetime.utcnow()),
-                updated_at=cafe.get("updated_at"),
-                admin_id=str(admin_id) if admin_id else None
+                id=str(cafe_id),
+                name=cafe_info.get("name", ""),
+                location=cafe_info.get("location"),
+                phone=cafe_info.get("phone"),
+                email=cafe_info.get("email"),
+                details=cafe_info.get("details"),
+                hours=cafe_info.get("hours"),
+                capacity=cafe_info.get("capacity"),
+                wifi_password=cafe_info.get("wifi_password"),
+                is_active=cafe_info.get("is_active", True),
+                has_cinema=cafe_info.get("has_cinema", False),
+                cinema_seating_capacity=cafe_info.get("cinema_seating_capacity"),
+                has_coworking=cafe_info.get("has_coworking", False),
+                coworking_capacity=cafe_info.get("coworking_capacity"),
+                has_events=cafe_info.get("has_events", False),
+                created_at=cafe_info.get("created_at", datetime.utcnow()),
+                updated_at=cafe_info.get("updated_at"),
+                admin_id=cafe_info.get("admin_id")
             )
             cafes.append(cafe_response)
         except Exception as e:
-            print(f"Error creating cafe response: {e}, cafe data: {cafe}")
+            print(f"Error creating cafe response: {e}, cafe data: {cafe_info}")
             continue
     
     # Sort by created_at descending (newest first)
@@ -180,9 +191,9 @@ async def create_cafe(
     
     await _ensure_manager_or_admin(db, current_user)
     
-    cafes_collection = db["cafes"]
-    users_collection = db["users"]
-    admins_collection = db["admins"]
+    # Check if cafe name already exists (search in all cafe information collections)
+    # For now, we'll use a master cafes list to track cafe IDs
+    cafes_master = db["cafes_master"]  # Master list of all cafes with their IDs
     
     # Validate required fields
     if not cafe_data.name or not cafe_data.name.strip():
@@ -239,16 +250,16 @@ async def create_cafe(
             detail="National ID card image URL is required"
         )
     
-    # Check if cafe name already exists
-    existing_cafe = await cafes_collection.find_one({"name": cafe_data.name.strip()})
+    # Check if cafe name already exists in master list
+    existing_cafe = await cafes_master.find_one({"name": cafe_data.name.strip()})
     if existing_cafe:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cafe with name '{cafe_data.name}' already exists"
         )
     
-    # Check if admin username already exists
-    existing_user = await users_collection.find_one({"username": cafe_data.admin_username.strip()})
+    # Check if admin username already exists (search across all persons collections)
+    existing_user, _ = await get_user_from_persons(db, username=cafe_data.admin_username.strip())
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -265,8 +276,12 @@ async def create_cafe(
             return v.strip()
         return v
     
-    # Create the cafe first
-    cafe_doc = {
+    # Get the next cafe_id number (auto-increment style)
+    cafe_count = await cafes_master.count_documents({})
+    new_cafe_id = cafe_count  # Use count as cafe_id
+    
+    # Create the cafe information document
+    cafe_info_doc = {
         "name": cafe_data.name.strip(),
         "location": clean_value(cafe_data.location),
         "phone": clean_value(cafe_data.phone),
@@ -276,43 +291,41 @@ async def create_cafe(
         "capacity": cafe_data.capacity if cafe_data.capacity is not None else None,
         "wifi_password": clean_value(cafe_data.wifi_password),
         "is_active": cafe_data.is_active,
+        "has_cinema": cafe_data.has_cinema if hasattr(cafe_data, 'has_cinema') else False,
+        "cinema_seating_capacity": cafe_data.cinema_seating_capacity if hasattr(cafe_data, 'cinema_seating_capacity') and cafe_data.has_cinema else None,
+        "has_coworking": cafe_data.has_coworking if hasattr(cafe_data, 'has_coworking') else False,
+        "coworking_capacity": cafe_data.coworking_capacity if hasattr(cafe_data, 'coworking_capacity') and cafe_data.has_coworking else None,
+        "has_events": cafe_data.has_events if hasattr(cafe_data, 'has_events') else False,
+        "cafe_id": new_cafe_id,
         "created_at": datetime.utcnow(),
         "updated_at": None
     }
     
-    cafe_result = await cafes_collection.insert_one(cafe_doc)
-    cafe_id = cafe_result.inserted_id
+    # Store in café-specific information collection
+    cafe_info_collection = get_cafe_information_collection(db, str(new_cafe_id))
+    cafe_result = await cafe_info_collection.insert_one(cafe_info_doc)
+    cafe_info_id = cafe_result.inserted_id
     
-    # Get the next cafe_id number (auto-increment style)
-    # Count existing cafes to generate a unique cafe_id
-    cafe_count = await cafes_collection.count_documents({})
-    new_cafe_id = cafe_count  # Use count as cafe_id
+    # Also add to master cafes list for quick lookup
+    master_doc = {
+        "cafe_id": new_cafe_id,
+        "name": cafe_data.name.strip(),
+        "info_id": str(cafe_info_id),
+        "created_at": datetime.utcnow()
+    }
+    await cafes_master.insert_one(master_doc)
     
-    # Create the admin user for this cafe (users collection)
+    # Create the admin user in persons_admins collection
     hashed_password = get_password_hash(cafe_data.admin_password)
-    user_doc = {
+    admins_collection = get_persons_admins_collection(db)
+    
+    admin_doc = {
         "username": cafe_data.admin_username.strip(),
         "password": hashed_password,
         "email": clean_value(cafe_data.admin_email),
         "phone": clean_value(cafe_data.admin_phone),
         "name": f"{cafe_data.admin_first_name.strip()} {cafe_data.admin_last_name.strip()}".strip(),
         "role": "admin",
-        "firstName": cafe_data.admin_first_name.strip(),
-        "lastName": cafe_data.admin_last_name.strip(),
-        "cafe_id": new_cafe_id,
-        "is_active": True,
-        "created_at": datetime.utcnow()
-    }
-    user_result = await users_collection.insert_one(user_doc)
-    user_id = user_result.inserted_id
-
-    # Create a separate admin record (admins collection)
-    admin_doc = {
-        "user_id": user_id,
-        "name": f"{cafe_data.admin_first_name.strip()} {cafe_data.admin_last_name.strip()}".strip(),
-        "username": cafe_data.admin_username.strip(),
-        "email": clean_value(cafe_data.admin_email),
-        "phone": clean_value(cafe_data.admin_phone),
         "firstName": cafe_data.admin_first_name.strip(),
         "lastName": cafe_data.admin_last_name.strip(),
         "nationalId": cafe_data.admin_national_id.strip(),
@@ -327,17 +340,17 @@ async def create_cafe(
     admin_result = await admins_collection.insert_one(admin_doc)
     admin_id = admin_result.inserted_id
 
-    # Update cafe with admin_id and cafe_id
-    await cafes_collection.update_one(
-        {"_id": cafe_id},
-        {"$set": {"admin_id": admin_id, "cafe_id": new_cafe_id}}
+    # Update cafe information with admin_id
+    await cafe_info_collection.update_one(
+        {"_id": cafe_info_id},
+        {"$set": {"admin_id": str(admin_id)}}
     )
     
-    # Fetch the created cafe
-    created_cafe = await cafes_collection.find_one({"_id": cafe_id})
+    # Fetch the created cafe information
+    created_cafe = await cafe_info_collection.find_one({"_id": cafe_info_id})
     
     return CafeResponse(
-        id=str(created_cafe["_id"]),
+        id=str(new_cafe_id),  # Use cafe_id as the main identifier
         name=created_cafe.get("name"),
         location=created_cafe.get("location"),
         phone=created_cafe.get("phone"),
@@ -347,6 +360,11 @@ async def create_cafe(
         capacity=created_cafe.get("capacity"),
         wifi_password=created_cafe.get("wifi_password"),
         is_active=created_cafe.get("is_active", True),
+        has_cinema=created_cafe.get("has_cinema", False),
+        cinema_seating_capacity=created_cafe.get("cinema_seating_capacity"),
+        has_coworking=created_cafe.get("has_coworking", False),
+        coworking_capacity=created_cafe.get("coworking_capacity"),
+        has_events=created_cafe.get("has_events", False),
         created_at=created_cafe.get("created_at", datetime.utcnow()),
         updated_at=created_cafe.get("updated_at"),
         admin_id=str(admin_id)

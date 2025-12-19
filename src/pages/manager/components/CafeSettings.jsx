@@ -68,6 +68,11 @@ const CafeSettings = () => {
         capacity: '',
         wifi_password: '',
         is_active: true,
+        has_cinema: false,
+        cinema_seating_capacity: '',
+        has_coworking: false,
+        coworking_capacity: '',
+        has_events: false,
         admin_username: '',
         admin_password: '',
         admin_email: '',
@@ -142,9 +147,13 @@ const CafeSettings = () => {
                 capacity: cafe.capacity || '',
                 wifi_password: cafe.wifi_password || '',
                 is_active: cafe.is_active !== undefined ? cafe.is_active : true,
+                has_cinema: cafe.has_cinema || false,
+                cinema_seating_capacity: cafe.cinema_seating_capacity || '',
+                has_coworking: cafe.has_coworking || false,
+                coworking_capacity: cafe.coworking_capacity || '',
+                has_events: cafe.has_events || false,
                 admin_username: '',
                 admin_password: '',
-                admin_name: '',
                 admin_email: '',
                 admin_phone: '',
                 admin_first_name: '',
@@ -167,9 +176,13 @@ const CafeSettings = () => {
                 capacity: '',
                 wifi_password: '',
                 is_active: true,
+                has_cinema: false,
+                cinema_seating_capacity: '',
+                has_coworking: false,
+                coworking_capacity: '',
+                has_events: false,
                 admin_username: '',
                 admin_password: '',
-                admin_name: '',
                 admin_email: '',
                 admin_phone: '',
                 admin_first_name: '',
@@ -288,7 +301,16 @@ const CafeSettings = () => {
                     hours: cleanValue(formData.hours),
                     capacity: formData.capacity && formData.capacity.trim() !== '' ? parseInt(formData.capacity) : null,
                     wifi_password: cleanValue(formData.wifi_password),
-                    is_active: formData.is_active
+                    is_active: formData.is_active,
+                    has_cinema: formData.has_cinema || false,
+                    cinema_seating_capacity: formData.has_cinema && formData.cinema_seating_capacity && formData.cinema_seating_capacity.toString().trim() !== '' 
+                        ? parseInt(formData.cinema_seating_capacity.toString().trim()) 
+                        : null,
+                    has_coworking: formData.has_coworking || false,
+                    coworking_capacity: formData.has_coworking && formData.coworking_capacity && formData.coworking_capacity.toString().trim() !== '' 
+                        ? parseInt(formData.coworking_capacity.toString().trim()) 
+                        : null,
+                    has_events: formData.has_events || false
                 };
 
                 const authToken = getToken();
@@ -395,6 +417,19 @@ const CafeSettings = () => {
                     return;
                 }
 
+                // Validate optional features
+                if (formData.has_cinema && (!formData.cinema_seating_capacity || formData.cinema_seating_capacity.toString().trim() === '')) {
+                    setError('در صورت فعال بودن سینما، ظرفیت صندلی‌های سینما الزامی است');
+                    setSaving(false);
+                    return;
+                }
+
+                if (formData.has_coworking && (!formData.coworking_capacity || formData.coworking_capacity.toString().trim() === '')) {
+                    setError('در صورت فعال بودن فضای همکاری، ظرفیت کل الزامی است');
+                    setSaving(false);
+                    return;
+                }
+
                 // Build request data, ensuring empty strings become null for optional fields
                 const requestData = {
                     name: formData.name.trim(),
@@ -408,6 +443,15 @@ const CafeSettings = () => {
                         : null,
                     wifi_password: cleanValue(formData.wifi_password),
                     is_active: formData.is_active,
+                    has_cinema: formData.has_cinema || false,
+                    cinema_seating_capacity: formData.has_cinema && formData.cinema_seating_capacity && formData.cinema_seating_capacity.toString().trim() !== '' 
+                        ? parseInt(formData.cinema_seating_capacity.toString().trim()) 
+                        : null,
+                    has_coworking: formData.has_coworking || false,
+                    coworking_capacity: formData.has_coworking && formData.coworking_capacity && formData.coworking_capacity.toString().trim() !== '' 
+                        ? parseInt(formData.coworking_capacity.toString().trim()) 
+                        : null,
+                    has_events: formData.has_events || false,
                     admin_username: formData.admin_username.trim(),
                     admin_password: formData.admin_password,
                     admin_email: cleanValue(formData.admin_email) || null,
@@ -537,13 +581,13 @@ const CafeSettings = () => {
         <Box sx={{ direction: 'rtl' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Box>
-                    <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" gutterBottom>
                         مدیریت کافه‌ها
-                    </Typography>
+            </Typography>
                     <Typography variant="subtitle1" color="text.secondary">
                         ایجاد و مدیریت کافه‌های متعدد و حساب‌های مدیر مربوطه
                         {cafes.length > 0 && ` (${cafes.length} کافه)`}
-                    </Typography>
+            </Typography>
                 </Box>
                 <Box display="flex" gap={2}>
                     <Button
@@ -649,7 +693,7 @@ const CafeSettings = () => {
                                                 <Box display="flex" alignItems="center">
                                                     <Email sx={{ mr: 0.5, fontSize: 'small', color: 'text.secondary' }} />
                                                     <Typography variant="body2">{cafe.email}</Typography>
-                                                </Box>
+                        </Box>
                                             )}
                                         </Stack>
                                     </TableCell>
@@ -713,7 +757,7 @@ const CafeSettings = () => {
                     )}
 
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12}>
+                            <Grid item xs={12}>
                             <Typography variant="h6" gutterBottom>
                                 اطلاعات کافه
                             </Typography>
@@ -721,68 +765,68 @@ const CafeSettings = () => {
                         </Grid>
 
                         <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
+                                <TextField
+                                    fullWidth
                                 label="نام کافه *"
                                 name="name"
                                 value={formData.name}
                                 onChange={handleInputChange}
                                 required
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
                         <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
+                                <TextField
+                                    fullWidth
                                 label="موقعیت"
                                 name="location"
                                 value={formData.location}
                                 onChange={handleInputChange}
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="تلفن تماس"
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="تلفن تماس"
                                 name="phone"
                                 value={formData.phone}
                                 onChange={handleInputChange}
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="ایمیل"
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="ایمیل"
                                 name="email"
                                 type="email"
                                 value={formData.email}
                                 onChange={handleInputChange}
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="ساعات کاری"
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="ساعات کاری"
                                 name="hours"
                                 value={formData.hours}
                                 onChange={handleInputChange}
                                 placeholder="مثال: ۸:۰۰ الی ۲۳:۳۰"
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="ظرفیت (نفر)"
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="ظرفیت (نفر)"
                                 name="capacity"
-                                type="number"
+                                    type="number"
                                 value={formData.capacity}
                                 onChange={handleInputChange}
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
                         <Grid item xs={12}>
                             <TextField
@@ -794,7 +838,7 @@ const CafeSettings = () => {
                                 multiline
                                 rows={3}
                             />
-                        </Grid>
+                </Grid>
 
                         <Grid item xs={12} sm={6}>
                             <TextField
@@ -804,11 +848,11 @@ const CafeSettings = () => {
                                 type="password"
                                 value={formData.wifi_password}
                                 onChange={handleInputChange}
-                            />
-                        </Grid>
+                                />
+                            </Grid>
 
                         <Grid item xs={12} sm={6}>
-                            <FormControlLabel
+                                <FormControlLabel
                                 control={
                                     <Switch
                                         checked={formData.is_active}
@@ -817,8 +861,85 @@ const CafeSettings = () => {
                                     />
                                 }
                                 label="فعال"
+                                />
+                        </Grid>
+
+                        <Grid item xs={12} sx={{ mt: 2 }}>
+                            <Typography variant="h6" gutterBottom>
+                                ویژگی‌های اختیاری
+                            </Typography>
+                            <Divider sx={{ mb: 2 }} />
+                </Grid>
+
+                        {/* Cinema Feature */}
+                            <Grid item xs={12}>
+                                <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.has_cinema}
+                                        onChange={handleInputChange}
+                                        name="has_cinema"
+                                    />
+                                }
+                                label="سینما"
                             />
                         </Grid>
+                        {formData.has_cinema && (
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="ظرفیت صندلی‌های سینما *"
+                                    name="cinema_seating_capacity"
+                                    type="number"
+                                    value={formData.cinema_seating_capacity}
+                                    onChange={handleInputChange}
+                                    required
+                                    inputProps={{ min: 1 }}
+                                />
+                            </Grid>
+                        )}
+
+                        {/* Co-working Space Feature */}
+                            <Grid item xs={12}>
+                                <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.has_coworking}
+                                        onChange={handleInputChange}
+                                        name="has_coworking"
+                                    />
+                                }
+                                label="فضای همکاری (Co-working Space)"
+                            />
+                        </Grid>
+                        {formData.has_coworking && (
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="ظرفیت کل فضای همکاری *"
+                                    name="coworking_capacity"
+                                    type="number"
+                                    value={formData.coworking_capacity}
+                                    onChange={handleInputChange}
+                                    required
+                                    inputProps={{ min: 1 }}
+                                />
+                            </Grid>
+                        )}
+
+                        {/* Events Feature */}
+                            <Grid item xs={12}>
+                                <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.has_events}
+                                        onChange={handleInputChange}
+                                        name="has_events"
+                                    />
+                                }
+                                label="رویدادها (Events)"
+                                />
+                            </Grid>
 
                         {!editingCafe && (
                             <>
@@ -833,37 +954,37 @@ const CafeSettings = () => {
                                 </Grid>
 
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
+                                <TextField
+                                    fullWidth
                                         label="نام کاربری مدیر *"
                                         name="admin_username"
                                         value={formData.admin_username}
                                         onChange={handleInputChange}
                                         required
-                                    />
-                                </Grid>
+                                />
+                            </Grid>
 
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
+                                <TextField
+                                    fullWidth
                                         label="رمز عبور مدیر *"
                                         name="admin_password"
-                                        type="password"
+                                    type="password"
                                         value={formData.admin_password}
                                         onChange={handleInputChange}
                                         required
-                                    />
-                                </Grid>
+                                />
+                            </Grid>
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
+                                <TextField
+                                    fullWidth
                                         label="نام (کوچک) مدیر *"
                                         name="admin_first_name"
                                         value={formData.admin_first_name}
                                         onChange={handleInputChange}
                                         required
-                                    />
-                                </Grid>
+                                />
+                </Grid>
 
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -874,7 +995,7 @@ const CafeSettings = () => {
                                         onChange={handleInputChange}
                                         required
                                     />
-                                </Grid>
+                </Grid>
 
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -885,10 +1006,10 @@ const CafeSettings = () => {
                                         value={formData.admin_email}
                                         onChange={handleInputChange}
                                         required
-                                    />
-                                </Grid>
+                                />
+                            </Grid>
 
-                                <Grid item xs={12}>
+                            <Grid item xs={12}>
                                     <TextField
                                         fullWidth
                                         label="تلفن مدیر *"
@@ -896,8 +1017,8 @@ const CafeSettings = () => {
                                         value={formData.admin_phone}
                                         onChange={handleInputChange}
                                         required
-                                    />
-                                </Grid>
+                                />
+                            </Grid>
 
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -907,8 +1028,8 @@ const CafeSettings = () => {
                                         value={formData.admin_national_id}
                                         onChange={handleInputChange}
                                         required
-                                    />
-                                </Grid>
+                                />
+                            </Grid>
 
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -920,10 +1041,10 @@ const CafeSettings = () => {
                                         onChange={handleInputChange}
                                         required
                                         InputLabelProps={{ shrink: true }}
-                                    />
-                                </Grid>
+                                />
+                </Grid>
 
-                                <Grid item xs={12}>
+                            <Grid item xs={12}>
                                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                         تصویر تعهدنامه/قرارداد مدیر *
                                     </Typography>
@@ -939,15 +1060,15 @@ const CafeSettings = () => {
                                             hidden
                                             onChange={(e) => handleAdminDocUpload(e, 'commitment')}
                                         />
-                                    </Button>
+                                </Button>
                                     {formData.admin_commitment_image_url && (
                                         <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                                             فایل آپلود شده ثبت شد.
                                         </Typography>
                                     )}
-                                </Grid>
+                            </Grid>
 
-                                <Grid item xs={12}>
+                            <Grid item xs={12}>
                                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                         تصویر مجوز کسب‌وکار *
                                     </Typography>
@@ -963,15 +1084,15 @@ const CafeSettings = () => {
                                             hidden
                                             onChange={(e) => handleAdminDocUpload(e, 'business_license')}
                                         />
-                                    </Button>
+                                </Button>
                                     {formData.admin_business_license_image_url && (
                                         <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                                             فایل آپلود شده ثبت شد.
                                         </Typography>
                                     )}
-                                </Grid>
+                </Grid>
 
-                                <Grid item xs={12}>
+                <Grid item xs={12}>
                                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                         تصویر کارت ملی مدیر *
                                     </Typography>
@@ -987,16 +1108,16 @@ const CafeSettings = () => {
                                             hidden
                                             onChange={(e) => handleAdminDocUpload(e, 'national_id')}
                                         />
-                                    </Button>
+                        </Button>
                                     {formData.admin_national_id_image_url && (
                                         <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                                             فایل آپلود شده ثبت شد.
                                         </Typography>
                                     )}
-                                </Grid>
+                </Grid>
                             </>
                         )}
-                    </Grid>
+            </Grid>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog} disabled={saving}>

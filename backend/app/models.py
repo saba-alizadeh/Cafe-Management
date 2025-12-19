@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from pydantic_core import core_schema
-from typing import Optional, Annotated
+from typing import Optional, Annotated, List
 from datetime import datetime
 from bson import ObjectId
 
@@ -377,6 +377,12 @@ class CafeBase(BaseModel):
     capacity: Optional[int] = Field(default=None, ge=0, description="Maximum capacity")
     wifi_password: Optional[str] = Field(default=None, max_length=100, description="WiFi password")
     is_active: bool = Field(default=True, description="Whether the cafe is active")
+    # Optional features
+    has_cinema: bool = Field(default=False, description="Whether the cafe has cinema feature")
+    cinema_seating_capacity: Optional[int] = Field(default=None, ge=1, description="Cinema seating capacity (required if has_cinema is True)")
+    has_coworking: bool = Field(default=False, description="Whether the cafe has co-working space feature")
+    coworking_capacity: Optional[int] = Field(default=None, ge=1, description="Co-working space total capacity (required if has_coworking is True)")
+    has_events: bool = Field(default=False, description="Whether the cafe has events feature")
     
     @field_validator("phone", mode="before")
     @classmethod
@@ -455,6 +461,7 @@ class CafeCreate(CafeBase):
                 raise ValueError("Admin phone must contain 10-15 digits")
             return digits
         return v
+    
 
 
 class CafeUpdate(BaseModel):
@@ -467,6 +474,11 @@ class CafeUpdate(BaseModel):
     capacity: Optional[int] = Field(None, ge=0)
     wifi_password: Optional[str] = Field(None, max_length=100)
     is_active: Optional[bool] = None
+    has_cinema: Optional[bool] = None
+    cinema_seating_capacity: Optional[int] = Field(None, ge=1)
+    has_coworking: Optional[bool] = None
+    coworking_capacity: Optional[int] = Field(None, ge=1)
+    has_events: Optional[bool] = None
 
 
 class CafeResponse(CafeBase):
@@ -483,7 +495,6 @@ class TableBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Table name or number")
     capacity: int = Field(..., ge=1, le=50, description="Seating capacity")
     status: str = Field(default="available", pattern="^(available|reserved)$", description="Table status")
-    cafe_id: Optional[int] = Field(default=None, description="Cafe ID this table belongs to")
     is_active: bool = Field(default=True, description="Whether the table is active")
 
 
@@ -499,6 +510,153 @@ class TableUpdate(BaseModel):
 
 
 class TableResponse(TableBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Cinema Models
+class FilmBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200, description="Film title")
+    description: Optional[str] = Field(default=None, max_length=1000, description="Film description")
+    duration_minutes: int = Field(..., ge=1, le=300, description="Film duration in minutes")
+    genre: Optional[str] = Field(default=None, max_length=100, description="Film genre")
+    rating: Optional[str] = Field(default=None, max_length=10, description="Film rating (e.g., PG, PG-13, R)")
+
+
+class FilmCreate(FilmBase):
+    pass
+
+
+class FilmUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    duration_minutes: Optional[int] = Field(None, ge=1, le=300)
+    genre: Optional[str] = Field(None, max_length=100)
+    rating: Optional[str] = Field(None, max_length=10)
+
+
+class FilmResponse(FilmBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class MovieSessionBase(BaseModel):
+    film_id: str = Field(..., description="ID of the film")
+    session_date: str = Field(..., description="Session date (YYYY-MM-DD)")
+    start_time: str = Field(..., description="Session start time (HH:MM)")
+    end_time: Optional[str] = Field(default=None, description="Session end time (HH:MM)")
+    available_seats: int = Field(..., ge=0, description="Number of available seats")
+    price_per_seat: float = Field(..., ge=0, description="Price per seat")
+    image_url: str = Field(..., min_length=1, description="Image URL for the movie session (e.g., movie poster)")
+
+
+class MovieSessionCreate(MovieSessionBase):
+    pass
+
+
+class MovieSessionUpdate(BaseModel):
+    film_id: Optional[str] = None
+    session_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    available_seats: Optional[int] = Field(None, ge=0)
+    price_per_seat: Optional[float] = Field(None, ge=0)
+    image_url: Optional[str] = Field(None, min_length=1, description="Image URL for the movie session")
+
+
+class MovieSessionResponse(MovieSessionBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Co-working Space Models
+class CoworkingTableBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Table name or identifier")
+    capacity: int = Field(..., ge=1, le=20, description="Number of seats at this table")
+    is_available: bool = Field(default=True, description="Whether the table is currently available")
+    amenities: Optional[str] = Field(default=None, max_length=500, description="Table amenities (e.g., power outlet, monitor)")
+
+
+class CoworkingTableCreate(CoworkingTableBase):
+    pass
+
+
+class CoworkingTableUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    capacity: Optional[int] = Field(None, ge=1, le=20)
+    is_available: Optional[bool] = None
+    amenities: Optional[str] = Field(None, max_length=500)
+
+
+class CoworkingTableResponse(CoworkingTableBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Events Models
+class EventBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200, description="Event name")
+    description: Optional[str] = Field(default=None, max_length=2000, description="Event description")
+    duration_minutes: int = Field(..., ge=15, le=1440, description="Event duration in minutes")
+    price_per_person: float = Field(..., ge=0, description="Price per person")
+    image_urls: List[str] = Field(..., min_length=1, description="At least one image URL is required for the event")
+
+
+class EventCreate(EventBase):
+    pass
+
+
+class EventUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    duration_minutes: Optional[int] = Field(None, ge=15, le=1440)
+    price_per_person: Optional[float] = Field(None, ge=0)
+    image_urls: Optional[List[str]] = Field(None, min_length=1, description="At least one image URL is required if provided")
+
+
+class EventSessionBase(BaseModel):
+    event_id: str = Field(..., description="ID of the event")
+    session_date: str = Field(..., description="Session date (YYYY-MM-DD)")
+    start_time: str = Field(..., description="Session start time (HH:MM)")
+    end_time: Optional[str] = Field(default=None, description="Session end time (HH:MM)")
+    available_spots: int = Field(..., ge=0, description="Number of available spots")
+    price_per_person: Optional[float] = Field(default=None, ge=0, description="Price per person (overrides event default)")
+
+
+class EventSessionCreate(EventSessionBase):
+    pass
+
+
+class EventSessionUpdate(BaseModel):
+    event_id: Optional[str] = None
+    session_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    available_spots: Optional[int] = Field(None, ge=0)
+    price_per_person: Optional[float] = Field(None, ge=0)
+
+
+class EventResponse(EventBase):
+    id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class EventSessionResponse(EventSessionBase):
     id: str
     created_at: datetime
     updated_at: Optional[datetime] = None

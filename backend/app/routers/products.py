@@ -5,13 +5,16 @@ from app.database import get_database, connect_to_mongo
 from app.models import ProductCreate, ProductUpdate, ProductResponse
 from app.auth import get_current_user, TokenData
 from app.routers.auth import _get_request_user, _require_admin
+from app.db_helpers import (
+    get_cafe_products_collection, require_cafe_access
+)
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
 
 @router.get("", response_model=list[ProductResponse])
 async def list_products(current_user: TokenData = Depends(get_current_user)):
-    """Get all products"""
+    """Get all products for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -21,8 +24,11 @@ async def list_products(current_user: TokenData = Depends(get_current_user)):
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    products_collection = db["products"]
+    products_collection = get_cafe_products_collection(db, cafe_id)
     cursor = products_collection.find({}).sort("name", 1)
     products = []
     async for doc in cursor:
@@ -34,7 +40,7 @@ async def list_products(current_user: TokenData = Depends(get_current_user)):
 
 @router.post("", response_model=ProductResponse, status_code=201)
 async def create_product(product: ProductCreate, current_user: TokenData = Depends(get_current_user)):
-    """Create a new product"""
+    """Create a new product for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -44,15 +50,19 @@ async def create_product(product: ProductCreate, current_user: TokenData = Depen
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
-
-    products_collection = db["products"]
     
-    # Check if product with same name already exists
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
+
+    products_collection = get_cafe_products_collection(db, cafe_id)
+    
+    # Check if product with same name already exists in this café
     existing = await products_collection.find_one({"name": product.name})
     if existing:
         raise HTTPException(status_code=400, detail="Product with this name already exists")
 
     doc = product.model_dump()
+    doc["cafe_id"] = cafe_id  # Store café ID for reference
     doc["created_at"] = datetime.utcnow()
     doc["updated_at"] = datetime.utcnow()
     result = await products_collection.insert_one(doc)
@@ -68,7 +78,7 @@ async def update_product(
     product_update: ProductUpdate,
     current_user: TokenData = Depends(get_current_user)
 ):
-    """Update a product"""
+    """Update a product in the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -78,8 +88,11 @@ async def update_product(
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    products_collection = db["products"]
+    products_collection = get_cafe_products_collection(db, cafe_id)
     try:
         oid = ObjectId(product_id)
     except Exception:
@@ -107,7 +120,7 @@ async def update_product(
 
 @router.delete("/{product_id}", status_code=204)
 async def delete_product(product_id: str, current_user: TokenData = Depends(get_current_user)):
-    """Delete a product"""
+    """Delete a product from the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -117,8 +130,11 @@ async def delete_product(product_id: str, current_user: TokenData = Depends(get_
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    products_collection = db["products"]
+    products_collection = get_cafe_products_collection(db, cafe_id)
     try:
         oid = ObjectId(product_id)
     except Exception:
@@ -128,4 +144,3 @@ async def delete_product(product_id: str, current_user: TokenData = Depends(get_
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
     return None
-

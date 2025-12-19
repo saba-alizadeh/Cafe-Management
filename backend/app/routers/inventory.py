@@ -5,13 +5,16 @@ from app.database import get_database, connect_to_mongo
 from app.models import InventoryCreate, InventoryUpdate, InventoryResponse
 from app.auth import get_current_user, TokenData
 from app.routers.auth import _get_request_user, _require_admin
+from app.db_helpers import (
+    get_cafe_inventory_collection, require_cafe_access
+)
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
 
 @router.get("", response_model=list[InventoryResponse])
 async def list_inventory(current_user: TokenData = Depends(get_current_user)):
-    """Get all inventory items"""
+    """Get all inventory items for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -21,8 +24,11 @@ async def list_inventory(current_user: TokenData = Depends(get_current_user)):
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    inventory_collection = db["inventory"]
+    inventory_collection = get_cafe_inventory_collection(db, cafe_id)
     cursor = inventory_collection.find({}).sort("name", 1)
     items = []
     async for doc in cursor:
@@ -34,7 +40,7 @@ async def list_inventory(current_user: TokenData = Depends(get_current_user)):
 
 @router.post("", response_model=InventoryResponse, status_code=201)
 async def create_inventory_item(item: InventoryCreate, current_user: TokenData = Depends(get_current_user)):
-    """Create a new inventory item"""
+    """Create a new inventory item for the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -44,15 +50,19 @@ async def create_inventory_item(item: InventoryCreate, current_user: TokenData =
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
-
-    inventory_collection = db["inventory"]
     
-    # Check if item with same name already exists
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
+
+    inventory_collection = get_cafe_inventory_collection(db, cafe_id)
+    
+    # Check if item with same name already exists in this café
     existing = await inventory_collection.find_one({"name": item.name})
     if existing:
         raise HTTPException(status_code=400, detail="Item with this name already exists")
 
     doc = item.model_dump()
+    doc["cafe_id"] = cafe_id  # Store café ID for reference
     doc["created_at"] = datetime.utcnow()
     doc["updated_at"] = datetime.utcnow()
     result = await inventory_collection.insert_one(doc)
@@ -68,7 +78,7 @@ async def update_inventory_item(
     item_update: InventoryUpdate,
     current_user: TokenData = Depends(get_current_user)
 ):
-    """Update an inventory item"""
+    """Update an inventory item in the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -78,8 +88,11 @@ async def update_inventory_item(
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    inventory_collection = db["inventory"]
+    inventory_collection = get_cafe_inventory_collection(db, cafe_id)
     try:
         oid = ObjectId(item_id)
     except Exception:
@@ -107,7 +120,7 @@ async def update_inventory_item(
 
 @router.delete("/{item_id}", status_code=204)
 async def delete_inventory_item(item_id: str, current_user: TokenData = Depends(get_current_user)):
-    """Delete an inventory item"""
+    """Delete an inventory item from the current user's café"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -117,8 +130,11 @@ async def delete_inventory_item(item_id: str, current_user: TokenData = Depends(
 
     user = await _get_request_user(db, current_user)
     _require_admin(user)
+    
+    # Get café ID and enforce isolation
+    cafe_id = await require_cafe_access(db, current_user)
 
-    inventory_collection = db["inventory"]
+    inventory_collection = get_cafe_inventory_collection(db, cafe_id)
     try:
         oid = ObjectId(item_id)
     except Exception:
@@ -128,4 +144,3 @@ async def delete_inventory_item(item_id: str, current_user: TokenData = Depends(
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Item not found")
     return None
-

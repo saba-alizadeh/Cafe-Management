@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_to_mongo, close_mongo_connection
 from app.seed_defaults import ensure_default_users
-from app.routers import auth, shifts, inventory, discounts, products, users, rewards, rules, cafes, admins, tables
+from app.routers import auth, shifts, inventory, discounts, products, users, rewards, rules, cafes, admins, tables, cinema, coworking, events
 
 app = FastAPI(
     title="Cafe Management API",
@@ -32,6 +32,9 @@ app.include_router(rules.router)
 app.include_router(cafes.router)
 app.include_router(admins.router)
 app.include_router(tables.router)
+app.include_router(cinema.router)
+app.include_router(coworking.router)
+app.include_router(events.router)
 
 # Static files (for profile images and other assets)
 app.mount("/static", StaticFiles(directory="static"), name="static")
