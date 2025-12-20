@@ -13,7 +13,8 @@ from app.db_helpers import (
     get_cafe_information_collection, get_cafe_employees_collection,
     get_cafe_inventory_collection, get_cafe_offcodes_collection,
     get_cafe_products_collection, get_cafe_rewards_collection,
-    get_cafe_rules_collection, get_cafe_shift_schedules_collection
+    get_cafe_rules_collection, get_cafe_shift_schedules_collection,
+    get_cafe_images_collection
 )
 import os
 from uuid import uuid4
@@ -36,6 +37,75 @@ async def _ensure_manager_or_admin(db, current_user: TokenData):
             detail="Only managers and admins can access this resource"
         )
     return user
+
+
+@router.get("/public", response_model=List[CafeResponse])
+async def list_cafes_public():
+    """
+    Public endpoint to list all active cafes. No authentication required.
+    Used for the main entry page where users can select a cafe.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+    
+    cafes_master = db["cafes_master"]
+    cafes = []
+    
+    # Iterate through all cafes in master list
+    async for master_entry in cafes_master.find({}):
+        cafe_id = master_entry.get("cafe_id")
+        if cafe_id is None:
+            continue
+        
+        # Get café information from café-specific collection
+        cafe_info_collection = get_cafe_information_collection(db, str(cafe_id))
+        cafe_info = await cafe_info_collection.find_one({})
+        
+        if not cafe_info:
+            continue
+        
+        # Only include active cafes
+        if cafe_info.get("is_active") is False:
+            continue
+        
+        try:
+            cafe_response = CafeResponse(
+                id=str(cafe_id),
+                name=cafe_info.get("name", ""),
+                location=cafe_info.get("location"),
+                phone=cafe_info.get("phone"),
+                email=cafe_info.get("email"),
+                details=cafe_info.get("details"),
+                hours=cafe_info.get("hours"),
+                capacity=cafe_info.get("capacity"),
+                wifi_password=cafe_info.get("wifi_password"),
+                is_active=cafe_info.get("is_active", True),
+                has_cinema=cafe_info.get("has_cinema", False),
+                cinema_seating_capacity=cafe_info.get("cinema_seating_capacity"),
+                has_coworking=cafe_info.get("has_coworking", False),
+                coworking_capacity=cafe_info.get("coworking_capacity"),
+                has_events=cafe_info.get("has_events", False),
+                image_url=cafe_info.get("image_url"),
+                created_at=cafe_info.get("created_at", datetime.utcnow()),
+                updated_at=cafe_info.get("updated_at"),
+                admin_id=cafe_info.get("admin_id")
+            )
+            cafes.append(cafe_response)
+        except Exception as e:
+            print(f"Error creating cafe response: {e}, cafe data: {cafe_info}")
+            continue
+    
+    # Sort by created_at descending (newest first)
+    cafes.sort(key=lambda x: x.created_at if x.created_at else datetime.min, reverse=True)
+    
+    return cafes
 
 
 @router.get("", response_model=List[CafeResponse])
@@ -92,6 +162,7 @@ async def list_cafes(current_user: TokenData = Depends(get_current_user)):
                 has_coworking=cafe_info.get("has_coworking", False),
                 coworking_capacity=cafe_info.get("coworking_capacity"),
                 has_events=cafe_info.get("has_events", False),
+                image_url=cafe_info.get("image_url"),
                 created_at=cafe_info.get("created_at", datetime.utcnow()),
                 updated_at=cafe_info.get("updated_at"),
                 admin_id=cafe_info.get("admin_id")
@@ -105,6 +176,92 @@ async def list_cafes(current_user: TokenData = Depends(get_current_user)):
     cafes.sort(key=lambda x: x.created_at if x.created_at else datetime.min, reverse=True)
     
     return cafes
+
+
+@router.post("/upload-cafe-image")
+async def upload_cafe_image(
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Upload a cafe image. Returns a URL that can be stored in cafe records.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+
+    # Only managers or admins can upload cafe images
+    await _ensure_manager_or_admin(db, current_user)
+
+    # Read file contents
+    contents = await file.read()
+    
+    # Convert to base64
+    image_base64 = base64.b64encode(contents).decode('utf-8')
+    image_data_url = f"data:{file.content_type};base64,{image_base64}"
+    
+    # Store in images collection
+    images_collection = db["images"]
+    image_doc = {
+        "type": "cafe_image",
+        "data": image_data_url,
+        "content_type": file.content_type,
+        "created_at": datetime.utcnow()
+    }
+    result = await images_collection.insert_one(image_doc)
+    image_id = str(result.inserted_id)
+    
+    # Return URL pointing to image retrieval endpoint
+    return {"url": f"/api/cafes/image/{image_id}"}
+
+
+@router.get("/image/{image_id}")
+async def get_cafe_image(image_id: str):
+    """Retrieve a cafe image by ID"""
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+    
+    images_collection = db["images"]
+    try:
+        image_oid = ObjectId(image_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image ID"
+        )
+    
+    image_doc = await images_collection.find_one({"_id": image_oid, "type": "cafe_image"})
+    if not image_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+    
+    # Extract base64 data from data URL
+    data_url = image_doc.get("data", "")
+    if data_url.startswith("data:"):
+        base64_data = data_url.split(",")[1]
+        image_bytes = base64.b64decode(base64_data)
+        content_type = image_doc.get("content_type", "image/jpeg")
+        return Response(content=image_bytes, media_type=content_type)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Invalid image data format"
+        )
 
 
 @router.post("/upload-admin-document")
@@ -296,10 +453,20 @@ async def create_cafe(
         "has_coworking": cafe_data.has_coworking if hasattr(cafe_data, 'has_coworking') else False,
         "coworking_capacity": cafe_data.coworking_capacity if hasattr(cafe_data, 'coworking_capacity') and cafe_data.has_coworking else None,
         "has_events": cafe_data.has_events if hasattr(cafe_data, 'has_events') else False,
+        "image_url": clean_value(cafe_data.image_url) if hasattr(cafe_data, 'image_url') else None,
         "cafe_id": new_cafe_id,
         "created_at": datetime.utcnow(),
         "updated_at": None
     }
+    
+    # Store cafe image in cafe-img collection if provided
+    if cafe_data.image_url and hasattr(cafe_data, 'image_url') and cafe_data.image_url.strip():
+        cafe_images_collection = get_cafe_images_collection(db, str(new_cafe_id))
+        cafe_image_doc = {
+            "image_url": clean_value(cafe_data.image_url),
+            "created_at": datetime.utcnow()
+        }
+        await cafe_images_collection.insert_one(cafe_image_doc)
     
     # Store in café-specific information collection
     cafe_info_collection = get_cafe_information_collection(db, str(new_cafe_id))
@@ -365,6 +532,7 @@ async def create_cafe(
         has_coworking=created_cafe.get("has_coworking", False),
         coworking_capacity=created_cafe.get("coworking_capacity"),
         has_events=created_cafe.get("has_events", False),
+        image_url=created_cafe.get("image_url"),
         created_at=created_cafe.get("created_at", datetime.utcnow()),
         updated_at=created_cafe.get("updated_at"),
         admin_id=str(admin_id)
@@ -445,17 +613,11 @@ async def update_cafe(
     
     await _ensure_manager_or_admin(db, current_user)
     
-    cafes_collection = db["cafes"]
+    # Get cafe information from cafe-specific collection
+    cafe_info_collection = get_cafe_information_collection(db, cafe_id)
+    cafe_info = await cafe_info_collection.find_one({})
     
-    try:
-        cafe = await cafes_collection.find_one({"_id": ObjectId(cafe_id)})
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid cafe ID"
-        )
-    
-    if not cafe:
+    if not cafe_info:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cafe not found"
@@ -481,20 +643,43 @@ async def update_cafe(
         update_data["wifi_password"] = cafe_update.wifi_password
     if cafe_update.is_active is not None:
         update_data["is_active"] = cafe_update.is_active
+    if cafe_update.has_cinema is not None:
+        update_data["has_cinema"] = cafe_update.has_cinema
+    if cafe_update.cinema_seating_capacity is not None:
+        update_data["cinema_seating_capacity"] = cafe_update.cinema_seating_capacity
+    if cafe_update.has_coworking is not None:
+        update_data["has_coworking"] = cafe_update.has_coworking
+    if cafe_update.coworking_capacity is not None:
+        update_data["coworking_capacity"] = cafe_update.coworking_capacity
+    if cafe_update.has_events is not None:
+        update_data["has_events"] = cafe_update.has_events
+    if cafe_update.image_url is not None:
+        update_data["image_url"] = cafe_update.image_url
+        # Update cafe image in cafe-img collection
+        cafe_images_collection = get_cafe_images_collection(db, cafe_id)
+        # Remove old images
+        await cafe_images_collection.delete_many({})
+        # Add new image
+        if cafe_update.image_url.strip():
+            cafe_image_doc = {
+                "image_url": cafe_update.image_url,
+                "created_at": datetime.utcnow()
+            }
+            await cafe_images_collection.insert_one(cafe_image_doc)
     
     update_data["updated_at"] = datetime.utcnow()
     
-    await cafes_collection.update_one(
-        {"_id": ObjectId(cafe_id)},
+    await cafe_info_collection.update_one(
+        {},
         {"$set": update_data}
     )
     
     # Fetch updated cafe
-    updated_cafe = await cafes_collection.find_one({"_id": ObjectId(cafe_id)})
+    updated_cafe = await cafe_info_collection.find_one({})
     
     return CafeResponse(
-        id=str(updated_cafe["_id"]),
-        name=updated_cafe.get("name"),
+        id=cafe_id,
+        name=updated_cafe.get("name", ""),
         location=updated_cafe.get("location"),
         phone=updated_cafe.get("phone"),
         email=updated_cafe.get("email"),
@@ -503,9 +688,15 @@ async def update_cafe(
         capacity=updated_cafe.get("capacity"),
         wifi_password=updated_cafe.get("wifi_password"),
         is_active=updated_cafe.get("is_active", True),
+        has_cinema=updated_cafe.get("has_cinema", False),
+        cinema_seating_capacity=updated_cafe.get("cinema_seating_capacity"),
+        has_coworking=updated_cafe.get("has_coworking", False),
+        coworking_capacity=updated_cafe.get("coworking_capacity"),
+        has_events=updated_cafe.get("has_events", False),
+        image_url=updated_cafe.get("image_url"),
         created_at=updated_cafe.get("created_at", datetime.utcnow()),
         updated_at=updated_cafe.get("updated_at"),
-        admin_id=str(updated_cafe.get("admin_id")) if updated_cafe.get("admin_id") else None
+        admin_id=updated_cafe.get("admin_id")
     )
 
 

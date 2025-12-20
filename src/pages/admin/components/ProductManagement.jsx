@@ -23,9 +23,11 @@ import {
 	IconButton,
 	Alert,
 	CircularProgress,
-	Chip
+	Chip,
+	Autocomplete,
+	InputAdornment
 } from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete, CloudUpload, LocalOffer } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const ProductManagement = () => {
@@ -41,8 +43,21 @@ const ProductManagement = () => {
 		price: 0,
 		is_active: true,
 		description: '',
-		image_url: ''
+		image_url: '',
+		discount_percent: 0,
+		labels: []
 	});
+	const [uploadingImage, setUploadingImage] = useState(false);
+	const [availableLabels, setAvailableLabels] = useState([
+		'نوشیدنی گرم',
+		'نوشیدنی سرد',
+		'قهوه',
+		'چای',
+		'دسر',
+		'غذا',
+		'اسنک',
+		'صبحانه'
+	]);
 
 	useEffect(() => {
 		if (token) fetchProducts();
@@ -80,7 +95,9 @@ const ProductManagement = () => {
 				price: product.price,
 				is_active: product.is_active,
 				description: product.description || '',
-				image_url: product.image_url || ''
+				image_url: product.image_url || '',
+				discount_percent: product.discount_percent || 0,
+				labels: product.labels || []
 			});
 		} else {
 			setEditingProduct(null);
@@ -89,7 +106,9 @@ const ProductManagement = () => {
 				price: 0,
 				is_active: true,
 				description: '',
-				image_url: ''
+				image_url: '',
+				discount_percent: 0,
+				labels: []
 			});
 		}
 		setOpenDialog(true);
@@ -103,8 +122,52 @@ const ProductManagement = () => {
 			price: 0,
 			is_active: true,
 			description: '',
-			image_url: ''
+			image_url: '',
+			discount_percent: 0,
+			labels: []
 		});
+	};
+
+	const handleImageUpload = async (event) => {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		setUploadingImage(true);
+		setError('');
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const res = await fetch(`${apiBaseUrl}/products/upload-image`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${token}`
+				},
+				body: formData
+			});
+
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				setError(data.detail || data.message || 'خطا در آپلود تصویر');
+				setUploadingImage(false);
+				return;
+			}
+
+			const imageUrl = data.url;
+			if (!imageUrl) {
+				setError('آدرس فایل بازگشتی نامعتبر است');
+				setUploadingImage(false);
+				return;
+			}
+
+			setForm(prev => ({ ...prev, image_url: imageUrl }));
+		} catch (err) {
+			console.error('Image upload exception:', err);
+			setError('خطا در ارتباط با سرور هنگام آپلود تصویر: ' + err.message);
+		} finally {
+			setUploadingImage(false);
+		}
 	};
 
 	const handleSubmit = async (e) => {
@@ -235,8 +298,57 @@ const ProductManagement = () => {
 														{p.name.charAt(0)}
 													</Avatar>
 												</TableCell>
-												<TableCell>{p.name}</TableCell>
-												<TableCell>${p.price.toFixed(2)}</TableCell>
+												<TableCell>
+													<Box>
+														<Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+															{p.name}
+														</Typography>
+														{p.labels && p.labels.length > 0 && (
+															<Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+																{p.labels.map((label, idx) => (
+																	<Chip
+																		key={idx}
+																		label={label}
+																		size="small"
+																		variant="outlined"
+																		sx={{ fontSize: '0.7rem', height: 20 }}
+																	/>
+																))}
+															</Box>
+														)}
+													</Box>
+												</TableCell>
+												<TableCell>
+													<Box>
+														{p.discount_percent > 0 ? (
+															<>
+																<Typography
+																	variant="body2"
+																	sx={{
+																		textDecoration: 'line-through',
+																		color: 'text.secondary',
+																		fontSize: '0.85rem'
+																	}}
+																>
+																	{p.price.toLocaleString('fa-IR')} تومان
+																</Typography>
+																<Typography variant="body2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+																	{(p.price * (1 - p.discount_percent / 100)).toLocaleString('fa-IR')} تومان
+																</Typography>
+																<Chip
+																	label={`${p.discount_percent}% تخفیف`}
+																	size="small"
+																	color="error"
+																	sx={{ mt: 0.5, fontSize: '0.7rem' }}
+																/>
+															</>
+														) : (
+															<Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+																{p.price.toLocaleString('fa-IR')} تومان
+															</Typography>
+														)}
+													</Box>
+												</TableCell>
 												<TableCell>
 													<Chip
 														label={p.is_active ? 'فعال' : 'غیرفعال'}
@@ -299,6 +411,59 @@ const ProductManagement = () => {
 								required
 								disabled={saving}
 								inputProps={{ min: 0, step: 0.01 }}
+								InputProps={{
+									endAdornment: <InputAdornment position="end">تومان</InputAdornment>
+								}}
+							/>
+							<TextField
+								label="تخفیف (درصد)"
+								type="number"
+								fullWidth
+								value={form.discount_percent}
+								onChange={(e) =>
+									setForm((prev) => ({ 
+										...prev, 
+										discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0))
+									}))
+								}
+								disabled={saving}
+								inputProps={{ min: 0, max: 100, step: 1 }}
+								InputProps={{
+									startAdornment: (
+										<InputAdornment position="start">
+											<LocalOffer />
+										</InputAdornment>
+									),
+									endAdornment: <InputAdornment position="end">%</InputAdornment>
+								}}
+								helperText={form.discount_percent > 0 ? `قیمت با تخفیف: ${(form.price * (1 - form.discount_percent / 100)).toLocaleString('fa-IR')} تومان` : ''}
+							/>
+							<Autocomplete
+								multiple
+								options={availableLabels}
+								freeSolo
+								value={form.labels}
+								onChange={(event, newValue) => {
+									setForm(prev => ({ ...prev, labels: newValue }));
+								}}
+								renderTags={(value, getTagProps) =>
+									value.map((option, index) => (
+										<Chip
+											variant="outlined"
+											label={option}
+											{...getTagProps({ index })}
+											key={index}
+										/>
+									))
+								}
+								renderInput={(params) => (
+									<TextField
+										{...params}
+										label="برچسب‌ها (مثال: نوشیدنی گرم)"
+										placeholder="برچسب اضافه کنید"
+									/>
+								)}
+								disabled={saving}
 							/>
 							<TextField
 								label="توضیحات (اختیاری)"
@@ -309,14 +474,58 @@ const ProductManagement = () => {
 								onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
 								disabled={saving}
 							/>
-							<TextField
-								label="آدرس تصویر (اختیاری)"
-								fullWidth
-								value={form.image_url}
-								onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))}
-								disabled={saving}
-								placeholder="https://example.com/image.jpg"
-							/>
+							<Box>
+								<input
+									accept="image/*"
+									style={{ display: 'none' }}
+									id="product-image-upload"
+									type="file"
+									onChange={handleImageUpload}
+									disabled={saving || uploadingImage}
+								/>
+								<label htmlFor="product-image-upload">
+									<Button
+										variant="outlined"
+										component="span"
+										startIcon={<CloudUpload />}
+										disabled={saving || uploadingImage}
+										fullWidth
+										sx={{ mb: 2 }}
+									>
+										{uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر محصول'}
+									</Button>
+								</label>
+								{form.image_url && (
+									<Box sx={{ mt: 2, textAlign: 'center' }}>
+										<Avatar
+											variant="rounded"
+											src={form.image_url.startsWith('/') ? `${apiBaseUrl}${form.image_url}` : form.image_url}
+											alt="Product preview"
+											sx={{ width: 120, height: 120, mx: 'auto', mb: 1 }}
+											onError={(e) => {
+												e.target.style.display = 'none';
+											}}
+										/>
+										<Button
+											size="small"
+											color="error"
+											onClick={() => setForm(prev => ({ ...prev, image_url: '' }))}
+											disabled={saving}
+										>
+											حذف تصویر
+										</Button>
+									</Box>
+								)}
+								<TextField
+									label="یا آدرس تصویر را وارد کنید"
+									fullWidth
+									value={form.image_url}
+									onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))}
+									disabled={saving}
+									placeholder="https://example.com/image.jpg"
+									sx={{ mt: 2 }}
+								/>
+							</Box>
 							<FormControlLabel
 								control={
 									<Switch

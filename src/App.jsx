@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 // Pages
@@ -13,6 +13,7 @@ import CinemaBooking from "./pages/booking/CinemaBooking";
 import CafeBooking from "./pages/booking/CafeBooking";
 import SharedSpaceBooking from "./pages/booking/SharedSpaceBooking";
 import EventBooking from "./pages/booking/EventBooking";
+import CafeSelection from "./pages/CafeSelection";
 
 // Context
 import { AuthProvider } from "./context/AuthContext";
@@ -22,7 +23,7 @@ function App() {
         <AuthProvider>
             <Router>
                 <Routes>
-                    <Route path="/" element={<HomePage />} />
+                    <Route path="/select-cafe" element={<CafeSelection />} />
                     <Route path="/booking/cinema" element={<CinemaBooking />} />
                     <Route path="/booking/cafe" element={<CafeBooking />} />
                     <Route path="/booking/shared" element={<SharedSpaceBooking />} />
@@ -32,6 +33,8 @@ function App() {
                     <Route path="/manager/*" element={<ManagerDashboard />} />
                     <Route path="/barista/*" element={<BaristaDashboard />} />
                     <Route path="/customer/*" element={<CustomerDashboard />} />
+                    <Route path="/:cafeSlug" element={<HomePage />} />
+                    <Route path="/" element={<Navigate to="/select-cafe" replace />} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>
             </Router>

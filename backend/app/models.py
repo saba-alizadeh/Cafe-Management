@@ -300,6 +300,8 @@ class ProductBase(BaseModel):
     is_active: bool = Field(default=True, description="Whether the product is active")
     description: Optional[str] = Field(None, max_length=1000)
     image_url: Optional[str] = None
+    discount_percent: Optional[float] = Field(None, ge=0, le=100, description="Discount percentage (0-100)")
+    labels: Optional[List[str]] = Field(None, description="Product labels/categories (e.g., 'warm drinks', 'cold drinks')")
 
 
 class ProductCreate(ProductBase):
@@ -312,6 +314,8 @@ class ProductUpdate(BaseModel):
     is_active: Optional[bool] = None
     description: Optional[str] = Field(None, max_length=1000)
     image_url: Optional[str] = None
+    discount_percent: Optional[float] = Field(None, ge=0, le=100)
+    labels: Optional[List[str]] = None
 
 
 class ProductResponse(ProductBase):
@@ -383,6 +387,7 @@ class CafeBase(BaseModel):
     has_coworking: bool = Field(default=False, description="Whether the cafe has co-working space feature")
     coworking_capacity: Optional[int] = Field(default=None, ge=1, description="Co-working space total capacity (required if has_coworking is True)")
     has_events: bool = Field(default=False, description="Whether the cafe has events feature")
+    image_url: Optional[str] = Field(default=None, max_length=500, description="URL of the cafe image")
     
     @field_validator("phone", mode="before")
     @classmethod
@@ -479,6 +484,7 @@ class CafeUpdate(BaseModel):
     has_coworking: Optional[bool] = None
     coworking_capacity: Optional[int] = Field(None, ge=1)
     has_events: Optional[bool] = None
+    image_url: Optional[str] = Field(None, max_length=500)
 
 
 class CafeResponse(CafeBase):

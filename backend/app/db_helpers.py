@@ -130,6 +130,11 @@ def get_cafe_cinema_images_collection(db, cafe_id: str):
     return db[f"cafes_{cafe_id}_cinema_images"]
 
 
+def get_cafe_images_collection(db, cafe_id: str):
+    """Get the cafe-img collection for a specific café"""
+    return db[f"cafes_{cafe_id}_cafe-img"]
+
+
 def get_user_collection_by_role(db, role: str):
     """
     Get the appropriate persons collection based on user role.

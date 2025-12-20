@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
-const HeaderBar = () => {
+const HeaderBar = ({ selectedCafe }) => {
     const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -33,28 +33,26 @@ const HeaderBar = () => {
                 <Toolbar>
                     <Box sx={{ display: 'flex', alignItems: 'right', flexGrow: 1 }}>
                         <Typography variant="h6" sx={{ fontWeight: 'bold', mr: 1 }}>
-                            کافه
+                            {selectedCafe?.name || 'کافه'}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 3, mr: 'auto', direction: 'rtl', marginRight: '30px', '& .MuiButton-startIcon': { marginLeft: '5px', marginRight: 0, } }}>
                             <Button startIcon={<Home />} sx={{ color: 'var(--color-primary)' }} onClick={() => navigate('/')}>خانه</Button>
                             <Button startIcon={<Favorite />} sx={{ color: 'var(--color-primary)' }} onClick={handleFavoritesClick}>مورد علاقه ها</Button>
+                            <Button 
+                                sx={{ color: 'var(--color-primary)' }} 
+                                onClick={() => {
+                                    localStorage.removeItem('selectedCafe');
+                                    navigate('/select-cafe', { replace: true });
+                                }}
+                            >
+                                تغییر کافه
+                            </Button>
                         </Box>
                     </Box>
                     <IconButton sx={{ bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }}>
                         <Search />
                     </IconButton>
                     <Box sx={{ display: 'flex', gap: 1, marginRight: '7px' }}>
-                        <Button
-                            variant="outlined"
-                            sx={{
-                                color: 'var(--color-primary)',
-                                borderColor: 'var(--color-primary)',
-                                '&:hover': { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }
-                            }}
-                            onClick={() => navigate('/admin-login')}
-                        >
-                            ورود مدیر / ادمین
-                        </Button>
                         <Button
                             variant="contained"
                             sx={{ bgcolor: 'var(--color-primary)' }}

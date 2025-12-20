@@ -83,12 +83,14 @@ const CafeSettings = () => {
         admin_registration_date: '',
         admin_commitment_image_url: '',
         admin_business_license_image_url: '',
-        admin_national_id_image_url: ''
+        admin_national_id_image_url: '',
+        image_url: ''
     });
     const [uploadingDocs, setUploadingDocs] = useState({
         commitment: false,
         business_license: false,
-        national_id: false
+        national_id: false,
+        cafe_image: false
     });
 
     useEffect(() => {
@@ -152,6 +154,7 @@ const CafeSettings = () => {
                 has_coworking: cafe.has_coworking || false,
                 coworking_capacity: cafe.coworking_capacity || '',
                 has_events: cafe.has_events || false,
+                image_url: cafe.image_url || '',
                 admin_username: '',
                 admin_password: '',
                 admin_email: '',
@@ -232,7 +235,11 @@ const CafeSettings = () => {
             const formDataUpload = new FormData();
             formDataUpload.append('file', file);
 
-            const res = await fetch(`${apiBaseUrl}/cafes/upload-admin-document?doc_type=${docType}`, {
+            const endpoint = docType === 'cafe_image' 
+                ? `${apiBaseUrl}/cafes/upload-cafe-image`
+                : `${apiBaseUrl}/cafes/upload-admin-document?doc_type=${docType}`;
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${authToken}`
@@ -243,7 +250,7 @@ const CafeSettings = () => {
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
                 const msg = data.detail || data.message || 'خطا در آپلود تصویر';
-                console.error('Admin doc upload error:', msg, data);
+                console.error('Upload error:', msg, data);
                 setError(msg);
                 return;
             }
@@ -258,10 +265,11 @@ const CafeSettings = () => {
                 ...prev,
                 admin_commitment_image_url: docType === 'commitment' ? url : prev.admin_commitment_image_url,
                 admin_business_license_image_url: docType === 'business_license' ? url : prev.admin_business_license_image_url,
-                admin_national_id_image_url: docType === 'national_id' ? url : prev.admin_national_id_image_url
+                admin_national_id_image_url: docType === 'national_id' ? url : prev.admin_national_id_image_url,
+                image_url: docType === 'cafe_image' ? url : prev.image_url
             }));
         } catch (err) {
-            console.error('Admin doc upload exception:', err);
+            console.error('Upload exception:', err);
             setError('خطا در ارتباط با سرور هنگام آپلود تصویر: ' + err.message);
         } finally {
             setUploadingDocs(prev => ({ ...prev, [docType]: false }));
@@ -310,7 +318,8 @@ const CafeSettings = () => {
                     coworking_capacity: formData.has_coworking && formData.coworking_capacity && formData.coworking_capacity.toString().trim() !== '' 
                         ? parseInt(formData.coworking_capacity.toString().trim()) 
                         : null,
-                    has_events: formData.has_events || false
+                    has_events: formData.has_events || false,
+                    image_url: cleanValue(formData.image_url)
                 };
 
                 const authToken = getToken();
@@ -462,7 +471,8 @@ const CafeSettings = () => {
                     admin_registration_date: formData.admin_registration_date.trim(),
                     admin_commitment_image_url: cleanValue(formData.admin_commitment_image_url),
                     admin_business_license_image_url: cleanValue(formData.admin_business_license_image_url),
-                    admin_national_id_image_url: cleanValue(formData.admin_national_id_image_url)
+                    admin_national_id_image_url: cleanValue(formData.admin_national_id_image_url),
+                    image_url: cleanValue(formData.image_url)
                 };
                 
                 // Remove null/undefined values for cleaner request (optional)
@@ -837,8 +847,8 @@ const CafeSettings = () => {
                                 onChange={handleInputChange}
                                 multiline
                                 rows={3}
-                            />
-                </Grid>
+                                />
+                            </Grid>
 
                         <Grid item xs={12} sm={6}>
                             <TextField
@@ -849,7 +859,7 @@ const CafeSettings = () => {
                                 value={formData.wifi_password}
                                 onChange={handleInputChange}
                                 />
-                            </Grid>
+                        </Grid>
 
                         <Grid item xs={12} sm={6}>
                                 <FormControlLabel
@@ -862,6 +872,59 @@ const CafeSettings = () => {
                                 }
                                 label="فعال"
                                 />
+                </Grid>
+
+                        {/* Cafe Image Upload */}
+                        <Grid item xs={12} sx={{ mt: 2 }}>
+                            <Typography variant="h6" gutterBottom>
+                                تصویر کافه
+                            </Typography>
+                            <Divider sx={{ mb: 2 }} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <Box sx={{ mb: 2 }}>
+                                <input
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    id="cafe-image-upload"
+                                    type="file"
+                                    onChange={(e) => handleAdminDocUpload(e, 'cafe_image')}
+                                />
+                                <label htmlFor="cafe-image-upload">
+                                    <Button
+                                        variant="outlined"
+                                        component="span"
+                                        disabled={uploadingDocs.cafe_image}
+                                        startIcon={uploadingDocs.cafe_image ? <CircularProgress size={16} /> : <Add />}
+                                        sx={{ mb: 2 }}
+                                    >
+                                        {uploadingDocs.cafe_image ? 'در حال آپلود...' : 'آپلود تصویر کافه'}
+                                    </Button>
+                                </label>
+                                {formData.image_url && (
+                                    <Box sx={{ mt: 2 }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                            تصویر آپلود شده:
+                                        </Typography>
+                                        <Box
+                                            component="img"
+                                            src={formData.image_url.startsWith('/') ? `${apiBaseUrl}${formData.image_url}` : formData.image_url}
+                                            alt="Cafe"
+                                            sx={{
+                                                maxWidth: '300px',
+                                                maxHeight: '200px',
+                                                objectFit: 'cover',
+                                                borderRadius: 1,
+                                                border: '1px solid',
+                                                borderColor: 'divider'
+                                            }}
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                            }}
+                                        />
+                                    </Box>
+                                )}
+                        </Box>
                         </Grid>
 
                         <Grid item xs={12} sx={{ mt: 2 }}>
