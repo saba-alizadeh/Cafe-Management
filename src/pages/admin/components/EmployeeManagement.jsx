@@ -22,9 +22,11 @@ import {
 	Dialog,
 	DialogTitle,
 	DialogContent,
-	DialogActions
+	DialogActions,
+	Paper,
+	Divider
 } from '@mui/material';
-import { Delete, Edit } from '@mui/icons-material';
+import { Delete, Edit, People, Add } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const roles = [
@@ -280,16 +282,26 @@ const EmployeeManagement = () => {
 	};
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>مدیریت کارکنان</Typography>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<People sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>مدیریت کارکنان</Typography>
+			</Stack>
 
-			{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 
 			<Grid container spacing={3}>
 				<Grid item xs={12}>
-					<Card>
-						<CardContent>
-							<Typography variant="h6" gutterBottom>افزودن کارمند جدید</Typography>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
+								<Add color="primary" />
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>افزودن کارمند جدید</Typography>
+							</Stack>
 							<Box component="form" onSubmit={handleAdd}>
 								<Grid container spacing={2}>
 									<Grid item xs={12} md={6}>
@@ -395,7 +407,17 @@ const EmployeeManagement = () => {
 										<Button
 											type="submit"
 											variant="contained"
-											sx={{ borderRadius: 999, px: 4, backgroundColor: 'var(--color-accent)' }}
+											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Add />}
+											sx={{
+												borderRadius: 2,
+												py: 1.5,
+												px: 3,
+												backgroundColor: 'var(--color-accent)',
+												'&:hover': {
+													backgroundColor: 'var(--color-accent)',
+													opacity: 0.9
+												}
+											}}
 											disabled={saving || !form.nationalId || !form.phone || !form.firstName || !form.lastName}
 										>
 											افزودن
@@ -408,38 +430,57 @@ const EmployeeManagement = () => {
 				</Grid>
 
 				<Grid item xs={12}>
-					<Card>
-						<CardContent>
-							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-								<Typography variant="h6">لیست کارکنان</Typography>
-								{loading && <CircularProgress size={22} />}
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+								<Stack direction="row" alignItems="center" spacing={1}>
+									<People color="primary" />
+									<Typography variant="h6" sx={{ fontWeight: 'bold' }}>لیست کارکنان</Typography>
+									<Chip label={employees.length} color="primary" size="small" />
+								</Stack>
+								{loading && <CircularProgress size={24} />}
 							</Stack>
 							{loading ? (
-								<Box display="flex" justifyContent="center" p={3}>
+								<Box display="flex" justifyContent="center" p={4}>
 									<CircularProgress />
 								</Box>
 							) : employees.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
 									کارمندی ثبت نشده است.
 								</Typography>
+								</Paper>
 							) : (
-								<Table size="small">
+								<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+									<Table>
 									<TableHead>
-										<TableRow>
-											<TableCell>کد ملی</TableCell>
-											<TableCell>نام و نام خانوادگی</TableCell>
-											<TableCell>شماره تماس</TableCell>
-											<TableCell>نقش</TableCell>
-											<TableCell>پاداش / جریمه</TableCell>
-											<TableCell>وضعیت</TableCell>
-											<TableCell align="right">عملیات</TableCell>
+											<TableRow sx={{ bgcolor: 'grey.100' }}>
+												<TableCell sx={{ fontWeight: 'bold' }}>کد ملی</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>نام و نام خانوادگی</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>شماره تماس</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>نقش</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>پاداش / جریمه</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>وضعیت</TableCell>
+												<TableCell align="right" sx={{ fontWeight: 'bold' }}>عملیات</TableCell>
 										</TableRow>
 									</TableHead>
 									<TableBody>
 										{employees.map((e) => (
-											<TableRow key={e.id}>
+												<TableRow key={e.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
 												<TableCell>{e.nationalId}</TableCell>
-												<TableCell>{`${e.firstName} ${e.lastName}`}</TableCell>
+													<TableCell>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{`${e.firstName} ${e.lastName}`}
+														</Typography>
+													</TableCell>
 												<TableCell>{e.phone}</TableCell>
 											<TableCell>
 												<Chip size="small" label={roles.find((r) => r.value === e.role)?.label || e.role} />
@@ -467,19 +508,38 @@ const EmployeeManagement = () => {
 													</Stack>
 												</TableCell>
 												<TableCell align="right">
-													<Stack direction="row" spacing={1} justifyContent="flex-end">
-														<IconButton color="primary" onClick={() => handleEditClick(e)}>
-															<Edit />
-														</IconButton>
-													<IconButton color="error" onClick={() => handleDelete(e.id)}>
-														<Delete />
-													</IconButton>
-													</Stack>
+														<Stack direction="row" spacing={1} justifyContent="flex-end">
+															<IconButton
+																color="primary"
+																onClick={() => handleEditClick(e)}
+																sx={{
+																	bgcolor: 'white',
+																	border: '1px solid',
+																	borderColor: 'primary.main',
+																	'&:hover': { bgcolor: 'primary.light', color: 'white' }
+																}}
+															>
+																<Edit fontSize="small" />
+															</IconButton>
+															<IconButton
+																color="error"
+																onClick={() => handleDelete(e.id)}
+																sx={{
+																	bgcolor: 'white',
+																	border: '1px solid',
+																	borderColor: 'error.main',
+																	'&:hover': { bgcolor: 'error.light', color: 'white' }
+																}}
+															>
+																<Delete fontSize="small" />
+															</IconButton>
+														</Stack>
 												</TableCell>
 											</TableRow>
 										))}
 									</TableBody>
 								</Table>
+								</Paper>
 							)}
 						</CardContent>
 					</Card>
@@ -487,8 +547,16 @@ const EmployeeManagement = () => {
 			</Grid>
 
 			{/* Edit Dialog */}
-			<Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="md" fullWidth>
-				<DialogTitle>ویرایش اطلاعات کارمند</DialogTitle>
+			<Dialog
+				open={editDialogOpen}
+				onClose={handleEditClose}
+				maxWidth="md"
+				fullWidth
+				PaperProps={{
+					sx: { borderRadius: 3 }
+				}}
+			>
+				<DialogTitle sx={{ fontWeight: 'bold' }}>ویرایش اطلاعات کارمند</DialogTitle>
 				<DialogContent>
 					{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 					<Grid container spacing={2} sx={{ mt: 1 }}>
@@ -592,8 +660,8 @@ const EmployeeManagement = () => {
 						</Grid>
 					</Grid>
 				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleEditClose} disabled={saving}>
+				<DialogActions sx={{ p: 2.5 }}>
+					<Button onClick={handleEditClose} disabled={saving} sx={{ borderRadius: 2 }}>
 						انصراف
 					</Button>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -602,7 +670,15 @@ const EmployeeManagement = () => {
 							onClick={handleEditSave}
 							variant="contained"
 							disabled={saving || !editForm.nationalId || !editForm.phone || !editForm.firstName || !editForm.lastName}
-							sx={{ backgroundColor: 'var(--color-accent)' }}
+							sx={{
+								borderRadius: 2,
+								px: 3,
+								backgroundColor: 'var(--color-accent)',
+								'&:hover': {
+									backgroundColor: 'var(--color-accent)',
+									opacity: 0.9
+								}
+							}}
 						>
 							ذخیره
 						</Button>

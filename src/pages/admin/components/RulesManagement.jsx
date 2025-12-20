@@ -15,9 +15,12 @@ import {
 	Alert,
 	CircularProgress,
 	Switch,
-	FormControlLabel
+	FormControlLabel,
+	Chip,
+	Paper,
+	Divider
 } from '@mui/material';
-import { Delete, Edit, Check, Close } from '@mui/icons-material';
+import { Delete, Edit, Check, Close, Rule, Add, Save } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const RulesManagement = () => {
@@ -148,29 +151,57 @@ const RulesManagement = () => {
 	};
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>مدیریت قوانین</Typography>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<Rule sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>مدیریت قوانین</Typography>
+			</Stack>
 
-			{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 
 			<Grid container spacing={3}>
-				<Grid item xs={12} md={6}>
-					<Card>
-						<CardContent>
-							<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+				<Grid item xs={12} md={5}>
+					<Card elevation={3} sx={{ borderRadius: 3, height: 'fit-content' }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
+								<Add color="primary" />
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>افزودن قانون جدید</Typography>
+							</Stack>
+							<Stack spacing={2}>
 								<TextField
 									fullWidth
-									label="قانون جدید"
-									placeholder="متن قانون را وارد کنید"
+									label="متن قانون"
+									placeholder="متن قانون را وارد کنید..."
 									value={newRule}
 									onChange={(e) => setNewRule(e.target.value)}
 									disabled={saving}
+									multiline
+									rows={4}
+									variant="outlined"
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: 2
+										}
+									}}
 								/>
 								<Button
 									variant="contained"
 									onClick={handleAdd}
 									disabled={saving || !newRule.trim()}
-									sx={{ backgroundColor: 'var(--color-accent)' }}
+									startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Add />}
+									sx={{
+										borderRadius: 2,
+										py: 1.5,
+										backgroundColor: 'var(--color-accent)',
+										'&:hover': {
+											backgroundColor: 'var(--color-accent)',
+											opacity: 0.9
+										}
+									}}
 								>
 									افزودن قانون
 								</Button>
@@ -178,74 +209,137 @@ const RulesManagement = () => {
 						</CardContent>
 					</Card>
 				</Grid>
-				<Grid item xs={12} md={6}>
-					<Card>
-						<CardContent>
-							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-								<Typography variant="h6">فهرست قوانین</Typography>
-								{loading && <CircularProgress size={22} />}
+				<Grid item xs={12} md={7}>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+								<Stack direction="row" alignItems="center" spacing={1}>
+									<Rule color="primary" />
+									<Typography variant="h6" sx={{ fontWeight: 'bold' }}>فهرست قوانین</Typography>
+									<Chip label={rules.length} color="primary" size="small" />
+								</Stack>
+								{loading && <CircularProgress size={24} />}
 							</Stack>
+							<Divider sx={{ mb: 2 }} />
 							{loading ? (
-								<Box display="flex" justifyContent="center" p={3}>
+								<Box display="flex" justifyContent="center" p={4}>
 									<CircularProgress />
 								</Box>
 							) : rules.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">قانونی ثبت نشده است.</Typography>
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
+										قانونی ثبت نشده است.
+									</Typography>
+								</Paper>
 							) : (
-								<List>
-									{rules.map((r) => (
-										<ListItem
-											key={r.id}
-											divider
-											secondaryAction={
-												editingId === r.id ? (
-													<Stack direction="row" spacing={1}>
-														<IconButton edge="end" color="success" onClick={() => handleUpdate(r.id)} disabled={saving}>
-															<Check />
-														</IconButton>
-														<IconButton edge="end" onClick={cancelEdit} disabled={saving}>
-															<Close />
-														</IconButton>
+								<List sx={{ p: 0 }}>
+									{rules.map((r, index) => (
+										<Box key={r.id}>
+											<Paper
+												elevation={0}
+												sx={{
+													p: 2,
+													mb: 2,
+													bgcolor: editingId === r.id ? 'action.hover' : 'background.paper',
+													borderRadius: 2,
+													border: '1px solid',
+													borderColor: 'divider',
+													transition: 'all 0.2s'
+												}}
+											>
+												{editingId === r.id ? (
+													<Stack spacing={2}>
+														<TextField
+															fullWidth
+															value={editingText}
+															onChange={(e) => setEditingText(e.target.value)}
+															disabled={saving}
+															multiline
+															rows={3}
+															variant="outlined"
+															sx={{
+																'& .MuiOutlinedInput-root': {
+																	borderRadius: 2
+																}
+															}}
+														/>
+														<Stack direction="row" justifyContent="space-between" alignItems="center">
+															<FormControlLabel
+																control={
+																	<Switch
+																		checked={editingActive}
+																		onChange={(e) => setEditingActive(e.target.checked)}
+																		disabled={saving}
+																		color="success"
+																	/>
+																}
+																label={
+																	<Chip
+																		label={editingActive ? 'فعال' : 'غیرفعال'}
+																		color={editingActive ? 'success' : 'default'}
+																		size="small"
+																	/>
+																}
+															/>
+															<Stack direction="row" spacing={1}>
+																<IconButton
+																	color="success"
+																	onClick={() => handleUpdate(r.id)}
+																	disabled={saving}
+																	sx={{ bgcolor: 'success.light', '&:hover': { bgcolor: 'success.main' } }}
+																>
+																	<Save />
+																</IconButton>
+																<IconButton
+																	onClick={cancelEdit}
+																	disabled={saving}
+																	sx={{ bgcolor: 'grey.200', '&:hover': { bgcolor: 'grey.300' } }}
+																>
+																	<Close />
+																</IconButton>
+															</Stack>
+														</Stack>
 													</Stack>
 												) : (
-													<Stack direction="row" spacing={1}>
-														<IconButton edge="end" onClick={() => startEdit(r)}>
-															<Edit />
-														</IconButton>
-														<IconButton edge="end" color="error" onClick={() => handleDelete(r.id)}>
-															<Delete />
-														</IconButton>
-													</Stack>
-												)
-											}
-										>
-											{editingId === r.id ? (
-												<Stack spacing={1} sx={{ width: '100%' }}>
-													<TextField
-														fullWidth
-														value={editingText}
-														onChange={(e) => setEditingText(e.target.value)}
-														disabled={saving}
-													/>
-													<FormControlLabel
-														control={
-															<Switch
-																checked={editingActive}
-																onChange={(e) => setEditingActive(e.target.checked)}
-																disabled={saving}
-																color="success"
+													<Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+														<Box sx={{ flex: 1 }}>
+															<Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
+																{r.text}
+															</Typography>
+															<Chip
+																label={r.is_active ? 'فعال' : 'غیرفعال'}
+																color={r.is_active ? 'success' : 'default'}
+																size="small"
 															/>
-														}
-														label="فعال"
-													/>
-												</Stack>
-											) : (
-												<ListItemText
-													primary={r.text}
-													secondary={r.is_active ? 'فعال' : 'غیرفعال'}
-												/>
-											)}
-										</ListItem>
+														</Box>
+														<Stack direction="row" spacing={1}>
+															<IconButton
+																onClick={() => startEdit(r)}
+																sx={{ bgcolor: 'primary.light', '&:hover': { bgcolor: 'primary.main' } }}
+															>
+																<Edit fontSize="small" />
+															</IconButton>
+															<IconButton
+																color="error"
+																onClick={() => handleDelete(r.id)}
+																sx={{ bgcolor: 'error.light', '&:hover': { bgcolor: 'error.main' } }}
+															>
+																<Delete fontSize="small" />
+															</IconButton>
+														</Stack>
+													</Stack>
+												)}
+											</Paper>
+											{index < rules.length - 1 && <Divider sx={{ my: 1 }} />}
+										</Box>
 									))}
 								</List>
 							)}

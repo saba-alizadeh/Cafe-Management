@@ -1,5 +1,5 @@
-import { Box, Typography, Card, CardContent, Grid, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Paper, Chip } from '@mui/material';
-import { TableRestaurant, Person, People } from '@mui/icons-material';
+import { Box, Typography, Card, CardContent, Grid, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Paper, Chip, Stack, Divider, CircularProgress } from '@mui/material';
+import { TableRestaurant, Person, People, BookOnline } from '@mui/icons-material';
 
 const Reservations = () => {
 	// Mock data - in real app, this would come from API
@@ -70,79 +70,110 @@ const Reservations = () => {
 	};
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>رزروها</Typography>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<BookOnline sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>رزروها</Typography>
+			</Stack>
 			<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
 				مشاهده و مدیریت رزروهای میزها
 			</Typography>
-			<TableContainer component={Paper}>
-				<Table>
-					<TableHead>
-						<TableRow>
-							<TableCell>جزئیات میز</TableCell>
-							<TableCell>تعداد نفرات</TableCell>
-							<TableCell>نام کاربری مشتری</TableCell>
-							<TableCell>نام مشتری</TableCell>
-							<TableCell>تاریخ و زمان</TableCell>
-							<TableCell>وضعیت</TableCell>
-						</TableRow>
-					</TableHead>
-					<TableBody>
-						{reservations.map((reservation) => (
-							<TableRow key={reservation.id} hover>
-								<TableCell>
-									<Box display="flex" alignItems="center" gap={1}>
-										<TableRestaurant color="primary" />
-										<Box>
-											<Typography variant="body2" fontWeight="bold">
-												{reservation.table.name}
-											</Typography>
-											<Typography variant="caption" color="text.secondary">
-												ظرفیت: {reservation.table.capacity} نفر • {reservation.table.location}
-											</Typography>
-										</Box>
-									</Box>
-								</TableCell>
-								<TableCell>
-									<Box display="flex" alignItems="center" gap={1}>
-										<People color="action" />
-										<Typography variant="body2">{reservation.people} نفر</Typography>
-									</Box>
-								</TableCell>
-								<TableCell>
-									<Typography variant="body2" fontWeight="medium">
-										{reservation.customer.username}
-									</Typography>
-								</TableCell>
-								<TableCell>
-									<Box display="flex" alignItems="center" gap={1}>
-										<Person color="action" />
-										<Box>
-											<Typography variant="body2">{reservation.customer.name}</Typography>
-											<Typography variant="caption" color="text.secondary">
-												{reservation.customer.phone}
-											</Typography>
-										</Box>
-									</Box>
-								</TableCell>
-								<TableCell>
-									<Typography variant="body2">{reservation.date}</Typography>
-									<Typography variant="caption" color="text.secondary">
-										{reservation.time}
-									</Typography>
-								</TableCell>
-								<TableCell>
-									<Chip
-										label={getStatusLabel(reservation.status)}
-										color={getStatusColor(reservation.status)}
-										size="small"
-									/>
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-			</TableContainer>
+			<Card elevation={3} sx={{ borderRadius: 3 }}>
+				<CardContent sx={{ p: 3 }}>
+					<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+						<Stack direction="row" alignItems="center" spacing={1}>
+							<BookOnline color="primary" />
+							<Typography variant="h6" sx={{ fontWeight: 'bold' }}>لیست رزروها</Typography>
+							<Chip label={reservations.length} color="primary" size="small" />
+						</Stack>
+					</Stack>
+					<Divider sx={{ mb: 2 }} />
+					{reservations.length === 0 ? (
+						<Paper
+							elevation={0}
+							sx={{
+								p: 4,
+								textAlign: 'center',
+								bgcolor: 'grey.50',
+								borderRadius: 2
+							}}
+						>
+							<Typography variant="body1" color="text.secondary">
+								رزروی ثبت نشده است.
+							</Typography>
+						</Paper>
+					) : (
+						<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+							<Table>
+								<TableHead>
+									<TableRow sx={{ bgcolor: 'grey.100' }}>
+										<TableCell sx={{ fontWeight: 'bold' }}>جزئیات میز</TableCell>
+										<TableCell sx={{ fontWeight: 'bold' }}>تعداد نفرات</TableCell>
+										<TableCell sx={{ fontWeight: 'bold' }}>نام کاربری مشتری</TableCell>
+										<TableCell sx={{ fontWeight: 'bold' }}>نام مشتری</TableCell>
+										<TableCell sx={{ fontWeight: 'bold' }}>تاریخ و زمان</TableCell>
+										<TableCell sx={{ fontWeight: 'bold' }}>وضعیت</TableCell>
+									</TableRow>
+								</TableHead>
+								<TableBody>
+									{reservations.map((reservation) => (
+										<TableRow key={reservation.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+											<TableCell>
+												<Stack direction="row" alignItems="center" spacing={1}>
+													<TableRestaurant color="primary" fontSize="small" />
+													<Box>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{reservation.table.name}
+														</Typography>
+														<Typography variant="caption" color="text.secondary">
+															ظرفیت: {reservation.table.capacity} نفر • {reservation.table.location}
+														</Typography>
+													</Box>
+												</Stack>
+											</TableCell>
+											<TableCell>
+												<Stack direction="row" alignItems="center" spacing={1}>
+													<People color="action" fontSize="small" />
+													<Typography variant="body2">{reservation.people} نفر</Typography>
+												</Stack>
+											</TableCell>
+											<TableCell>
+												<Typography variant="body2" sx={{ fontWeight: 500 }}>
+													{reservation.customer.username}
+												</Typography>
+											</TableCell>
+											<TableCell>
+												<Stack direction="row" alignItems="center" spacing={1}>
+													<Person color="action" fontSize="small" />
+													<Box>
+														<Typography variant="body2">{reservation.customer.name}</Typography>
+														<Typography variant="caption" color="text.secondary">
+															{reservation.customer.phone}
+														</Typography>
+													</Box>
+												</Stack>
+											</TableCell>
+											<TableCell>
+												<Typography variant="body2">{reservation.date}</Typography>
+												<Typography variant="caption" color="text.secondary">
+													{reservation.time}
+												</Typography>
+											</TableCell>
+											<TableCell>
+												<Chip
+													label={getStatusLabel(reservation.status)}
+													color={getStatusColor(reservation.status)}
+													size="small"
+												/>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</Paper>
+					)}
+				</CardContent>
+			</Card>
 		</Box>
 	);
 };

@@ -13,8 +13,10 @@ import {
 	Alert,
 	CircularProgress,
 	Checkbox,
-	FormControlLabel
+	FormControlLabel,
+	Divider
 } from '@mui/material';
+import { Sms, Send } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const AdvertisingMessages = () => {
@@ -85,28 +87,50 @@ const AdvertisingMessages = () => {
 	};
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>پیام‌های تبلیغاتی</Typography>
-			{error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<Sms sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>پیام‌های تبلیغاتی</Typography>
+			</Stack>
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 			<Grid container spacing={3}>
 				<Grid item xs={12} md={8}>
-					<Card>
-						<CardContent>
-							<Typography variant="h6" gutterBottom>ارسال کمپین</Typography>
-							<Stack spacing={2}>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
+								<Send color="primary" />
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>ارسال کمپین</Typography>
+							</Stack>
+							<Stack spacing={2.5}>
 								<TextField
 									label="عنوان"
 									fullWidth
 									value={formData.title}
 									onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+									variant="outlined"
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: 2
+										}
+									}}
 								/>
 								<TextField
 									label="متن پیام"
 									fullWidth
 									multiline
-									minRows={4}
+									minRows={5}
 									value={formData.message}
 									onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+									variant="outlined"
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: 2
+										}
+									}}
 								/>
 								<FormControlLabel
 									control={
@@ -128,12 +152,14 @@ const AdvertisingMessages = () => {
 											<Typography variant="body2" color="text.secondary">
 												انتخاب مشتریان ({selectedCustomers.length} نفر انتخاب شده)
 											</Typography>
-											<Button size="small" onClick={handleSelectAll}>
+											<Button size="small" onClick={handleSelectAll} sx={{ borderRadius: 2 }}>
 												{selectedCustomers.length === customers.length ? 'لغو انتخاب همه' : 'انتخاب همه'}
 											</Button>
 										</Box>
 										{loading ? (
-											<CircularProgress size={24} />
+											<Box display="flex" justifyContent="center" p={2}>
+												<CircularProgress />
+											</Box>
 										) : (
 											<Autocomplete
 												multiple
@@ -154,6 +180,7 @@ const AdvertisingMessages = () => {
 															{...getTagProps({ index })}
 															key={option.id}
 															label={`${option.firstName || ''} ${option.lastName || ''} - ${option.phone || ''}`.trim()}
+															sx={{ borderRadius: 1 }}
 														/>
 													))
 												}
@@ -162,17 +189,42 @@ const AdvertisingMessages = () => {
 														{...params}
 														label="انتخاب مشتریان (شماره تلفن)"
 														placeholder="جستجو و انتخاب مشتریان..."
+														variant="outlined"
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: 2
+															}
+														}}
 													/>
 												)}
 											/>
 										)}
 									</>
 								)}
-								<Stack direction="row" spacing={2}>
-									<Button variant="contained" onClick={handleSend}>
+								<Divider />
+								<Stack direction="row" spacing={2} justifyContent="flex-end">
+									<Button
+										variant="outlined"
+										sx={{ borderRadius: 2 }}
+									>
+										زمانبندی
+									</Button>
+									<Button
+										variant="contained"
+										onClick={handleSend}
+										startIcon={<Send />}
+										sx={{
+											borderRadius: 2,
+											px: 3,
+											backgroundColor: 'var(--color-accent)',
+											'&:hover': {
+												backgroundColor: 'var(--color-accent)',
+												opacity: 0.9
+											}
+										}}
+									>
 										ارسال پیامک
 									</Button>
-									<Button variant="outlined">زمانبندی</Button>
 								</Stack>
 							</Stack>
 						</CardContent>

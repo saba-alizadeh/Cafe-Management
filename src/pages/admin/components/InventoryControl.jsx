@@ -19,9 +19,12 @@ import {
 	DialogContent,
 	DialogActions,
 	Alert,
-	CircularProgress
+	CircularProgress,
+	Paper,
+	Divider,
+	Chip
 } from '@mui/material';
-import { Add, Remove, Delete, Edit } from '@mui/icons-material';
+import { Add, Remove, Delete, Edit, Inventory2, Search } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const InventoryControl = () => {
@@ -184,101 +187,183 @@ const InventoryControl = () => {
 	);
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>کنترل موجودی</Typography>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<Inventory2 sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>کنترل موجودی</Typography>
+			</Stack>
 
-			{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 
 			<Grid container spacing={3}>
 				<Grid item xs={12}>
-					<Card>
-						<CardContent>
-							<Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={2} spacing={2}>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={3} spacing={2}>
 								<TextField
-									placeholder="جستجوی کالا"
+									placeholder="جستجوی کالا..."
 									fullWidth
 									value={searchTerm}
 									onChange={(e) => setSearchTerm(e.target.value)}
+									InputProps={{
+										startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
+									}}
+									variant="outlined"
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: 2
+										}
+									}}
 								/>
-								<Button variant="contained" onClick={() => handleOpenDialog()}>
+								<Button
+									variant="contained"
+									onClick={() => handleOpenDialog()}
+									startIcon={<Add />}
+									sx={{
+										borderRadius: 2,
+										px: 3,
+										backgroundColor: 'var(--color-accent)',
+										'&:hover': {
+											backgroundColor: 'var(--color-accent)',
+											opacity: 0.9
+										}
+									}}
+								>
 									افزودن کالا
 								</Button>
 							</Stack>
+							<Divider sx={{ mb: 2 }} />
 							{loading ? (
-								<Box display="flex" justifyContent="center" p={3}>
+								<Box display="flex" justifyContent="center" p={4}>
 									<CircularProgress />
 								</Box>
+							) : filteredItems.length === 0 ? (
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
+										{searchTerm ? 'کالایی یافت نشد' : 'کالایی ثبت نشده است'}
+									</Typography>
+								</Paper>
 							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>کالا</TableCell>
-											<TableCell>موجودی</TableCell>
-											<TableCell>واحد</TableCell>
-											<TableCell>حداقل موجودی</TableCell>
-											<TableCell align="right">تغییر موجودی</TableCell>
-											<TableCell align="right">اقدامات</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{filteredItems.length === 0 ? (
-											<TableRow>
-												<TableCell colSpan={6} align="center">
-													{searchTerm ? 'کالایی یافت نشد' : 'کالایی ثبت نشده است'}
-												</TableCell>
+								<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+									<Table>
+										<TableHead>
+											<TableRow sx={{ bgcolor: 'grey.100' }}>
+												<TableCell sx={{ fontWeight: 'bold' }}>کالا</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>موجودی</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>واحد</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>حداقل موجودی</TableCell>
+												<TableCell align="right" sx={{ fontWeight: 'bold' }}>تغییر موجودی</TableCell>
+												<TableCell align="right" sx={{ fontWeight: 'bold' }}>اقدامات</TableCell>
 											</TableRow>
-										) : (
-											filteredItems.map((item) => (
-												<TableRow key={item.id} hover>
-													<TableCell>{item.name}</TableCell>
-													<TableCell>{item.quantity}</TableCell>
+										</TableHead>
+										<TableBody>
+											{filteredItems.map((item) => (
+												<TableRow key={item.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+													<TableCell>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{item.name}
+														</Typography>
+													</TableCell>
+													<TableCell>
+														<Chip
+															label={item.quantity}
+															color={item.quantity <= (item.min_quantity || 0) ? 'error' : 'success'}
+															size="small"
+														/>
+													</TableCell>
 													<TableCell>{item.unit}</TableCell>
 													<TableCell>{item.min_quantity || '-'}</TableCell>
 													<TableCell align="right">
-														<IconButton
-															size="small"
-															onClick={() => handleUpdateQuantity(item.id, -1)}
-														>
-															<Remove />
-														</IconButton>
-														<IconButton
-															size="small"
-															color="primary"
-															onClick={() => handleUpdateQuantity(item.id, 1)}
-														>
-															<Add />
-														</IconButton>
+														<Stack direction="row" spacing={0.5} justifyContent="flex-end">
+															<IconButton
+																size="small"
+																onClick={() => handleUpdateQuantity(item.id, -1)}
+																sx={{
+																	bgcolor: 'white',
+																	border: '1px solid',
+																	borderColor: 'error.main',
+																	'&:hover': { bgcolor: 'error.light', color: 'white' }
+																}}
+															>
+																<Remove fontSize="small" />
+															</IconButton>
+															<IconButton
+																size="small"
+																color="primary"
+																onClick={() => handleUpdateQuantity(item.id, 1)}
+																sx={{
+																	bgcolor: 'white',
+																	border: '1px solid',
+																	borderColor: 'primary.main',
+																	'&:hover': { bgcolor: 'primary.light', color: 'white' }
+																}}
+															>
+																<Add fontSize="small" />
+															</IconButton>
+														</Stack>
 													</TableCell>
 													<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
 															<IconButton
 																size="small"
 																onClick={() => handleOpenDialog(item)}
+																sx={{
+																	bgcolor: 'white',
+																	border: '1px solid',
+																	borderColor: 'primary.main',
+																	'&:hover': { bgcolor: 'primary.light', color: 'white' }
+																}}
 															>
-																<Edit />
+																<Edit fontSize="small" />
 															</IconButton>
 															<IconButton
 																size="small"
 																color="error"
 																onClick={() => handleDelete(item.id)}
+																sx={{
+																	bgcolor: 'white',
+																	border: '1px solid',
+																	borderColor: 'error.main',
+																	'&:hover': { bgcolor: 'error.light', color: 'white' }
+																}}
 															>
-																<Delete />
+																<Delete fontSize="small" />
 															</IconButton>
 														</Stack>
 													</TableCell>
 												</TableRow>
-											))
-										)}
-									</TableBody>
-								</Table>
+											))}
+										</TableBody>
+									</Table>
+								</Paper>
 							)}
 						</CardContent>
 					</Card>
 				</Grid>
 			</Grid>
 
-			<Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-				<DialogTitle>{editingItem ? 'ویرایش کالا' : 'افزودن کالا جدید'}</DialogTitle>
+			<Dialog
+				open={openDialog}
+				onClose={handleCloseDialog}
+				maxWidth="sm"
+				fullWidth
+				PaperProps={{
+					sx: { borderRadius: 3 }
+				}}
+			>
+				<DialogTitle sx={{ fontWeight: 'bold' }}>{editingItem ? 'ویرایش کالا' : 'افزودن کالا جدید'}</DialogTitle>
 				<Box component="form" onSubmit={handleSubmit}>
 					<DialogContent>
 						<Stack spacing={2} sx={{ mt: 1 }}>
@@ -324,8 +409,8 @@ const InventoryControl = () => {
 							/>
 						</Stack>
 					</DialogContent>
-					<DialogActions>
-						<Button onClick={handleCloseDialog} disabled={saving}>
+					<DialogActions sx={{ p: 2.5 }}>
+						<Button onClick={handleCloseDialog} disabled={saving} sx={{ borderRadius: 2 }}>
 							انصراف
 						</Button>
 						<Stack direction="row" spacing={1} alignItems="center">
@@ -334,7 +419,15 @@ const InventoryControl = () => {
 								type="submit"
 								variant="contained"
 								disabled={saving || !form.name || !form.unit}
-								sx={{ backgroundColor: 'var(--color-accent)' }}
+								sx={{
+									borderRadius: 2,
+									px: 3,
+									backgroundColor: 'var(--color-accent)',
+									'&:hover': {
+										backgroundColor: 'var(--color-accent)',
+										opacity: 0.9
+									}
+								}}
 							>
 								{editingItem ? 'ذخیره تغییرات' : 'افزودن'}
 							</Button>

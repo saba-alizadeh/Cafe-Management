@@ -19,9 +19,10 @@ import {
 	IconButton,
 	Alert,
 	CircularProgress,
-	Paper
+	Paper,
+	Divider
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, People } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const roles = [
@@ -85,80 +86,106 @@ const UserManagement = () => {
 	};
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>مدیریت مشتریان</Typography>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<People sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>مدیریت مشتریان</Typography>
+			</Stack>
 
-			{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 
 			<Grid container spacing={3}>
 				<Grid item xs={12}>
-					<Card>
-						<CardContent>
-							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-								<Typography variant="h6">لیست مشتریان</Typography>
-								{loading && <CircularProgress size={22} />}
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+								<Stack direction="row" alignItems="center" spacing={1}>
+									<People color="primary" />
+									<Typography variant="h6" sx={{ fontWeight: 'bold' }}>لیست مشتریان</Typography>
+									<Chip label={users.length} color="primary" size="small" />
+								</Stack>
+								{loading && <CircularProgress size={24} />}
 							</Stack>
+							<Divider sx={{ mb: 2 }} />
 							{loading ? (
-								<Box display="flex" justifyContent="center" p={3}>
+								<Box display="flex" justifyContent="center" p={4}>
 									<CircularProgress />
 								</Box>
 							) : users.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
-									مشتری ثبت نشده است.
-								</Typography>
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
+										مشتری ثبت نشده است.
+									</Typography>
+								</Paper>
 							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>نام</TableCell>
-											<TableCell>نام کاربری</TableCell>
-											<TableCell>ایمیل</TableCell>
-											<TableCell>شماره تماس</TableCell>
-											<TableCell>نقش</TableCell>
-											<TableCell>آدرس</TableCell>
-											<TableCell>تاریخ ثبت</TableCell>
-											<TableCell>وضعیت</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{users.map((u) => (
-											<TableRow key={u.id} hover>
-												<TableCell>
-													{u.firstName && u.lastName
-														? `${u.firstName} ${u.lastName}`
-														: u.name || '-'}
-												</TableCell>
-												<TableCell>{u.username || '-'}</TableCell>
-												<TableCell>{u.email || '-'}</TableCell>
-												<TableCell>{u.phone || '-'}</TableCell>
-												<TableCell>
-													<Chip
-														size="small"
-														label={getRoleLabel(u.role)}
-														color={
-															u.role === 'admin'
-																? 'error'
-																: u.role === 'manager'
-																? 'warning'
-																: u.role === 'customer'
-																? 'info'
-																: 'default'
-														}
-													/>
-												</TableCell>
-												<TableCell>{u.address || '-'}</TableCell>
-												<TableCell>{formatDate(u.created_at)}</TableCell>
-												<TableCell>
-													<Chip
-														label={u.is_active ? 'فعال' : 'غیرفعال'}
-														color={u.is_active ? 'success' : 'default'}
-														size="small"
-													/>
-												</TableCell>
+								<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+									<Table>
+										<TableHead>
+											<TableRow sx={{ bgcolor: 'grey.100' }}>
+												<TableCell sx={{ fontWeight: 'bold' }}>نام</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>نام کاربری</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>ایمیل</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>شماره تماس</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>نقش</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>آدرس</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>تاریخ ثبت</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>وضعیت</TableCell>
 											</TableRow>
-										))}
-									</TableBody>
-								</Table>
+										</TableHead>
+										<TableBody>
+											{users.map((u) => (
+												<TableRow key={u.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+													<TableCell>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{u.firstName && u.lastName
+																? `${u.firstName} ${u.lastName}`
+																: u.name || '-'}
+														</Typography>
+													</TableCell>
+													<TableCell>{u.username || '-'}</TableCell>
+													<TableCell>{u.email || '-'}</TableCell>
+													<TableCell>{u.phone || '-'}</TableCell>
+													<TableCell>
+														<Chip
+															size="small"
+															label={getRoleLabel(u.role)}
+															color={
+																u.role === 'admin'
+																	? 'error'
+																	: u.role === 'manager'
+																	? 'warning'
+																	: u.role === 'customer'
+																	? 'info'
+																	: 'default'
+															}
+														/>
+													</TableCell>
+													<TableCell>{u.address || '-'}</TableCell>
+													<TableCell>{formatDate(u.created_at)}</TableCell>
+													<TableCell>
+														<Chip
+															label={u.is_active ? 'فعال' : 'غیرفعال'}
+															color={u.is_active ? 'success' : 'default'}
+															size="small"
+														/>
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+								</Paper>
 							)}
 						</CardContent>
 					</Card>

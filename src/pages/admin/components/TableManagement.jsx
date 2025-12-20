@@ -21,9 +21,11 @@ import {
 	Dialog,
 	DialogTitle,
 	DialogContent,
-	DialogActions
+	DialogActions,
+	Paper,
+	Divider
 } from '@mui/material';
-import { Edit, Delete, Refresh } from '@mui/icons-material';
+import { Edit, Delete, Refresh, TableRestaurant, Add, People } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const TableManagement = () => {
@@ -38,8 +40,7 @@ const TableManagement = () => {
 	const [form, setForm] = useState({
 		name: '',
 		capacity: '',
-		status: 'available',
-		cafe_id: null
+		status: 'available'
 	});
 	const [editForm, setEditForm] = useState({
 		name: '',
@@ -101,8 +102,7 @@ const TableManagement = () => {
 			const formData = {
 				name: form.name.trim(),
 				capacity: parseInt(form.capacity),
-				status: form.status,
-				cafe_id: form.cafe_id || null
+				status: form.status
 			};
 			const res = await fetch(`${apiBaseUrl}/tables`, {
 				method: 'POST',
@@ -122,8 +122,7 @@ const TableManagement = () => {
 			setForm({
 				name: '',
 				capacity: '',
-				status: 'available',
-				cafe_id: null
+				status: 'available'
 			});
 			await fetchTables();
 		} catch (err) {
@@ -235,24 +234,44 @@ const TableManagement = () => {
 	};
 
 	return (
-		<Box sx={{ direction: 'rtl' }}>
-			<Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-				<Typography variant="h4">مدیریت میزها</Typography>
-				<Button variant="outlined" startIcon={<Refresh />} onClick={fetchTables} disabled={loading}>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+				<Stack direction="row" alignItems="center" spacing={2}>
+					<TableRestaurant sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+					<Typography variant="h4" sx={{ fontWeight: 'bold' }}>مدیریت میزها</Typography>
+				</Stack>
+				<Button
+					variant="outlined"
+					startIcon={<Refresh />}
+					onClick={fetchTables}
+					disabled={loading}
+					sx={{ borderRadius: 2 }}
+				>
 					بروزرسانی
 				</Button>
-			</Box>
+			</Stack>
 
-			{error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-			{success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
+			{success && (
+				<Alert severity="success" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setSuccess('')}>
+					{success}
+				</Alert>
+			)}
 
 			<Grid container spacing={3}>
 				<Grid item xs={12}>
-					<Card>
-						<CardContent>
-							<Typography variant="h6" gutterBottom>افزودن میز جدید</Typography>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
+								<Add color="primary" />
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>افزودن میز جدید</Typography>
+							</Stack>
 							<Box component="form" onSubmit={handleAdd}>
-								<Grid container spacing={2}>
+								<Grid container spacing={2.5}>
 									<Grid item xs={12} md={4}>
 										<TextField
 											label="نام/شماره میز"
@@ -261,6 +280,12 @@ const TableManagement = () => {
 											onChange={handleChange('name')}
 											required
 											disabled={saving}
+											variant="outlined"
+											sx={{
+												'& .MuiOutlinedInput-root': {
+													borderRadius: 2
+												}
+											}}
 										/>
 									</Grid>
 									<Grid item xs={12} md={4}>
@@ -273,6 +298,15 @@ const TableManagement = () => {
 											onChange={handleChange('capacity')}
 											required
 											disabled={saving}
+											variant="outlined"
+											InputProps={{
+												startAdornment: <People sx={{ mr: 1, color: 'text.secondary' }} />
+											}}
+											sx={{
+												'& .MuiOutlinedInput-root': {
+													borderRadius: 2
+												}
+											}}
 										/>
 									</Grid>
 									<Grid item xs={12} md={4}>
@@ -284,6 +318,12 @@ const TableManagement = () => {
 											onChange={handleChange('status')}
 											required
 											disabled={saving}
+											variant="outlined"
+											sx={{
+												'& .MuiOutlinedInput-root': {
+													borderRadius: 2
+												}
+											}}
 										>
 											<MenuItem value="available">آزاد</MenuItem>
 											<MenuItem value="reserved">رزرو شده</MenuItem>
@@ -294,10 +334,20 @@ const TableManagement = () => {
 										<Button
 											type="submit"
 											variant="contained"
-											sx={{ borderRadius: 999, px: 4, backgroundColor: 'var(--color-accent)' }}
+											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Add />}
+											sx={{
+												borderRadius: 2,
+												py: 1.5,
+												px: 3,
+												backgroundColor: 'var(--color-accent)',
+												'&:hover': {
+													backgroundColor: 'var(--color-accent)',
+													opacity: 0.9
+												}
+											}}
 											disabled={saving || !form.name || !form.capacity}
 										>
-											افزودن
+											افزودن میز
 										</Button>
 									</Grid>
 								</Grid>
@@ -307,58 +357,96 @@ const TableManagement = () => {
 				</Grid>
 
 				<Grid item xs={12}>
-					<Card>
-						<CardContent>
-							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-								<Typography variant="h6">لیست میزها</Typography>
-								{loading && <CircularProgress size={22} />}
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+								<Stack direction="row" alignItems="center" spacing={1}>
+									<TableRestaurant color="primary" />
+									<Typography variant="h6" sx={{ fontWeight: 'bold' }}>لیست میزها</Typography>
+									<Chip label={tables.length} color="primary" size="small" />
+								</Stack>
+								{loading && <CircularProgress size={24} />}
 							</Stack>
+							<Divider sx={{ mb: 2 }} />
 							{loading ? (
-								<Box display="flex" justifyContent="center" p={3}>
+								<Box display="flex" justifyContent="center" p={4}>
 									<CircularProgress />
 								</Box>
 							) : tables.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
-									میز ثبت نشده است.
-								</Typography>
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
+										میز ثبت نشده است.
+									</Typography>
+								</Paper>
 							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>نام/شماره میز</TableCell>
-											<TableCell>ظرفیت</TableCell>
-											<TableCell>وضعیت</TableCell>
-											<TableCell>کافه</TableCell>
-											<TableCell align="right">عملیات</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{tables.map((table) => (
-											<TableRow key={table.id} hover>
-												<TableCell>{table.name}</TableCell>
-												<TableCell>{table.capacity}</TableCell>
-												<TableCell>
-													<Chip
-														label={getStatusLabel(table.status)}
-														color={getStatusColor(table.status)}
-														size="small"
-													/>
-												</TableCell>
-												<TableCell>{table.cafe_id ?? '—'}</TableCell>
-												<TableCell align="right">
-													<Stack direction="row" spacing={1} justifyContent="flex-end">
-														<IconButton color="primary" onClick={() => handleEditClick(table)}>
-															<Edit />
-														</IconButton>
-														<IconButton color="error" onClick={() => handleDelete(table.id)}>
-															<Delete />
-														</IconButton>
-													</Stack>
-												</TableCell>
+								<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+									<Table>
+										<TableHead>
+											<TableRow sx={{ bgcolor: 'grey.100' }}>
+												<TableCell sx={{ fontWeight: 'bold' }}>نام/شماره میز</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>ظرفیت</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>وضعیت</TableCell>
+												<TableCell align="right" sx={{ fontWeight: 'bold' }}>عملیات</TableCell>
 											</TableRow>
-										))}
-									</TableBody>
-								</Table>
+										</TableHead>
+										<TableBody>
+											{tables.map((table) => (
+												<TableRow key={table.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+													<TableCell>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{table.name}
+														</Typography>
+													</TableCell>
+													<TableCell>
+														<Stack direction="row" alignItems="center" spacing={1}>
+															<People fontSize="small" color="action" />
+															<Typography variant="body2">{table.capacity} نفر</Typography>
+														</Stack>
+													</TableCell>
+													<TableCell>
+														<Chip
+															label={getStatusLabel(table.status)}
+															color={getStatusColor(table.status)}
+															size="small"
+														/>
+													</TableCell>
+													<TableCell align="right">
+														<Stack direction="row" spacing={1} justifyContent="flex-end">
+															<IconButton
+																color="primary"
+																onClick={() => handleEditClick(table)}
+																sx={{
+																	bgcolor: 'primary.light',
+																	'&:hover': { bgcolor: 'primary.main' }
+																}}
+															>
+																<Edit fontSize="small" />
+															</IconButton>
+															<IconButton
+																color="error"
+																onClick={() => handleDelete(table.id)}
+																sx={{
+																	bgcolor: 'error.light',
+																	'&:hover': { bgcolor: 'error.main' }
+																}}
+															>
+																<Delete fontSize="small" />
+															</IconButton>
+														</Stack>
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+								</Paper>
 							)}
 						</CardContent>
 					</Card>
@@ -366,12 +454,28 @@ const TableManagement = () => {
 			</Grid>
 
 			{/* Edit Dialog */}
-			<Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
-				<DialogTitle>ویرایش اطلاعات میز</DialogTitle>
+			<Dialog
+				open={editDialogOpen}
+				onClose={handleEditClose}
+				maxWidth="sm"
+				fullWidth
+				PaperProps={{
+					sx: { borderRadius: 3 }
+				}}
+			>
+				<DialogTitle sx={{ fontWeight: 'bold' }}>ویرایش اطلاعات میز</DialogTitle>
 				<DialogContent>
-					{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-					{success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-					<Grid container spacing={2} sx={{ mt: 1 }}>
+					{error && (
+						<Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError('')}>
+							{error}
+						</Alert>
+					)}
+					{success && (
+						<Alert severity="success" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setSuccess('')}>
+							{success}
+						</Alert>
+					)}
+					<Grid container spacing={2.5} sx={{ mt: 1 }}>
 						<Grid item xs={12}>
 							<TextField
 								label="نام/شماره میز"
@@ -380,6 +484,12 @@ const TableManagement = () => {
 								onChange={handleEditChange('name')}
 								required
 								disabled={saving}
+								variant="outlined"
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										borderRadius: 2
+									}
+								}}
 							/>
 						</Grid>
 						<Grid item xs={12}>
@@ -392,6 +502,15 @@ const TableManagement = () => {
 								onChange={handleEditChange('capacity')}
 								required
 								disabled={saving}
+								variant="outlined"
+								InputProps={{
+									startAdornment: <People sx={{ mr: 1, color: 'text.secondary' }} />
+								}}
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										borderRadius: 2
+									}
+								}}
 							/>
 						</Grid>
 						<Grid item xs={12}>
@@ -403,6 +522,12 @@ const TableManagement = () => {
 								onChange={handleEditChange('status')}
 								required
 								disabled={saving}
+								variant="outlined"
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										borderRadius: 2
+									}
+								}}
 							>
 								<MenuItem value="available">آزاد</MenuItem>
 								<MenuItem value="reserved">رزرو شده</MenuItem>
@@ -410,8 +535,8 @@ const TableManagement = () => {
 						</Grid>
 					</Grid>
 				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleEditClose} disabled={saving}>
+				<DialogActions sx={{ p: 2.5 }}>
+					<Button onClick={handleEditClose} disabled={saving} sx={{ borderRadius: 2 }}>
 						انصراف
 					</Button>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -420,7 +545,15 @@ const TableManagement = () => {
 							onClick={handleEditSave}
 							variant="contained"
 							disabled={saving || !editForm.name || !editForm.capacity}
-							sx={{ backgroundColor: 'var(--color-accent)' }}
+							sx={{
+								borderRadius: 2,
+								px: 3,
+								backgroundColor: 'var(--color-accent)',
+								'&:hover': {
+									backgroundColor: 'var(--color-accent)',
+									opacity: 0.9
+								}
+							}}
 						>
 							ذخیره
 						</Button>

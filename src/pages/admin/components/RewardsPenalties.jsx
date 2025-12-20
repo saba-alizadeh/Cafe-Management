@@ -18,9 +18,12 @@ import {
 	TableBody,
 	Alert,
 	CircularProgress,
-	IconButton
+	IconButton,
+	Chip,
+	Paper,
+	Divider
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, EmojiEvents, Add, TrendingUp, TrendingDown } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const reasons = ['خدمت عالی', 'تاخیر در ورود', 'شکایت مشتری', 'اضافه‌کاری', 'رفتار مناسب', 'رعایت قوانین'];
@@ -158,18 +161,28 @@ const RewardsPenalties = () => {
 	};
 
 	return (
-		<Box>
-			<Typography variant="h4" gutterBottom>پاداش و جریمه</Typography>
+		<Box sx={{ direction: 'rtl', p: 3 }}>
+			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
+				<EmojiEvents sx={{ fontSize: 32, color: 'var(--color-accent)' }} />
+				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>پاداش و جریمه</Typography>
+			</Stack>
 
-			{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 
 			<Grid container spacing={3}>
 				<Grid item xs={12} md={5}>
-					<Card>
-						<CardContent>
-							<Typography variant="h6" gutterBottom>ثبت پاداش/جریمه</Typography>
+					<Card elevation={3} sx={{ borderRadius: 3, height: 'fit-content' }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
+								<Add color="primary" />
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>ثبت پاداش/جریمه</Typography>
+							</Stack>
 							<Box component="form" onSubmit={handleSubmit}>
-								<Stack spacing={2}>
+								<Stack spacing={2.5}>
 									<TextField
 										select
 										label="کارمند"
@@ -178,6 +191,12 @@ const RewardsPenalties = () => {
 										onChange={handleChange('employee_id')}
 										required
 										disabled={saving || employees.length === 0}
+										variant="outlined"
+										sx={{
+											'& .MuiOutlinedInput-root': {
+												borderRadius: 2
+											}
+										}}
 									>
 										{employees.length === 0 ? (
 											<MenuItem disabled>کارمندی یافت نشد</MenuItem>
@@ -196,9 +215,14 @@ const RewardsPenalties = () => {
 										value={form.reason}
 										onChange={handleChange('reason')}
 										SelectProps={{ displayEmpty: true }}
-										placeholder="انتخاب دلیل"
+										variant="outlined"
+										sx={{
+											'& .MuiOutlinedInput-root': {
+												borderRadius: 2
+											}
+										}}
 									>
-										<MenuItem value="">-</MenuItem>
+										<MenuItem value="">انتخاب دلیل</MenuItem>
 										{reasons.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
 									</TextField>
 									<TextField
@@ -206,6 +230,12 @@ const RewardsPenalties = () => {
 										fullWidth
 										value={form.title}
 										onChange={handleChange('title')}
+										variant="outlined"
+										sx={{
+											'& .MuiOutlinedInput-root': {
+												borderRadius: 2
+											}
+										}}
 									/>
 									<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
 										<TextField
@@ -216,14 +246,31 @@ const RewardsPenalties = () => {
 											value={form.amount}
 											onChange={handleChange('amount')}
 											inputProps={{ min: 0, step: 0.01 }}
+											variant="outlined"
+											sx={{
+												'& .MuiOutlinedInput-root': {
+													borderRadius: 2
+												}
+											}}
 										/>
 										<ToggleButtonGroup
 											exclusive
 											value={form.reward_type}
 											onChange={(_, val) => val && setForm((p) => ({ ...p, reward_type: val }))}
+											sx={{ borderRadius: 2 }}
 										>
-											<ToggleButton value="bonus">پاداش</ToggleButton>
-											<ToggleButton value="penalty">جریمه</ToggleButton>
+											<ToggleButton value="bonus" sx={{ borderRadius: 2 }}>
+												<Stack direction="row" spacing={1} alignItems="center">
+													<TrendingUp fontSize="small" />
+													<span>پاداش</span>
+												</Stack>
+											</ToggleButton>
+											<ToggleButton value="penalty" sx={{ borderRadius: 2 }}>
+												<Stack direction="row" spacing={1} alignItems="center">
+													<TrendingDown fontSize="small" />
+													<span>جریمه</span>
+												</Stack>
+											</ToggleButton>
 										</ToggleButtonGroup>
 									</Stack>
 									<TextField
@@ -233,14 +280,26 @@ const RewardsPenalties = () => {
 										value={form.date}
 										onChange={handleChange('date')}
 										InputLabelProps={{ shrink: true }}
+										variant="outlined"
+										sx={{
+											'& .MuiOutlinedInput-root': {
+												borderRadius: 2
+											}
+										}}
 									/>
 									<TextField
 										label="توضیحات (اختیاری)"
 										fullWidth
 										multiline
-										minRows={2}
+										minRows={3}
 										value={form.note}
 										onChange={handleChange('note')}
+										variant="outlined"
+										sx={{
+											'& .MuiOutlinedInput-root': {
+												borderRadius: 2
+											}
+										}}
 									/>
 									<Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
 										{saving && <CircularProgress size={22} />}
@@ -248,7 +307,17 @@ const RewardsPenalties = () => {
 											type="submit"
 											variant="contained"
 											disabled={saving || !form.employee_id || form.amount < 0}
-											sx={{ backgroundColor: 'var(--color-accent)' }}
+											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Add />}
+											sx={{
+												borderRadius: 2,
+												py: 1.5,
+												px: 3,
+												backgroundColor: 'var(--color-accent)',
+												'&:hover': {
+													backgroundColor: 'var(--color-accent)',
+													opacity: 0.9
+												}
+											}}
 										>
 											ثبت
 										</Button>
@@ -259,44 +328,91 @@ const RewardsPenalties = () => {
 					</Card>
 				</Grid>
 				<Grid item xs={12} md={7}>
-					<Card>
-						<CardContent>
-							<Typography variant="h6" gutterBottom>سوابق پاداش/جریمه</Typography>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+								<Stack direction="row" alignItems="center" spacing={1}>
+									<EmojiEvents color="primary" />
+									<Typography variant="h6" sx={{ fontWeight: 'bold' }}>سوابق پاداش/جریمه</Typography>
+									<Chip label={rewards.length} color="primary" size="small" />
+								</Stack>
+								{loading && <CircularProgress size={24} />}
+							</Stack>
+							<Divider sx={{ mb: 2 }} />
 							{loading ? (
-								<Box display="flex" justifyContent="center" p={3}>
+								<Box display="flex" justifyContent="center" p={4}>
 									<CircularProgress />
 								</Box>
 							) : rewards.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">رکوردی ثبت نشده است.</Typography>
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
+										رکوردی ثبت نشده است.
+									</Typography>
+								</Paper>
 							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>کارمند</TableCell>
-											<TableCell>نوع</TableCell>
-											<TableCell>مبلغ</TableCell>
-											<TableCell>دلیل/عنوان</TableCell>
-											<TableCell>تاریخ</TableCell>
-											<TableCell align="right">حذف</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{rewards.map((r) => (
-											<TableRow key={r.id} hover>
-												<TableCell>{getEmployeeName(r.employee_id)}</TableCell>
-												<TableCell>{r.reward_type === 'bonus' ? 'پاداش' : 'جریمه'}</TableCell>
-												<TableCell>{r.amount}</TableCell>
-												<TableCell>{r.title || r.reason || '-'}</TableCell>
-												<TableCell>{r.date || '-'}</TableCell>
-												<TableCell align="right">
-													<IconButton color="error" size="small" onClick={() => handleDelete(r.id)}>
-														<Delete />
-													</IconButton>
-												</TableCell>
+								<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+									<Table>
+										<TableHead>
+											<TableRow sx={{ bgcolor: 'grey.100' }}>
+												<TableCell sx={{ fontWeight: 'bold' }}>کارمند</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>نوع</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>مبلغ</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>دلیل/عنوان</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>تاریخ</TableCell>
+												<TableCell align="right" sx={{ fontWeight: 'bold' }}>عملیات</TableCell>
 											</TableRow>
-										))}
-									</TableBody>
-								</Table>
+										</TableHead>
+										<TableBody>
+											{rewards.map((r) => (
+												<TableRow key={r.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+													<TableCell>{getEmployeeName(r.employee_id)}</TableCell>
+													<TableCell>
+														<Chip
+															label={r.reward_type === 'bonus' ? 'پاداش' : 'جریمه'}
+															color={r.reward_type === 'bonus' ? 'success' : 'error'}
+															size="small"
+															icon={r.reward_type === 'bonus' ? <TrendingUp /> : <TrendingDown />}
+														/>
+													</TableCell>
+													<TableCell>
+														<Typography
+															variant="body2"
+															sx={{
+																fontWeight: 'bold',
+																color: r.reward_type === 'bonus' ? 'success.main' : 'error.main'
+															}}
+														>
+															{r.amount.toLocaleString('fa-IR')} تومان
+														</Typography>
+													</TableCell>
+													<TableCell>{r.title || r.reason || '-'}</TableCell>
+													<TableCell>{r.date || '-'}</TableCell>
+													<TableCell align="right">
+														<IconButton
+															color="error"
+															size="small"
+															onClick={() => handleDelete(r.id)}
+															sx={{
+																bgcolor: 'error.light',
+																'&:hover': { bgcolor: 'error.main' }
+															}}
+														>
+															<Delete fontSize="small" />
+														</IconButton>
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+								</Paper>
 							)}
 						</CardContent>
 					</Card>
