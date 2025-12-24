@@ -12,6 +12,7 @@ import {
 import { Favorite } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useCart } from '../../../context/CartContext';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 const menuItems = [
   {
@@ -66,12 +67,16 @@ const MenuSection = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleAddClick = () => {
-    if (user) {
-      navigate('/customer/profile');
-    } else {
-      setAuthDialogOpen(true);
-    }
+  const handleAddClick = (item) => {
+    const cartItem = {
+      id: `product-${item.id}`,
+      type: 'product',
+      name: item.name,
+      price: item.price,
+      quantity: 1
+    };
+    addToCart(cartItem);
+    alert(`${item.name} به سبد خرید اضافه شد`);
   };
 
   return (
@@ -251,7 +256,7 @@ const MenuSection = () => {
                           color: 'var(--color-secondary)',
                         },
                       }}
-                      onClick={handleAddClick}
+                      onClick={() => handleAddClick(item)}
                     >
                       +
                     </IconButton>

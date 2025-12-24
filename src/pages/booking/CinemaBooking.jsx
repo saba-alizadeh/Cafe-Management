@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Box, Container, Typography, Button } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Container, Typography, Button, CircularProgress, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 
 const seatColors = {
     selected: 'var(--color-accent)',
@@ -12,16 +13,74 @@ const seatColors = {
 
 const CinemaBooking = () => {
     const [selectedSeats, setSelectedSeats] = useState([]);
+    const [totalSeats, setTotalSeats] = useState(64); // Default value
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [rows, setRows] = useState(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    const [seatsPerRow, setSeatsPerRow] = useState(8);
     const sessionTime = '09:15 AM';
     const pricePerSeat = 150000; // 150,000 Toman
-    const { user } = useAuth();
+    const { user, apiBaseUrl, token } = useAuth();
+    const { addToCart } = useCart();
     const navigate = useNavigate();
 
-    // Create seat grid: 8 rows, 8 columns divided into two blocks (4 columns each)
-    const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     const seatsPerBlock = 4;
-    const seatsPerRow = seatsPerBlock * 2; // Total seats per row (8)
-    const totalSeats = rows.length * seatsPerRow; // 8 rows * 8 seats = 64 total seats
+
+    useEffect(() => {
+        fetchCinemaCapacity();
+    }, []);
+
+    const fetchCinemaCapacity = async () => {
+        setLoading(true);
+        setError('');
+        const authToken = token || localStorage.getItem('authToken');
+        
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Fetch cafe information to get cinema_seating_capacity
+            const res = await fetch(`${apiBaseUrl}/cafes`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'خطا در بارگذاری اطلاعات سینما');
+                setLoading(false);
+                return;
+            }
+            
+            const cafes = await res.json();
+            const cafe = Array.isArray(cafes) && cafes.length > 0 ? cafes[0] : null;
+            
+            if (cafe && cafe.cinema_seating_capacity) {
+                const capacity = cafe.cinema_seating_capacity;
+                setTotalSeats(capacity);
+                
+                // Calculate rows and seats per row dynamically
+                // Try to create a reasonable grid layout
+                const calculatedSeatsPerRow = Math.ceil(Math.sqrt(capacity));
+                const calculatedRows = Math.ceil(capacity / calculatedSeatsPerRow);
+                
+                // Generate row labels (A, B, C, etc.)
+                const rowLabels = Array.from({ length: calculatedRows }, (_, i) => 
+                    String.fromCharCode(65 + i)
+                );
+                
+                setRows(rowLabels);
+                setSeatsPerRow(calculatedSeatsPerRow);
+            }
+        } catch (err) {
+            console.error(err);
+            setError('خطا در ارتباط با سرور');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Generate occupied seats (some scattered throughout) - using seat numbers
     const occupiedSeatNumbers = [1, 2, 3, 9, 10, 19, 25, 28, 34, 41, 43];
@@ -61,6 +120,21 @@ const CinemaBooking = () => {
     const totalPrice = selectedSeats.length * pricePerSeat;
     const selectedSeatNumbers = [...selectedSeats].sort((a, b) => a - b);
 
+    if (loading) {
+        return (
+            <Box sx={{ 
+                bgcolor: 'var(--color-secondary)', 
+                minHeight: '100vh', 
+                py: 4,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ 
             bgcolor: 'var(--color-secondary)', 
@@ -71,6 +145,12 @@ const CinemaBooking = () => {
             alignItems: 'center'
         }}>
             <Container maxWidth="md" sx={{ width: '100%' }}>
+                {error && (
+                    <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                        {error}
+                    </Alert>
+                )}
+                
                 {/* Order Successful Banner */}
                 <Box sx={{
                     bgcolor: 'var(--color-primary)',
@@ -324,7 +404,7 @@ const CinemaBooking = () => {
                     </span>
                     {' '}به قیمت{' '}
                     <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
-                        {totalPrice}€
+                        {totalPrice.toLocaleString('fa-IR')} تومان
                     </span>
                 </Typography>
 
@@ -338,19 +418,15 @@ const CinemaBooking = () => {
                                 const cinemaReservation = {
                                     id: `cinema-${Date.now()}`,
                                     type: 'cinema',
-                                    title: 'رزرو سینما',
+                                    name: `رزرو سینما - صندلی‌های ${selectedSeatNumbers.join(', ')}`,
                                     seats: selectedSeatNumbers.join(', '),
                                     sessionTime,
                                     quantity: 1,
                                     price: totalPrice
                                 };
-                                if (user) {
-                                    localStorage.setItem('pendingReservation', JSON.stringify(cinemaReservation));
-                                    navigate('/customer/cart');
-                                } else {
-                                    alert('لطفاً ابتدا وارد حساب کاربری خود شوید.');
-                                    navigate('/login');
-                                }
+                                addToCart(cinemaReservation);
+                                alert('رزرو سینما به سبد خرید اضافه شد');
+                                navigate(-1); // Go back to previous page
                             }
                         }}
                         sx={{

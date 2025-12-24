@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Container,
@@ -15,75 +15,14 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Chip
+    Chip,
+    CircularProgress,
+    Alert
 } from '@mui/material';
 import { Close as CloseIcon, EventAvailable } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-
-// Mock event data
-const eventsData = [
-    {
-        id: 1,
-        title: 'کنسرت موسیقی زنده',
-        shortSummary: 'شب موسیقی با هنرمندان محلی برای شام دلپذیر',
-        fullDescription: 'یک شب موسیقی مخصوص با بهترین هنرمندان محلی. میزبانی شامل شام کامل، نوشیدنی و اجرای موسیقی زنده از ساعت 8 شب تا نیمه شب. ایده آل برای تاریخ های رمانتیک یا مناسبت های خصوصی.',
-        image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/><path d="M180 100 L190 140 L200 100 L210 140 L220 100" stroke="%23fcede9" fill="none" stroke-width="2"/></svg>',
-        price: 250000, // 250,000 Toman
-        duration: '4 ساعت',
-        maxPeople: 50
-    },
-    {
-        id: 2,
-        title: 'کارگاه کافه لاته آرت',
-        shortSummary: 'یاد بگیرید چگونه طرح‌های زیبا روی قهوه بکشید',
-        fullDescription: 'کارگاه آموزشی ۲ ساعته درباره هنر لاته آرت برای مبتدیان و حرفه‌ای‌ها. شامل دستور العمل‌های عملی، نمونه‌های محترفانه و فرصت برای تمرین روی قهوه واقعی. هر شرکت‌کننده ۶ فنجان قهوه برای تمرین دریافت می‌کند.',
-        image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%238b6f47" width="400" height="300"/><rect x="150" y="100" width="100" height="120" rx="10" fill="%23d4a574"/><ellipse cx="200" cy="100" rx="60" ry="20" fill="%23c99a62"/></svg>',
-        price: 150000, // 150,000 Toman
-        duration: '2 ساعت',
-        maxPeople: 20
-    },
-    {
-        id: 3,
-        title: 'شام تاریخی و داستان‌گویی',
-        shortSummary: 'غذاهای تاریخی همراه با داستان‌های جذاب فرهنگی',
-        fullDescription: 'سفری تاریخی از طریق غذا. هر پیش‌غذا، اصلی و دسر با داستان‌های فاشیناتور درباره تاریخ، فرهنگ و نوآوری جفت شده است. با داستان‌گوی حرفه‌ای و سرآشپز مخصوص ملاقات کنید.',
-        image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23395035" width="400" height="300"/><circle cx="100" cy="150" r="35" fill="%23fcede9" opacity="0.8"/><circle cx="200" cy="130" r="40" fill="%23fcede9" opacity="0.7"/><circle cx="300" cy="160" r="38" fill="%23fcede9" opacity="0.75"/></svg>',
-        price: 300000, // 300,000 Toman
-        duration: '3 ساعت',
-        maxPeople: 40
-    },
-    {
-        id: 4,
-        title: 'باشگاه کتاب و قهوه',
-        shortSummary: 'بحث درباره کتاب برگزیده ماه همراه با قهوه خاص',
-        fullDescription: 'هر ماه ما کتاب جدیدی را انتخاب می‌کنیم و مخصوصی قهوه جفت می‌کنیم. اعضا در یک گروه حمیمی با حداکثر 15 نفر درباره موضوعات کتاب بحث می‌کنند و قهوه‌های منحصربه‌فرد را می‌چشیند.',
-        image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23f8f3e7" width="400" height="300"/><rect x="80" y="80" width="25" height="140" fill="%23395035"/><rect x="120" y="90" width="25" height="130" fill="%236c8c68"/><rect x="160" y="85" width="25" height="135" fill="%238b6f47"/><rect x="200" y="95" width="25" height="125" fill="%23395035"/></svg>',
-        price: 120000, // 120,000 Toman
-        duration: '2.5 ساعت',
-        maxPeople: 15
-    },
-    {
-        id: 5,
-        title: 'کلاس آشپزی آسیایی',
-        shortSummary: 'یاد بگیرید طعام‌های آسیایی اصلی را با یک سرآشپز حرفه‌ای',
-        fullDescription: 'کلاس آشپزی عملی ۳ ساعته برای یاد گرفتن تکنیک‌های آشپزی آسیایی. شرکت‌کنندگان ۳ پیش‌غذا و ۲ پیش‌غذا آماده می‌کنند که سپس با سرآشپز شام می‌خورند. تمام مواد شامل شده و دستور العمل‌ها برای خانه فراهم می‌شود.',
-        image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23d4a574" width="400" height="300"/><rect x="100" y="80" width="200" height="150" fill="%23fcede9" rx="10"/><circle cx="150" cy="120" r="15" fill="%238b6f47"/><circle cx="200" cy="140" r="12" fill="%238b6f47"/><circle cx="250" cy="125" r="14" fill="%238b6f47"/></svg>',
-        price: 200000, // 200,000 Toman
-        duration: '3 ساعت',
-        maxPeople: 12
-    },
-    {
-        id: 6,
-        title: 'عصر عکاسی و قهوه',
-        shortSummary: 'شنا کردن و عکاسی مواد غذایی با نویسنده محبوب بلاگ غذایی',
-        fullDescription: 'کارگاه آموزشی ۲.5 ساعته درباره عکاسی غذایی. نویسنده بلاگ معروف نکات و ترفندهای خود را درباره روشنایی، ترکیب‌بندی و ویرایش به اشتراک می‌گذارد. شامل یک جلسه عملی با غذاهای واقعی برای عکاسی است.',
-        image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23395035" width="400" height="300"/><rect x="100" y="80" width="200" height="150" fill="%23cdd3c4" rx="5"/><rect x="120" y="100" width="160" height="110" fill="%23a8c49a" rx="3"/><circle cx="200" cy="155" r="8" fill="%23fcede9"/></svg>',
-        price: 180000, // 180,000 Toman
-        duration: '2.5 ساعت',
-        maxPeople: 10
-    }
-];
+import { useCart } from '../../context/CartContext';
 
 const timeSlots = [
     { value: '18:00', label: '6:00 PM' },
@@ -97,8 +36,78 @@ const EventBooking = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const [numPeople, setNumPeople] = useState(1);
     const [timeSlot, setTimeSlot] = useState('18:00');
-    const { user } = useAuth();
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const { user, apiBaseUrl, token } = useAuth();
+    const { addToCart } = useCart();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchEvents();
+    }, []);
+
+    const fetchEvents = async () => {
+        setLoading(true);
+        setError('');
+        const authToken = token || localStorage.getItem('authToken');
+        
+        if (!authToken) {
+            setError('لطفاً ابتدا وارد سیستم شوید');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${apiBaseUrl}/events`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'خطا در بارگذاری رویدادها');
+                setLoading(false);
+                return;
+            }
+            
+            const data = await res.json();
+            // Map API data to component format
+            const mappedEvents = Array.isArray(data) ? data.map((event) => {
+                // Convert duration_minutes to hours format
+                const hours = Math.floor(event.duration_minutes / 60);
+                const minutes = event.duration_minutes % 60;
+                const durationText = minutes > 0 ? `${hours}.${minutes} ساعت` : `${hours} ساعت`;
+                
+                // Get first image URL or use default
+                const imageUrl = event.image_urls && event.image_urls.length > 0 
+                    ? event.image_urls[0] 
+                    : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>';
+                
+                // Split description into short and full
+                const description = event.description || '';
+                const shortSummary = description.length > 100 ? description.substring(0, 100) + '...' : description;
+                
+                return {
+                    id: event.id,
+                    title: event.name || 'رویداد بدون نام',
+                    shortSummary: shortSummary,
+                    fullDescription: description || 'توضیحات در دسترس نیست',
+                    image: imageUrl,
+                    price: event.price_per_person || 0,
+                    duration: durationText,
+                    duration_minutes: event.duration_minutes,
+                    maxPeople: 50 // Default, can be updated if API provides this
+                };
+            }) : [];
+            
+            setEvents(mappedEvents);
+        } catch (err) {
+            console.error(err);
+            setError('خطا در ارتباط با سرور');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleOpenEvent = (event) => {
         setSelectedEvent(event);
@@ -118,7 +127,7 @@ const EventBooking = () => {
         const eventReservation = {
             id: `event-${selectedEvent.id}-${Date.now()}`,
             type: 'event',
-            title: 'رزرو رویداد',
+            name: `رزرو رویداد: ${selectedEvent.title}`,
             eventTitle: selectedEvent.title,
             eventDescription: selectedEvent.fullDescription,
             people: numPeople,
@@ -127,13 +136,9 @@ const EventBooking = () => {
             price: selectedEvent.price * numPeople
         };
 
-        if (user) {
-            localStorage.setItem('pendingReservation', JSON.stringify(eventReservation));
-            navigate('/customer/cart');
-        } else {
-            alert('لطفاً ابتدا وارد حساب کاربری خود شوید.');
-            navigate('/login');
-        }
+        addToCart(eventReservation);
+        alert('رویداد به سبد خرید اضافه شد');
+        navigate(-1); // Go back to previous page
     };
 
     return (
@@ -148,8 +153,23 @@ const EventBooking = () => {
                     </Typography>
                 </Box>
 
-                <Grid container spacing={3}>
-                    {eventsData.map((event) => (
+                {error && (
+                    <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                        {error}
+                    </Alert>
+                )}
+
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <CircularProgress />
+                    </Box>
+                ) : events.length === 0 ? (
+                    <Typography color="text.secondary" sx={{ textAlign: 'right' }}>
+                        رویدادی برای نمایش وجود ندارد
+                    </Typography>
+                ) : (
+                    <Grid container spacing={3}>
+                        {events.map((event) => (
                         <Grid item xs={12} sm={6} md={4} key={event.id}>
                             <Card
                                 sx={{
@@ -202,7 +222,8 @@ const EventBooking = () => {
                             </Card>
                         </Grid>
                     ))}
-                </Grid>
+                    </Grid>
+                )}
             </Container>
 
             {/* Event Details Dialog */}
@@ -290,8 +311,11 @@ const EventBooking = () => {
                                 fullWidth
                                 type="number"
                                 value={numPeople}
-                                onChange={(e) => setNumPeople(Math.max(1, Math.min(selectedEvent.maxPeople, parseInt(e.target.value) || 1)))}
-                                inputProps={{ min: 1, max: selectedEvent.maxPeople }}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
+                                    setNumPeople(Math.max(1, value));
+                                }}
+                                inputProps={{ min: 1 }}
                                 sx={{ mb: 2 }}
                             />
 

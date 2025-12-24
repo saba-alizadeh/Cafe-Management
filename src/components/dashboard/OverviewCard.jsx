@@ -13,10 +13,12 @@ const OverviewCard = ({
 	metrics,
 	background,
 	accentColor = 'var(--color-accent)',
-	textColor = 'var(--color-primary)'
+	textColor = 'var(--color-primary)',
+	onClick
 }) => (
 	<Paper
 		elevation={0}
+		onClick={onClick}
 		sx={{
 			background,
 			borderRadius: 4,
@@ -26,7 +28,13 @@ const OverviewCard = ({
 			height: '100%',
 			display: 'flex',
 			flexDirection: 'column',
-			justifyContent: 'space-between'
+			justifyContent: 'space-between',
+			cursor: onClick ? 'pointer' : 'default',
+			transition: 'transform 0.2s, box-shadow 0.2s',
+			'&:hover': onClick ? {
+				transform: 'translateY(-4px)',
+				boxShadow: '0 16px 40px rgba(102, 107, 104, 0.18)'
+			} : {}
 		}}
 	>
 		<Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>

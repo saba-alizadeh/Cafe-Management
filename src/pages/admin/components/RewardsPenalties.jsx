@@ -23,7 +23,7 @@ import {
 	Paper,
 	Divider
 } from '@mui/material';
-import { Delete, EmojiEvents, Add, TrendingUp, TrendingDown } from '@mui/icons-material';
+import { Delete, EmojiEvents, Add, TrendingUp, TrendingDown, Edit } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const reasons = ['خدمت عالی', 'تاخیر در ورود', 'شکایت مشتری', 'اضافه‌کاری', 'رفتار مناسب', 'رعایت قوانین'];
@@ -35,6 +35,7 @@ const RewardsPenalties = () => {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
+	const [editingReward, setEditingReward] = useState(null);
 	const [form, setForm] = useState({
 		employee_id: '',
 		title: '',
@@ -104,8 +105,13 @@ const RewardsPenalties = () => {
 		setSaving(true);
 		setError('');
 		try {
-			const res = await fetch(`${apiBaseUrl}/rewards`, {
-				method: 'POST',
+			const url = editingReward
+				? `${apiBaseUrl}/rewards/${editingReward.id}`
+				: `${apiBaseUrl}/rewards`;
+			const method = editingReward ? 'PUT' : 'POST';
+
+			const res = await fetch(url, {
+				method,
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`
@@ -118,7 +124,12 @@ const RewardsPenalties = () => {
 				setSaving(false);
 				return;
 			}
-			setRewards((prev) => [data, ...prev]);
+			if (editingReward) {
+				setRewards((prev) => prev.map((r) => (r.id === editingReward.id ? data : r)));
+				setEditingReward(null);
+			} else {
+				setRewards((prev) => [data, ...prev]);
+			}
 			setForm({
 				employee_id: '',
 				title: '',
@@ -134,6 +145,32 @@ const RewardsPenalties = () => {
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const handleEdit = (reward) => {
+		setEditingReward(reward);
+		setForm({
+			employee_id: reward.employee_id,
+			title: reward.title || '',
+			reason: reward.reason || '',
+			amount: reward.amount,
+			reward_type: reward.reward_type,
+			date: reward.date,
+			note: reward.note || ''
+		});
+	};
+
+	const handleCancelEdit = () => {
+		setEditingReward(null);
+		setForm({
+			employee_id: '',
+			title: '',
+			reason: '',
+			amount: 0,
+			reward_type: 'bonus',
+			date: new Date().toISOString().split('T')[0],
+			note: ''
+		});
 	};
 
 	const handleDelete = async (id) => {
@@ -178,8 +215,10 @@ const RewardsPenalties = () => {
 					<Card elevation={3} sx={{ borderRadius: 3, height: 'fit-content' }}>
 						<CardContent sx={{ p: 3 }}>
 							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
-								<Add color="primary" />
-								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>ثبت پاداش/جریمه</Typography>
+								{editingReward ? <Edit color="primary" /> : <Add color="primary" />}
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+									{editingReward ? 'ویرایش پاداش/جریمه' : 'ثبت پاداش/جریمه'}
+								</Typography>
 							</Stack>
 							<Box component="form" onSubmit={handleSubmit}>
 								<Stack spacing={2.5}>
@@ -303,11 +342,21 @@ const RewardsPenalties = () => {
 									/>
 									<Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
 										{saving && <CircularProgress size={22} />}
+										{editingReward && (
+											<Button
+												variant="outlined"
+												onClick={handleCancelEdit}
+												disabled={saving}
+												sx={{ borderRadius: 2, py: 1.5, px: 3 }}
+											>
+												لغو
+											</Button>
+										)}
 										<Button
 											type="submit"
 											variant="contained"
 											disabled={saving || !form.employee_id || form.amount < 0}
-											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Add />}
+											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : editingReward ? <Edit /> : <Add />}
 											sx={{
 												borderRadius: 2,
 												py: 1.5,
@@ -319,7 +368,7 @@ const RewardsPenalties = () => {
 												}
 											}}
 										>
-											ثبت
+											{editingReward ? 'ذخیره تغییرات' : 'ثبت'}
 										</Button>
 									</Stack>
 								</Stack>
@@ -396,17 +445,30 @@ const RewardsPenalties = () => {
 													<TableCell>{r.title || r.reason || '-'}</TableCell>
 													<TableCell>{r.date || '-'}</TableCell>
 													<TableCell align="right">
-														<IconButton
-															color="error"
-															size="small"
-															onClick={() => handleDelete(r.id)}
-															sx={{
-																bgcolor: 'error.light',
-																'&:hover': { bgcolor: 'error.main' }
-															}}
-														>
-															<Delete fontSize="small" />
-														</IconButton>
+														<Stack direction="row" spacing={1} justifyContent="flex-end">
+															<IconButton
+																color="primary"
+																size="small"
+																onClick={() => handleEdit(r)}
+																sx={{
+																	bgcolor: 'primary.light',
+																	'&:hover': { bgcolor: 'primary.main' }
+																}}
+															>
+																<Edit fontSize="small" />
+															</IconButton>
+															<IconButton
+																color="error"
+																size="small"
+																onClick={() => handleDelete(r.id)}
+																sx={{
+																	bgcolor: 'error.light',
+																	'&:hover': { bgcolor: 'error.main' }
+																}}
+															>
+																<Delete fontSize="small" />
+															</IconButton>
+														</Stack>
 													</TableCell>
 												</TableRow>
 											))}

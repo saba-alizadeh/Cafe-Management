@@ -28,7 +28,7 @@ const ShoppingCartDrawer = ({ open, onClose, cartItems, onUpdateQuantity, onRemo
     const [discountCode, setDiscountCode] = React.useState('');
 
     const getTotalPrice = () => {
-        return cartItems.reduce((total, item) => total + (item.basePrice * item.quantity), 0);
+        return cartItems.reduce((total, item) => total + ((item.price || item.basePrice || 0) * item.quantity), 0);
     };
 
     const applyDiscount = () => {
@@ -83,8 +83,8 @@ const ShoppingCartDrawer = ({ open, onClose, cartItems, onUpdateQuantity, onRemo
                             {cartItems.map((item) => (
                                 <ListItem key={item.id} divider>
                                     <ListItemText
-                                        primary={item.name}
-                                        secondary={`${item.basePrice} تومان هر کدام`}
+                                        primary={item.name || item.title || 'آیتم بدون نام'}
+                                        secondary={`${(item.price || item.basePrice || 0).toLocaleString()} تومان هر کدام`}
                                         primaryTypographyProps={{ sx: { textAlign: 'right' } }}
                                         secondaryTypographyProps={{ sx: { textAlign: 'right' } }}
                                         sx={{ mr: 2 }}
@@ -140,18 +140,18 @@ const ShoppingCartDrawer = ({ open, onClose, cartItems, onUpdateQuantity, onRemo
 
                         {/* Total Summary */}
                         <Box display="flex" justifyContent="space-between" mb={1} flexDirection="row-reverse">
-                            <Typography>${getTotalPrice().toFixed(2)}</Typography>
+                            <Typography>{getTotalPrice().toLocaleString()} تومان</Typography>
                             <Typography>جمع کل:</Typography>
                         </Box>
                         {applyDiscount() > 0 && (
                             <Box display="flex" justifyContent="space-between" mb={1} flexDirection="row-reverse">
-                                <Typography color="success.main">-${applyDiscount().toFixed(2)}</Typography>
+                                <Typography color="success.main">-{applyDiscount().toLocaleString()} تومان</Typography>
                                 <Typography color="success.main">تخفیف:</Typography>
                             </Box>
                         )}
                         <Divider sx={{ my: 1 }} />
                         <Box display="flex" justifyContent="space-between" mb={2} flexDirection="row-reverse">
-                            <Typography variant="h6">${finalTotal.toFixed(2)}</Typography>
+                            <Typography variant="h6">{finalTotal.toLocaleString()} تومان</Typography>
                             <Typography variant="h6">کل:</Typography>
                         </Box>
 

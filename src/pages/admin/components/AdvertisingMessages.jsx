@@ -14,9 +14,15 @@ import {
 	CircularProgress,
 	Checkbox,
 	FormControlLabel,
-	Divider
+	Divider,
+	Table,
+	TableHead,
+	TableRow,
+	TableCell,
+	TableBody,
+	Paper
 } from '@mui/material';
-import { Sms, Send } from '@mui/icons-material';
+import { Sms, Send, AccessTime, People } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const AdvertisingMessages = () => {
@@ -24,7 +30,10 @@ const AdvertisingMessages = () => {
 	const [customers, setCustomers] = useState([]);
 	const [selectedCustomers, setSelectedCustomers] = useState([]);
 	const [loading, setLoading] = useState(false);
+	const [sending, setSending] = useState(false);
 	const [error, setError] = useState('');
+	const [success, setSuccess] = useState('');
+	const [sentMessages, setSentMessages] = useState([]);
 	const [formData, setFormData] = useState({
 		title: '',
 		message: '',
@@ -34,9 +43,31 @@ const AdvertisingMessages = () => {
 	useEffect(() => {
 		if (token) {
 			fetchCustomers();
+			fetchSentMessages();
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [token, apiBaseUrl]);
+
+	const fetchSentMessages = async () => {
+		try {
+			// TODO: Replace with actual API endpoint when available
+			// const res = await fetch(`${apiBaseUrl}/advertising-messages`, {
+			// 	headers: { Authorization: `Bearer ${token}` }
+			// });
+			// if (res.ok) {
+			// 	const data = await res.json();
+			// 	setSentMessages(data);
+			// }
+			
+			// For now, load from localStorage as fallback
+			const stored = localStorage.getItem('advertising_messages');
+			if (stored) {
+				setSentMessages(JSON.parse(stored));
+			}
+		} catch (err) {
+			console.error('Error fetching sent messages:', err);
+		}
+	};
 
 	const fetchCustomers = async () => {
 		setLoading(true);
@@ -71,7 +102,7 @@ const AdvertisingMessages = () => {
 		}
 	};
 
-	const handleSend = () => {
+	const handleSend = async () => {
 		if (!formData.title || !formData.message) {
 			setError('لطفاً عنوان و متن پیام را وارد کنید');
 			return;
@@ -80,10 +111,72 @@ const AdvertisingMessages = () => {
 			setError('لطفاً حداقل یک مشتری را انتخاب کنید یا گزینه "ارسال به همه" را فعال کنید');
 			return;
 		}
-		// TODO: Implement actual SMS sending logic
-		console.log('Sending to:', formData.targetAll ? 'All customers' : selectedCustomers.map(c => c.phone));
+		
+		setSending(true);
 		setError('');
-		alert('پیام با موفقیت ارسال شد');
+		setSuccess('');
+		
+		try {
+			const targetUsers = formData.targetAll 
+				? customers.map(c => ({ id: c.id, name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.phone, phone: c.phone }))
+				: selectedCustomers.map(c => ({ id: c.id, name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.phone, phone: c.phone }));
+			
+			const messageData = {
+				id: Date.now().toString(),
+				title: formData.title,
+				message: formData.message,
+				target_users: targetUsers,
+				target_all: formData.targetAll,
+				sent_at: new Date().toISOString(),
+				sent_at_persian: new Date().toLocaleString('fa-IR', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit'
+				})
+			};
+
+			// TODO: Replace with actual API endpoint when available
+			// const res = await fetch(`${apiBaseUrl}/advertising-messages`, {
+			// 	method: 'POST',
+			// 	headers: {
+			// 		'Content-Type': 'application/json',
+			// 		Authorization: `Bearer ${token}`
+			// 	},
+			// 	body: JSON.stringify(messageData)
+			// });
+			// if (!res.ok) {
+			// 	const data = await res.json().catch(() => ({}));
+			// 	setError(data.detail || 'خطا در ارسال پیام');
+			// 	setSending(false);
+			// 	return;
+			// }
+			// const data = await res.json();
+			
+			// For now, store in localStorage as fallback
+			const stored = localStorage.getItem('advertising_messages');
+			const messages = stored ? JSON.parse(stored) : [];
+			messages.unshift(messageData);
+			localStorage.setItem('advertising_messages', JSON.stringify(messages));
+			setSentMessages(messages);
+			
+			// TODO: Implement actual SMS sending logic
+			console.log('Sending to:', formData.targetAll ? 'All customers' : selectedCustomers.map(c => c.phone));
+			
+			setSuccess('پیام با موفقیت ارسال شد');
+			setFormData({
+				title: '',
+				message: '',
+				targetAll: false
+			});
+			setSelectedCustomers([]);
+		} catch (err) {
+			console.error(err);
+			setError('خطا در ارتباط با سرور');
+		} finally {
+			setSending(false);
+		}
 	};
 
 	return (
@@ -97,8 +190,13 @@ const AdvertisingMessages = () => {
 					{error}
 				</Alert>
 			)}
+			{success && (
+				<Alert severity="success" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setSuccess('')}>
+					{success}
+				</Alert>
+			)}
 			<Grid container spacing={3}>
-				<Grid item xs={12} md={8}>
+				<Grid item xs={12} md={6}>
 					<Card elevation={3} sx={{ borderRadius: 3 }}>
 						<CardContent sx={{ p: 3 }}>
 							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
@@ -212,7 +310,8 @@ const AdvertisingMessages = () => {
 									<Button
 										variant="contained"
 										onClick={handleSend}
-										startIcon={<Send />}
+										disabled={sending}
+										startIcon={sending ? <CircularProgress size={20} color="inherit" /> : <Send />}
 										sx={{
 											borderRadius: 2,
 											px: 3,
@@ -223,10 +322,85 @@ const AdvertisingMessages = () => {
 											}
 										}}
 									>
-										ارسال پیامک
+										{sending ? 'در حال ارسال...' : 'ارسال پیامک'}
 									</Button>
 								</Stack>
 							</Stack>
+						</CardContent>
+					</Card>
+				</Grid>
+				<Grid item xs={12} md={6}>
+					<Card elevation={3} sx={{ borderRadius: 3 }}>
+						<CardContent sx={{ p: 3 }}>
+							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
+								<Sms color="primary" />
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>پیام‌های ارسال شده</Typography>
+								<Chip label={sentMessages.length} color="primary" size="small" />
+							</Stack>
+							<Divider sx={{ mb: 2 }} />
+							{sentMessages.length === 0 ? (
+								<Paper
+									elevation={0}
+									sx={{
+										p: 4,
+										textAlign: 'center',
+										bgcolor: 'grey.50',
+										borderRadius: 2
+									}}
+								>
+									<Typography variant="body1" color="text.secondary">
+										هیچ پیامی ارسال نشده است.
+									</Typography>
+								</Paper>
+							) : (
+								<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', maxHeight: 600, overflowY: 'auto' }}>
+									<Table>
+										<TableHead>
+											<TableRow sx={{ bgcolor: 'grey.100' }}>
+												<TableCell sx={{ fontWeight: 'bold' }}>عنوان</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>متن</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>تاریخ و زمان</TableCell>
+												<TableCell sx={{ fontWeight: 'bold' }}>گیرندگان</TableCell>
+											</TableRow>
+										</TableHead>
+										<TableBody>
+											{sentMessages.map((msg) => (
+												<TableRow key={msg.id} hover sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+													<TableCell>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{msg.title}
+														</Typography>
+													</TableCell>
+													<TableCell>
+														<Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+															{msg.message}
+														</Typography>
+													</TableCell>
+													<TableCell>
+														<Stack direction="row" alignItems="center" spacing={0.5}>
+															<AccessTime fontSize="small" color="action" />
+															<Typography variant="caption">
+																{msg.sent_at_persian}
+															</Typography>
+														</Stack>
+													</TableCell>
+													<TableCell>
+														<Stack direction="row" alignItems="center" spacing={0.5}>
+															<People fontSize="small" color="action" />
+															<Typography variant="caption">
+																{msg.target_all 
+																	? `همه (${msg.target_users.length})`
+																	: `${msg.target_users.length} نفر`
+																}
+															</Typography>
+														</Stack>
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+								</Paper>
+							)}
 						</CardContent>
 					</Card>
 				</Grid>

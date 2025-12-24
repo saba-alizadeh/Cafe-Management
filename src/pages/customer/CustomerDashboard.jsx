@@ -23,7 +23,12 @@ import {
     Schedule,
     Star,
     Logout,
-    AccountCircle
+    AccountCircle,
+    ShoppingCart,
+    Restaurant,
+    Event,
+    Movie,
+    BusinessCenter
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import UserProfile from '../../components/profile/UserProfile';
@@ -32,6 +37,11 @@ import UserProfile from '../../components/profile/UserProfile';
 import CustomerOverview from './components/CustomerOverview';
 import Reservations from './components/Reservations';
 import Reviews from './components/Reviews';
+import ShoppingCartPage from './components/ShoppingCartPage';
+import TableReservations from './components/TableReservations';
+import EventReservations from './components/EventReservations';
+import CinemaReservations from './components/CinemaReservations';
+import SharedSpaceReservations from './components/SharedSpaceReservations';
 
 const drawerWidth = 240;
 
@@ -46,7 +56,11 @@ const CustomerDashboard = () => {
 
     const menuItems = [
         { text: 'نمای کلی', icon: <Dashboard />, to: basePath },
-        { text: 'رزرو میز', icon: <Schedule />, to: `${basePath}/reservations` },
+        { text: 'سبد خرید', icon: <ShoppingCart />, to: `${basePath}/cart` },
+        { text: 'رزرو میز کافه', icon: <Restaurant />, to: `${basePath}/reservations/tables` },
+        { text: 'رزرو رویدادها', icon: <Event />, to: `${basePath}/reservations/events` },
+        { text: 'رزرو سینما', icon: <Movie />, to: `${basePath}/reservations/cinema` },
+        { text: 'رزرو فضای مشترک', icon: <BusinessCenter />, to: `${basePath}/reservations/shared` },
         { text: 'نظرات و امتیازها', icon: <Star />, to: `${basePath}/reviews` },
         { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
     ];
@@ -148,7 +162,26 @@ const CustomerDashboard = () => {
                     <Typography variant="h6" noWrap component="div">
                         سامانه مدیریت کافه - مشتری
                     </Typography>
-                    <Button color="inherit" size="small" onClick={() => navigate('/')} sx={{ position: 'absolute', left: 8 }}>
+                    <Button color="inherit" size="small" onClick={() => {
+                        const storedCafe = localStorage.getItem('selectedCafe');
+                        if (storedCafe) {
+                            try {
+                                const cafe = JSON.parse(storedCafe);
+                                const createCafeSlug = (name) => {
+                                    return name
+                                        .toLowerCase()
+                                        .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
+                                        .replace(/^-+|-+$/g, '');
+                                };
+                                const slug = createCafeSlug(cafe.name);
+                                navigate(`/${slug}`);
+                            } catch (e) {
+                                navigate('/select-cafe');
+                            }
+                        } else {
+                            navigate('/select-cafe');
+                        }
+                    }} sx={{ position: 'absolute', left: 8 }}>
                         بازگشت به خانه
                     </Button>
                 </Toolbar>

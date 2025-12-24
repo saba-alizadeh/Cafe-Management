@@ -21,7 +21,7 @@ import {
 	Chip,
 	Divider
 } from '@mui/material';
-import { Delete, Schedule, Add, AccessTime } from '@mui/icons-material';
+import { Delete, Schedule, Add, AccessTime, Edit } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const ShiftScheduling = () => {
@@ -31,6 +31,7 @@ const ShiftScheduling = () => {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
+	const [editingShift, setEditingShift] = useState(null);
 	const [form, setForm] = useState({
 		employee_id: '',
 		date: new Date().toISOString().split('T')[0],
@@ -97,8 +98,13 @@ const ShiftScheduling = () => {
 		setSaving(true);
 		setError('');
 		try {
-			const res = await fetch(`${apiBaseUrl}/shifts`, {
-				method: 'POST',
+			const url = editingShift
+				? `${apiBaseUrl}/shifts/${editingShift.id}`
+				: `${apiBaseUrl}/shifts`;
+			const method = editingShift ? 'PUT' : 'POST';
+
+			const res = await fetch(url, {
+				method,
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`
@@ -111,7 +117,12 @@ const ShiftScheduling = () => {
 				setSaving(false);
 				return;
 			}
-			setShifts((prev) => [data, ...prev]);
+			if (editingShift) {
+				setShifts((prev) => prev.map((s) => (s.id === editingShift.id ? data : s)));
+				setEditingShift(null);
+			} else {
+				setShifts((prev) => [data, ...prev]);
+			}
 			setForm({
 				employee_id: '',
 				date: new Date().toISOString().split('T')[0],
@@ -124,6 +135,26 @@ const ShiftScheduling = () => {
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const handleEdit = (shift) => {
+		setEditingShift(shift);
+		setForm({
+			employee_id: shift.employee_id,
+			date: shift.date,
+			start_time: shift.start_time,
+			end_time: shift.end_time
+		});
+	};
+
+	const handleCancelEdit = () => {
+		setEditingShift(null);
+		setForm({
+			employee_id: '',
+			date: new Date().toISOString().split('T')[0],
+			start_time: '09:00',
+			end_time: '17:00'
+		});
 	};
 
 	const handleDelete = async (shiftId) => {
@@ -168,8 +199,10 @@ const ShiftScheduling = () => {
 					<Card elevation={3} sx={{ borderRadius: 3, height: 'fit-content' }}>
 						<CardContent sx={{ p: 3 }}>
 							<Stack direction="row" alignItems="center" spacing={1} mb={3}>
-								<Add color="primary" />
-								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>تعریف شیفت جدید</Typography>
+								{editingShift ? <Edit color="primary" /> : <Add color="primary" />}
+								<Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+									{editingShift ? 'ویرایش شیفت' : 'تعریف شیفت جدید'}
+								</Typography>
 							</Stack>
 							<Box component="form" onSubmit={handleSubmit}>
 								<Stack spacing={2.5}>
@@ -250,11 +283,21 @@ const ShiftScheduling = () => {
 									</Stack>
 									<Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
 										{saving && <CircularProgress size={22} />}
+										{editingShift && (
+											<Button
+												variant="outlined"
+												onClick={handleCancelEdit}
+												disabled={saving}
+												sx={{ borderRadius: 2, py: 1.5, px: 3 }}
+											>
+												لغو
+											</Button>
+										)}
 										<Button
 											type="submit"
 											variant="contained"
 											disabled={saving || !form.employee_id}
-											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Add />}
+											startIcon={saving ? <CircularProgress size={20} color="inherit" /> : editingShift ? <Edit /> : <Add />}
 											sx={{
 												borderRadius: 2,
 												py: 1.5,
@@ -266,7 +309,7 @@ const ShiftScheduling = () => {
 												}
 											}}
 										>
-											ذخیره شیفت
+											{editingShift ? 'ذخیره تغییرات' : 'ذخیره شیفت'}
 										</Button>
 									</Stack>
 								</Stack>
@@ -335,17 +378,30 @@ const ShiftScheduling = () => {
 														</Stack>
 													</TableCell>
 													<TableCell align="right">
-														<IconButton
-															size="small"
-															color="error"
-															onClick={() => handleDelete(shift.id)}
-															sx={{
-																bgcolor: 'error.light',
-																'&:hover': { bgcolor: 'error.main' }
-															}}
-														>
-															<Delete fontSize="small" />
-														</IconButton>
+														<Stack direction="row" spacing={1} justifyContent="flex-end">
+															<IconButton
+																size="small"
+																color="primary"
+																onClick={() => handleEdit(shift)}
+																sx={{
+																	bgcolor: 'primary.light',
+																	'&:hover': { bgcolor: 'primary.main' }
+																}}
+															>
+																<Edit fontSize="small" />
+															</IconButton>
+															<IconButton
+																size="small"
+																color="error"
+																onClick={() => handleDelete(shift.id)}
+																sx={{
+																	bgcolor: 'error.light',
+																	'&:hover': { bgcolor: 'error.main' }
+																}}
+															>
+																<Delete fontSize="small" />
+															</IconButton>
+														</Stack>
 													</TableCell>
 												</TableRow>
 											))}

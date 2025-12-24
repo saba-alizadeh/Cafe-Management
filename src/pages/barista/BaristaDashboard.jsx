@@ -36,6 +36,7 @@ import OrderManagement from './components/OrderManagement';
 import ReservationManagement from './components/ReservationManagement';
 import InventoryStatus from './components/InventoryStatus';
 import LeaveRequests from './components/LeaveRequests';
+import EmployeeShifts from './components/EmployeeShifts';
 
 const drawerWidth = 240;
 
@@ -52,6 +53,7 @@ const BaristaDashboard = () => {
         { text: 'نمای کلی', icon: <Dashboard />, to: basePath },
         { text: 'سفارش‌ها', icon: <Restaurant />, to: `${basePath}/orders` },
         { text: 'رزروها', icon: <Schedule />, to: `${basePath}/reservations` },
+        { text: 'شیفت‌های من', icon: <Schedule />, to: `${basePath}/shifts` },
         { text: 'موجودی', icon: <Inventory />, to: `${basePath}/inventory` },
         { text: 'درخواست‌های مرخصی', icon: <Assignment />, to: `${basePath}/leave` },
         { text: 'پروفایل من', icon: <AccountCircle />, to: `${basePath}/profile` }
@@ -190,6 +192,7 @@ const BaristaDashboard = () => {
                     <Route index element={<BaristaOverview />} />
                     <Route path="orders" element={<OrderManagement />} />
                     <Route path="reservations" element={<ReservationManagement />} />
+                    <Route path="shifts" element={<EmployeeShifts />} />
                     <Route path="inventory" element={<InventoryStatus />} />
                     <Route path="leave" element={<LeaveRequests />} />
                     <Route path="profile" element={<UserProfile />} />

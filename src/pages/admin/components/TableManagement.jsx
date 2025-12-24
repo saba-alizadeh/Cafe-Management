@@ -102,7 +102,8 @@ const TableManagement = () => {
 			const formData = {
 				name: form.name.trim(),
 				capacity: parseInt(form.capacity),
-				status: form.status
+				status: form.status,
+				is_active: true
 			};
 			const res = await fetch(`${apiBaseUrl}/tables`, {
 				method: 'POST',

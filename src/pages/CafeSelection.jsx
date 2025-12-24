@@ -119,6 +119,8 @@ const CafeSelection = () => {
             id: cafe.id,
             name: cafe.name,
             image_url: cafe.image_url,
+            logo_url: cafe.logo_url,
+            banner_url: cafe.banner_url,
             location: cafe.location,
             phone: cafe.phone,
             email: cafe.email,
@@ -262,12 +264,12 @@ const CafeSelection = () => {
                                     }}
                                     onClick={() => handleSelectCafe(cafe)}
                                 >
-                                    {/* Image Section */}
-                                    {cafe.image_url && !imageErrors.has(cafe.id) ? (
+                                    {/* Image Section - Use banner_url if available, otherwise image_url */}
+                                    {(cafe.banner_url || cafe.image_url) && !imageErrors.has(cafe.id) ? (
                                         <CardMedia
                                             component="img"
                                             height="280"
-                                            image={getImageUrl(cafe.image_url)}
+                                            image={getImageUrl(cafe.banner_url || cafe.image_url)}
                                             alt={cafe.name}
                                             sx={{ 
                                                 objectFit: 'cover',

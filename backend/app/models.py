@@ -388,6 +388,8 @@ class CafeBase(BaseModel):
     coworking_capacity: Optional[int] = Field(default=None, ge=1, description="Co-working space total capacity (required if has_coworking is True)")
     has_events: bool = Field(default=False, description="Whether the cafe has events feature")
     image_url: Optional[str] = Field(default=None, max_length=500, description="URL of the cafe image")
+    logo_url: Optional[str] = Field(default=None, max_length=500, description="URL of the cafe logo")
+    banner_url: Optional[str] = Field(default=None, max_length=500, description="URL of the cafe banner")
     
     @field_validator("phone", mode="before")
     @classmethod
@@ -485,6 +487,8 @@ class CafeUpdate(BaseModel):
     coworking_capacity: Optional[int] = Field(None, ge=1)
     has_events: Optional[bool] = None
     image_url: Optional[str] = Field(None, max_length=500)
+    logo_url: Optional[str] = Field(None, max_length=500)
+    banner_url: Optional[str] = Field(None, max_length=500)
 
 
 class CafeResponse(CafeBase):

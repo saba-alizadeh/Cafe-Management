@@ -93,6 +93,8 @@ async def list_cafes_public():
                 coworking_capacity=cafe_info.get("coworking_capacity"),
                 has_events=cafe_info.get("has_events", False),
                 image_url=cafe_info.get("image_url"),
+                logo_url=cafe_info.get("logo_url"),
+                banner_url=cafe_info.get("banner_url"),
                 created_at=cafe_info.get("created_at", datetime.utcnow()),
                 updated_at=cafe_info.get("updated_at"),
                 admin_id=cafe_info.get("admin_id")
@@ -163,6 +165,8 @@ async def list_cafes(current_user: TokenData = Depends(get_current_user)):
                 coworking_capacity=cafe_info.get("coworking_capacity"),
                 has_events=cafe_info.get("has_events", False),
                 image_url=cafe_info.get("image_url"),
+                logo_url=cafe_info.get("logo_url"),
+                banner_url=cafe_info.get("banner_url"),
                 created_at=cafe_info.get("created_at", datetime.utcnow()),
                 updated_at=cafe_info.get("updated_at"),
                 admin_id=cafe_info.get("admin_id")
@@ -221,6 +225,136 @@ async def upload_cafe_image(
     return {"url": f"/api/cafes/image/{image_id}"}
 
 
+@router.post("/upload-cafe-logo")
+async def upload_cafe_logo(
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Upload a cafe logo. Returns a URL that can be stored in cafe records.
+    Only admins can upload cafe logos.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+
+    # Only admins can upload cafe logos
+    user = await _get_request_user(db, current_user)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can upload cafe logos"
+        )
+
+    # Get cafe_id from user
+    cafe_id = user.get("cafe_id")
+    if not cafe_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cafe ID not found for user"
+        )
+
+    # Read file contents
+    contents = await file.read()
+    
+    # Convert to base64
+    image_base64 = base64.b64encode(contents).decode('utf-8')
+    image_data_url = f"data:{file.content_type};base64,{image_base64}"
+    
+    # Store in images collection
+    images_collection = db["images"]
+    image_doc = {
+        "type": "cafe_logo",
+        "cafe_id": str(cafe_id),
+        "data": image_data_url,
+        "content_type": file.content_type,
+        "created_at": datetime.utcnow()
+    }
+    result = await images_collection.insert_one(image_doc)
+    image_id = str(result.inserted_id)
+    
+    # Update cafe information with logo URL
+    cafe_info_collection = get_cafe_information_collection(db, str(cafe_id))
+    await cafe_info_collection.update_one(
+        {},
+        {"$set": {"logo_url": f"/api/cafes/image/{image_id}"}}
+    )
+    
+    # Return URL pointing to image retrieval endpoint
+    return {"url": f"/api/cafes/image/{image_id}"}
+
+
+@router.post("/upload-cafe-banner")
+async def upload_cafe_banner(
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Upload a cafe banner. Returns a URL that can be stored in cafe records.
+    Only admins can upload cafe banners.
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+
+    # Only admins can upload cafe banners
+    user = await _get_request_user(db, current_user)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can upload cafe banners"
+        )
+
+    # Get cafe_id from user
+    cafe_id = user.get("cafe_id")
+    if not cafe_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cafe ID not found for user"
+        )
+
+    # Read file contents
+    contents = await file.read()
+    
+    # Convert to base64
+    image_base64 = base64.b64encode(contents).decode('utf-8')
+    image_data_url = f"data:{file.content_type};base64,{image_base64}"
+    
+    # Store in images collection
+    images_collection = db["images"]
+    image_doc = {
+        "type": "cafe_banner",
+        "cafe_id": str(cafe_id),
+        "data": image_data_url,
+        "content_type": file.content_type,
+        "created_at": datetime.utcnow()
+    }
+    result = await images_collection.insert_one(image_doc)
+    image_id = str(result.inserted_id)
+    
+    # Update cafe information with banner URL
+    cafe_info_collection = get_cafe_information_collection(db, str(cafe_id))
+    await cafe_info_collection.update_one(
+        {},
+        {"$set": {"banner_url": f"/api/cafes/image/{image_id}"}}
+    )
+    
+    # Return URL pointing to image retrieval endpoint
+    return {"url": f"/api/cafes/image/{image_id}"}
+
+
 @router.get("/image/{image_id}")
 async def get_cafe_image(image_id: str):
     """Retrieve a cafe image by ID"""
@@ -243,7 +377,10 @@ async def get_cafe_image(image_id: str):
             detail="Invalid image ID"
         )
     
-    image_doc = await images_collection.find_one({"_id": image_oid, "type": "cafe_image"})
+    image_doc = await images_collection.find_one({
+        "_id": image_oid, 
+        "type": {"$in": ["cafe_image", "cafe_logo", "cafe_banner"]}
+    })
     if not image_doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -454,6 +591,8 @@ async def create_cafe(
         "coworking_capacity": cafe_data.coworking_capacity if hasattr(cafe_data, 'coworking_capacity') and cafe_data.has_coworking else None,
         "has_events": cafe_data.has_events if hasattr(cafe_data, 'has_events') else False,
         "image_url": clean_value(cafe_data.image_url) if hasattr(cafe_data, 'image_url') else None,
+        "logo_url": clean_value(cafe_data.logo_url) if hasattr(cafe_data, 'logo_url') else None,
+        "banner_url": clean_value(cafe_data.banner_url) if hasattr(cafe_data, 'banner_url') else None,
         "cafe_id": new_cafe_id,
         "created_at": datetime.utcnow(),
         "updated_at": None
@@ -533,6 +672,8 @@ async def create_cafe(
         coworking_capacity=created_cafe.get("coworking_capacity"),
         has_events=created_cafe.get("has_events", False),
         image_url=created_cafe.get("image_url"),
+        logo_url=created_cafe.get("logo_url"),
+        banner_url=created_cafe.get("banner_url"),
         created_at=created_cafe.get("created_at", datetime.utcnow()),
         updated_at=created_cafe.get("updated_at"),
         admin_id=str(admin_id)
@@ -586,6 +727,9 @@ async def get_cafe(
         capacity=cafe.get("capacity"),
         wifi_password=cafe.get("wifi_password"),
         is_active=cafe.get("is_active", True),
+        image_url=cafe.get("image_url"),
+        logo_url=cafe.get("logo_url"),
+        banner_url=cafe.get("banner_url"),
         created_at=cafe.get("created_at", datetime.utcnow()),
         updated_at=cafe.get("updated_at"),
         admin_id=str(cafe.get("admin_id")) if cafe.get("admin_id") else None

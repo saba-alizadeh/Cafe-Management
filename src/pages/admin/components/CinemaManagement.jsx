@@ -23,7 +23,7 @@ const CinemaManagement = () => {
         title: '', description: '', duration_minutes: '', genre: '', rating: ''
     });
     const [sessionForm, setSessionForm] = useState({
-        film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: ''
+        film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: '', image_url: ''
     });
 
     const getToken = () => token || localStorage.getItem('authToken');
@@ -102,7 +102,20 @@ const CinemaManagement = () => {
     };
 
     const handleSessionSubmit = async () => {
+        // Validation
+        if (!sessionForm.film_id || !sessionForm.session_date || !sessionForm.start_time || 
+            !sessionForm.available_seats || !sessionForm.price_per_seat) {
+            setError('لطفاً تمام فیلدهای الزامی را پر کنید');
+            return;
+        }
+        
+        if (!sessionForm.image_url && !editingSession) {
+            setError('آدرس تصویر الزامی است');
+            return;
+        }
+        
         setSaving(true);
+        setError('');
         setError('');
         const authToken = getToken();
         try {
@@ -110,19 +123,30 @@ const CinemaManagement = () => {
                 ? `${apiBaseUrl}/cinema/sessions/${editingSession.id}`
                 : `${apiBaseUrl}/cinema/sessions`;
             const method = editingSession ? 'PUT' : 'POST';
+            
+            const requestBody = {
+                film_id: sessionForm.film_id,
+                session_date: sessionForm.session_date,
+                start_time: sessionForm.start_time,
+                available_seats: parseInt(sessionForm.available_seats),
+                price_per_seat: parseFloat(sessionForm.price_per_seat)
+            };
+            
+            // Only include image_url if provided (for create) or if updating
+            if (sessionForm.image_url) {
+                requestBody.image_url = sessionForm.image_url;
+            } else if (!editingSession) {
+                // Default image for new sessions if none provided
+                requestBody.image_url = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>';
+            }
+            
             const res = await fetch(url, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${authToken}`
                 },
-                body: JSON.stringify({
-                    film_id: sessionForm.film_id,
-                    session_date: sessionForm.session_date,
-                    start_time: sessionForm.start_time,
-                    available_seats: parseInt(sessionForm.available_seats),
-                    price_per_seat: parseFloat(sessionForm.price_per_seat)
-                })
+                body: JSON.stringify(requestBody)
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -248,7 +272,7 @@ const CinemaManagement = () => {
                                 <Button size="small" variant="outlined" startIcon={<Add />}
                                     onClick={() => {
                                         setEditingSession(null);
-                                        setSessionForm({ film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: '' });
+                                        setSessionForm({ film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: '', image_url: '' });
                                         setSessionDialogOpen(true);
                                     }}>
                                     افزودن جلسه
@@ -279,7 +303,8 @@ const CinemaManagement = () => {
                                                             session_date: session.session_date,
                                                             start_time: session.start_time,
                                                             available_seats: session.available_seats.toString(),
-                                                            price_per_seat: session.price_per_seat.toString()
+                                                            price_per_seat: session.price_per_seat.toString(),
+                                                            image_url: session.image_url || ''
                                                         });
                                                         setSessionDialogOpen(true);
                                                     }}>
@@ -367,6 +392,12 @@ const CinemaManagement = () => {
                         <Grid item xs={6}>
                             <TextField fullWidth label="قیمت هر صندلی *" type="number" value={sessionForm.price_per_seat}
                                 onChange={(e) => setSessionForm({ ...sessionForm, price_per_seat: e.target.value })} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField fullWidth label="آدرس تصویر *" value={sessionForm.image_url}
+                                onChange={(e) => setSessionForm({ ...sessionForm, image_url: e.target.value })}
+                                placeholder="https://example.com/poster.jpg"
+                                helperText="آدرس تصویر پوستر فیلم الزامی است" />
                         </Grid>
                     </Grid>
                 </DialogContent>

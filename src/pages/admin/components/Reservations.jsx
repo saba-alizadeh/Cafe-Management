@@ -1,10 +1,11 @@
-import { Box, Typography, Card, CardContent, Grid, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Paper, Chip, Stack, Divider, CircularProgress } from '@mui/material';
-import { TableRestaurant, Person, People, BookOnline } from '@mui/icons-material';
+import { useState } from 'react';
+import { Box, Typography, Card, CardContent, Grid, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Paper, Chip, Stack, Divider, CircularProgress, IconButton, Button, Alert } from '@mui/material';
+import { TableRestaurant, Person, People, BookOnline, Cancel } from '@mui/icons-material';
+import { useAuth } from '../../../context/AuthContext';
 
 const Reservations = () => {
-	// Mock data - in real app, this would come from API
-	// Structure: table details, number of people, customer username
-	const reservations = [
+	const { apiBaseUrl, token } = useAuth();
+	const [reservations, setReservations] = useState([
 		{
 			id: 1,
 			table: { name: 'میز ۵', number: 5, capacity: 4, location: 'سالن اصلی' },
@@ -56,6 +57,9 @@ const Reservations = () => {
 		}
 	};
 
+	const [error, setError] = useState('');
+	const [loading, setLoading] = useState(false);
+
 	const getStatusLabel = (status) => {
 		switch (status) {
 			case 'confirmed':
@@ -69,6 +73,42 @@ const Reservations = () => {
 		}
 	};
 
+	const handleCancel = async (reservationId) => {
+		if (!window.confirm('آیا از لغو این رزرو اطمینان دارید؟')) return;
+		
+		setLoading(true);
+		setError('');
+		try {
+			// TODO: Replace with actual API endpoint when available
+			// const res = await fetch(`${apiBaseUrl}/reservations/${reservationId}/cancel`, {
+			// 	method: 'PUT',
+			// 	headers: {
+			// 		'Content-Type': 'application/json',
+			// 		Authorization: `Bearer ${token}`
+			// 	}
+			// });
+			// if (!res.ok) {
+			// 	const data = await res.json().catch(() => ({}));
+			// 	setError(data.detail || 'خطا در لغو رزرو');
+			// 	setLoading(false);
+			// 	return;
+			// }
+			// const data = await res.json();
+			
+			// For now, update local state
+			setReservations((prev) =>
+				prev.map((r) =>
+					r.id === reservationId ? { ...r, status: 'cancelled' } : r
+				)
+			);
+		} catch (err) {
+			console.error(err);
+			setError('خطا در ارتباط با سرور');
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	return (
 		<Box sx={{ direction: 'rtl', p: 3 }}>
 			<Stack direction="row" alignItems="center" spacing={2} mb={3}>
@@ -78,6 +118,11 @@ const Reservations = () => {
 			<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
 				مشاهده و مدیریت رزروهای میزها
 			</Typography>
+			{error && (
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+					{error}
+				</Alert>
+			)}
 			<Card elevation={3} sx={{ borderRadius: 3 }}>
 				<CardContent sx={{ p: 3 }}>
 					<Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
@@ -105,7 +150,7 @@ const Reservations = () => {
 					) : (
 						<Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
 							<Table>
-								<TableHead>
+									<TableHead>
 									<TableRow sx={{ bgcolor: 'grey.100' }}>
 										<TableCell sx={{ fontWeight: 'bold' }}>جزئیات میز</TableCell>
 										<TableCell sx={{ fontWeight: 'bold' }}>تعداد نفرات</TableCell>
@@ -113,6 +158,7 @@ const Reservations = () => {
 										<TableCell sx={{ fontWeight: 'bold' }}>نام مشتری</TableCell>
 										<TableCell sx={{ fontWeight: 'bold' }}>تاریخ و زمان</TableCell>
 										<TableCell sx={{ fontWeight: 'bold' }}>وضعیت</TableCell>
+										<TableCell align="right" sx={{ fontWeight: 'bold' }}>عملیات</TableCell>
 									</TableRow>
 								</TableHead>
 								<TableBody>
@@ -165,6 +211,21 @@ const Reservations = () => {
 													color={getStatusColor(reservation.status)}
 													size="small"
 												/>
+											</TableCell>
+											<TableCell align="right">
+												{reservation.status !== 'cancelled' && (
+													<Button
+														variant="outlined"
+														color="error"
+														size="small"
+														startIcon={<Cancel />}
+														onClick={() => handleCancel(reservation.id)}
+														disabled={loading}
+														sx={{ borderRadius: 2 }}
+													>
+														لغو
+													</Button>
+												)}
 											</TableCell>
 										</TableRow>
 									))}

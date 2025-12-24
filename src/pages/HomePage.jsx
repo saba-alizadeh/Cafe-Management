@@ -3,21 +3,23 @@ import { Box, CircularProgress } from '@mui/material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import HeaderBar from './home/components/HeaderBar';
 import HeroSection from './home/components/HeroSection';
+import AboutCafe from './home/components/AboutCafe';
 import CategoriesNavigation from './home/components/CategoriesNavigation';
 import BookingOptions from './home/components/BookingOptions';
 import MenuSection from './home/components/MenuSection';
 import SpecialDiscounts from './home/components/SpecialDiscounts';
-import ChefRecommendations from './home/components/ChefRecommendations';
+// import ChefRecommendations from './home/components/ChefRecommendations';
 import DrinkCustomizer from './home/components/DrinkCustomizer';
 import ServicesSection from './home/components/ServicesSection';
 import CustomerReviews from './home/components/CustomerReviews';
-import BranchesSection from './home/components/BranchesSection';
+// import BranchesSection from './home/components/BranchesSection';
 import ContactSection from './home/components/ContactSection';
 import SocialLinks from './home/components/SocialLinks';
 
 const HomePage = () => {
     const [selectedCafe, setSelectedCafe] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showAbout, setShowAbout] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { cafeSlug } = useParams();
@@ -99,9 +101,21 @@ const HomePage = () => {
         return null;
     }
 
+    // Show About section if requested
+    if (showAbout) {
+        return (
+            <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
+                <HeaderBar selectedCafe={selectedCafe} onAboutClick={() => setShowAbout(false)} />
+                <Box sx={{ pt: 8 }}>
+                    <AboutCafe selectedCafe={selectedCafe} />
+                </Box>
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ bgcolor: 'var(--color-secondary)', minHeight: '100vh', width: '100%', margin: 0, padding: 0 }}>
-            <HeaderBar selectedCafe={selectedCafe} />
+            <HeaderBar selectedCafe={selectedCafe} onAboutClick={() => setShowAbout(true)} />
             <HeroSection selectedCafe={selectedCafe} />
             <BookingOptions selectedCafe={selectedCafe} />
             <CategoriesNavigation selectedCafe={selectedCafe} />

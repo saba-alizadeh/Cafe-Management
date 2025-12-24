@@ -20,7 +20,7 @@ const EventsManagement = () => {
     const [editingEvent, setEditingEvent] = useState(null);
     const [editingSession, setEditingSession] = useState(null);
     const [eventForm, setEventForm] = useState({
-        name: '', description: '', duration_minutes: '', price_per_person: ''
+        name: '', description: '', duration_minutes: '', price_per_person: '', image_urls: ''
     });
     const [sessionForm, setSessionForm] = useState({
         event_id: '', session_date: '', start_time: '', available_spots: '', price_per_person: ''
@@ -65,6 +65,21 @@ const EventsManagement = () => {
     };
 
     const handleEventSubmit = async () => {
+        // Validation
+        if (!eventForm.name || !eventForm.duration_minutes || !eventForm.price_per_person) {
+            setError('لطفاً تمام فیلدهای الزامی را پر کنید');
+            return;
+        }
+        
+        const imageUrls = eventForm.image_urls 
+            ? eventForm.image_urls.split(',').map(url => url.trim()).filter(url => url.length > 0)
+            : [];
+        
+        if (imageUrls.length === 0 && !editingEvent) {
+            setError('حداقل یک آدرس تصویر الزامی است');
+            return;
+        }
+        
         setSaving(true);
         setError('');
         const authToken = getToken();
@@ -73,18 +88,29 @@ const EventsManagement = () => {
                 ? `${apiBaseUrl}/events/${editingEvent.id}`
                 : `${apiBaseUrl}/events`;
             const method = editingEvent ? 'PUT' : 'POST';
+            
+            const requestBody = {
+                name: eventForm.name,
+                description: eventForm.description || null,
+                duration_minutes: parseInt(eventForm.duration_minutes),
+                price_per_person: parseFloat(eventForm.price_per_person)
+            };
+            
+            // Only include image_urls if provided (for create) or if updating
+            if (imageUrls.length > 0) {
+                requestBody.image_urls = imageUrls;
+            } else if (!editingEvent) {
+                // Default image for new events if none provided
+                requestBody.image_urls = ['data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>'];
+            }
+            
             const res = await fetch(url, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${authToken}`
                 },
-                body: JSON.stringify({
-                    name: eventForm.name,
-                    description: eventForm.description || null,
-                    duration_minutes: parseInt(eventForm.duration_minutes),
-                    price_per_person: parseFloat(eventForm.price_per_person)
-                })
+                body: JSON.stringify(requestBody)
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -194,7 +220,7 @@ const EventsManagement = () => {
                                 <Button size="small" variant="outlined" startIcon={<Add />}
                                     onClick={() => {
                                         setEditingEvent(null);
-                                        setEventForm({ name: '', description: '', duration_minutes: '', price_per_person: '' });
+                                        setEventForm({ name: '', description: '', duration_minutes: '', price_per_person: '', image_urls: '' });
                                         setEventDialogOpen(true);
                                     }}>
                                     افزودن رویداد
@@ -222,7 +248,8 @@ const EventsManagement = () => {
                                                         name: event.name,
                                                         description: event.description || '',
                                                         duration_minutes: event.duration_minutes.toString(),
-                                                        price_per_person: event.price_per_person.toString()
+                                                        price_per_person: event.price_per_person.toString(),
+                                                        image_urls: event.image_urls ? event.image_urls.join(', ') : ''
                                                     });
                                                     setEventDialogOpen(true);
                                                 }}>
@@ -319,6 +346,12 @@ const EventsManagement = () => {
                         <Grid item xs={6}>
                             <TextField fullWidth label="قیمت هر نفر *" type="number" value={eventForm.price_per_person}
                                 onChange={(e) => setEventForm({ ...eventForm, price_per_person: e.target.value })} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField fullWidth label="آدرس تصاویر (جدا شده با کاما) *" value={eventForm.image_urls}
+                                onChange={(e) => setEventForm({ ...eventForm, image_urls: e.target.value })}
+                                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
+                                helperText="حداقل یک آدرس تصویر الزامی است" />
                         </Grid>
                     </Grid>
                 </DialogContent>

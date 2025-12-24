@@ -17,11 +17,13 @@ import CafeSelection from "./pages/CafeSelection";
 
 // Context
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 
 function App() {
     return (
         <AuthProvider>
-            <Router>
+            <CartProvider>
+                <Router>
                 <Routes>
                     <Route path="/select-cafe" element={<CafeSelection />} />
                     <Route path="/booking/cinema" element={<CinemaBooking />} />
@@ -38,6 +40,7 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                 </Routes>
             </Router>
+            </CartProvider>
         </AuthProvider>
     );
 }

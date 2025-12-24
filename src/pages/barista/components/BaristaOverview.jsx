@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Box, Grid, Typography } from '@mui/material';
 import {
 	RestaurantMenuRounded,
@@ -6,8 +7,11 @@ import {
 	BadgeRounded,
 	WarningAmberRounded,
 	AssignmentTurnedInRounded,
-	CoffeeRounded
+	CoffeeRounded,
+	ScheduleRounded
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 
 import OverviewCard from '../../../components/dashboard/OverviewCard';
 
@@ -70,18 +74,15 @@ const cards = [
 		}
 	},
 	{
-		id: 'team-coverage',
+		id: 'my-shifts',
 		grid: { xs: 12, md: 6 },
 		props: {
-			title: 'پوشش شیفت‌ها',
-			icon: <BadgeRounded sx={{ fontSize: 28 }} />,
+			title: 'شیفت‌های من',
+			icon: <ScheduleRounded sx={{ fontSize: 28 }} />,
 			accentColor: palette.accent,
 			background: palette.peach,
-			metrics: [
-				{ label: 'امروز', value: '95% کامل', trend: 'up' },
-				{ label: '۷ روز گذشته', value: '90% برنامه‌ریزی', trend: 'up' },
-				{ label: 'یک ماه گذشته', value: '88% ذخیره', trend: 'up' }
-			]
+			metrics: [],
+			navigateTo: '/barista/shifts'
 		}
 	},
 	{
@@ -131,32 +132,111 @@ const cards = [
 	}
 ];
 
-const BaristaOverview = () => (
-	<Box sx={{ width: '100%', direction: 'rtl', mt: 2 }}>
-		<Box sx={{ maxWidth: 1240, width: '100%', ml: 'auto' }}>
-			<Typography variant="h4" sx={{ fontWeight: 700 }} gutterBottom>
-				نمای کلی باریستا
-			</Typography>
-			<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-				مدیریت لحظه‌ای سفارش‌ها، رزروها و آماده‌سازی نوشیدنی‌ها
-			</Typography>
+const BaristaOverview = () => {
+	const navigate = useNavigate();
+	const { apiBaseUrl, token, user } = useAuth();
+	const [shiftsCount, setShiftsCount] = useState({ today: 0, week: 0, month: 0 });
 
-			<Grid container spacing={3}>
-				{cards.map(({ id, grid, props }) => (
-					<Grid
-						item
-						key={id}
-						xs={grid.xs}
-						sm={grid.sm ?? grid.xs}
-						md={grid.md ?? grid.sm ?? grid.xs}
-						lg={grid.lg ?? grid.md ?? grid.sm ?? grid.xs}
-					>
-						<OverviewCard {...props} />
-					</Grid>
-				))}
-			</Grid>
+	useEffect(() => {
+		if (token && user) {
+			fetchShiftsCount();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [token, apiBaseUrl, user]);
+
+	const fetchShiftsCount = async () => {
+		try {
+			const res = await fetch(`${apiBaseUrl}/shifts`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (res.ok) {
+				const allShifts = await res.json();
+				const employeeShifts = user?.employee_id 
+					? allShifts.filter(s => s.employee_id === user.employee_id)
+					: [];
+				
+				const today = new Date();
+				today.setHours(0, 0, 0, 0);
+				const weekAgo = new Date(today);
+				weekAgo.setDate(weekAgo.getDate() - 7);
+				const monthAgo = new Date(today);
+				monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+				const todayShifts = employeeShifts.filter(s => {
+					const shiftDate = new Date(s.date);
+					return shiftDate.toDateString() === today.toDateString();
+				});
+
+				const weekShifts = employeeShifts.filter(s => {
+					const shiftDate = new Date(s.date);
+					return shiftDate >= weekAgo && shiftDate <= today;
+				});
+
+				const monthShifts = employeeShifts.filter(s => {
+					const shiftDate = new Date(s.date);
+					return shiftDate >= monthAgo && shiftDate <= today;
+				});
+
+				setShiftsCount({
+					today: todayShifts.length,
+					week: weekShifts.length,
+					month: monthShifts.length
+				});
+
+				// Update the shifts card with actual data
+				const shiftsCard = cards.find(c => c.id === 'my-shifts');
+				if (shiftsCard) {
+					shiftsCard.props.metrics = [
+						{ label: 'امروز', value: todayShifts.length.toString(), trend: 'neutral' },
+						{ label: '۷ روز گذشته', value: weekShifts.length.toString(), trend: 'up' },
+						{ label: 'یک ماه گذشته', value: monthShifts.length.toString(), trend: 'up' }
+					];
+				}
+			}
+		} catch (err) {
+			console.error('Error fetching shifts:', err);
+		}
+	};
+
+	const shiftsCard = cards.find(c => c.id === 'my-shifts');
+	if (shiftsCard && shiftsCard.props.metrics.length === 0) {
+		shiftsCard.props.metrics = [
+			{ label: 'امروز', value: shiftsCount.today.toString(), trend: 'neutral' },
+			{ label: '۷ روز گذشته', value: shiftsCount.week.toString(), trend: 'up' },
+			{ label: 'یک ماه گذشته', value: shiftsCount.month.toString(), trend: 'up' }
+		];
+	}
+
+	return (
+		<Box sx={{ width: '100%', direction: 'rtl', mt: 2 }}>
+			<Box sx={{ maxWidth: 1240, width: '100%', ml: 'auto' }}>
+				<Typography variant="h4" sx={{ fontWeight: 700 }} gutterBottom>
+					نمای کلی باریستا
+				</Typography>
+				<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+					مدیریت لحظه‌ای سفارش‌ها، رزروها و آماده‌سازی نوشیدنی‌ها
+				</Typography>
+
+				<Grid container spacing={3}>
+					{cards.map(({ id, grid, props }) => (
+						<Grid
+							item
+							key={id}
+							xs={grid.xs}
+							sm={grid.sm ?? grid.xs}
+							md={grid.md ?? grid.sm ?? grid.xs}
+							lg={grid.lg ?? grid.md ?? grid.sm ?? grid.xs}
+						>
+							<OverviewCard
+								{...props}
+								onClick={props.navigateTo ? () => navigate(props.navigateTo) : undefined}
+							/>
+						</Grid>
+					))}
+				</Grid>
+			</Box>
 		</Box>
-	</Box>
-);
+	);
+};
 
 export default BaristaOverview;

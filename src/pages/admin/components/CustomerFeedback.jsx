@@ -75,14 +75,6 @@ const CustomerFeedback = () => {
 										}
 									}}
 								/>
-								<Button
-									variant="outlined"
-									startIcon={<Download />}
-									fullWidth
-									sx={{ borderRadius: 2, py: 1.5 }}
-								>
-									خروجی گرفتن
-								</Button>
 							</Stack>
 						</CardContent>
 					</Card>

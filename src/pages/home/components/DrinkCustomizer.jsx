@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useCart } from '../../../context/CartContext';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const DrinkCustomizer = () => {
@@ -23,6 +24,7 @@ const DrinkCustomizer = () => {
   const [isDraggingOverCup, setIsDraggingOverCup] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const navigate = useNavigate();
 
   const handleDragStart = (event, item) => {
@@ -163,12 +165,24 @@ const DrinkCustomizer = () => {
   };
 
   const handleAddToOrderClick = () => {
-    if (user) {
-      // In a real app this would add the customized drink to the cart/order.
-      navigate('/customer/profile');
-    } else {
-      setAuthDialogOpen(true);
+    if (ingredients.length === 0) {
+      alert('لطفاً ابتدا مواد پایه را اضافه کنید');
+      return;
     }
+    
+    const customDrink = {
+      id: `custom-drink-${Date.now()}`,
+      type: 'custom_drink',
+      name: `نوشیدنی سفارشی (${selectedSize})`,
+      ingredients: ingredients.map(ing => ing.name).join(', '),
+      size: selectedSize,
+      price: parseFloat(calculatePrice()),
+      quantity: 1
+    };
+    
+    addToCart(customDrink);
+    alert('نوشیدنی سفارشی به سبد خرید اضافه شد');
+    handleClearDrink(); // Clear after adding
   };
 
   return (
