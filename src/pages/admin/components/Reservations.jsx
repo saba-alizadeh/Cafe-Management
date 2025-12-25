@@ -42,7 +42,7 @@ const Reservations = () => {
 			time: '13:00',
 			status: 'cancelled'
 		}
-	];
+	])
 
 	const getStatusColor = (status) => {
 		switch (status) {
