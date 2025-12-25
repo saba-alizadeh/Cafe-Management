@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional
 from bson import ObjectId
 from datetime import datetime
 from app.database import get_database, connect_to_mongo
@@ -8,7 +8,7 @@ from app.models import (
 )
 from app.auth import get_current_user
 from app.routers.auth import _get_request_user
-from app.db_helpers import require_cafe_access, get_cafe_tables_collection
+from app.db_helpers import require_cafe_access, get_cafe_tables_collection, get_cafe_id_for_access
 
 router = APIRouter(prefix="/api/tables", tags=["tables"])
 
@@ -16,9 +16,14 @@ router = APIRouter(prefix="/api/tables", tags=["tables"])
 
 
 @router.get("", response_model=List[TableResponse])
-async def list_tables(current_user: TokenData = Depends(get_current_user)):
+async def list_tables(
+    current_user: TokenData = Depends(get_current_user),
+    cafe_id: Optional[str] = Query(None, description="Café ID (optional for customers)")
+):
     """
-    List all tables for the current user's cafe.
+    List all tables for a café.
+    - Customers can access any café by providing cafe_id
+    - Admin/Manager/Barista access their own café
     """
     db = get_database()
     if db is None:
@@ -30,7 +35,7 @@ async def list_tables(current_user: TokenData = Depends(get_current_user)):
                 detail="Database connection not available"
             )
     
-    cafe_id = await require_cafe_access(db, current_user)
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     tables_collection = get_cafe_tables_collection(db, cafe_id)
     tables: List[TableResponse] = []
     

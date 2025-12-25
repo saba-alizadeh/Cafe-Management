@@ -316,30 +316,11 @@ const InventoryControl = () => {
 													</TableCell>
 													<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
-															<IconButton
-																size="small"
-																onClick={() => handleOpenDialog(item)}
-																sx={{
-																	bgcolor: 'white',
-																	border: '1px solid',
-																	borderColor: 'primary.main',
-																	'&:hover': { bgcolor: 'primary.light', color: 'white' }
-																}}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => handleOpenDialog(item)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																size="small"
-																color="error"
-																onClick={() => handleDelete(item.id)}
-																sx={{
-																	bgcolor: 'white',
-																	border: '1px solid',
-																	borderColor: 'error.main',
-																	'&:hover': { bgcolor: 'error.light', color: 'white' }
-																}}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(item.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 													</TableCell>

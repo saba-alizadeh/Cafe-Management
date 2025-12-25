@@ -321,18 +321,11 @@ const RulesManagement = () => {
 															/>
 														</Box>
 														<Stack direction="row" spacing={1}>
-															<IconButton
-																onClick={() => startEdit(r)}
-																sx={{ bgcolor: 'primary.light', '&:hover': { bgcolor: 'primary.main' } }}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => startEdit(r)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																color="error"
-																onClick={() => handleDelete(r.id)}
-																sx={{ bgcolor: 'error.light', '&:hover': { bgcolor: 'error.main' } }}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(r.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 													</Stack>

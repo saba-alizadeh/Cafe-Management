@@ -280,30 +280,11 @@ const DiscountCodes = () => {
 													</TableCell>
 													<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
-															<IconButton
-																size="small"
-																onClick={() => handleOpenDialog(c)}
-																sx={{
-																	bgcolor: 'white',
-																	border: '1px solid',
-																	borderColor: 'primary.main',
-																	'&:hover': { bgcolor: 'primary.light', color: 'white' }
-																}}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => handleOpenDialog(c)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																size="small"
-																color="error"
-																onClick={() => handleDelete(c.id)}
-																sx={{
-																	bgcolor: 'white',
-																	border: '1px solid',
-																	borderColor: 'error.main',
-																	'&:hover': { bgcolor: 'error.light', color: 'white' }
-																}}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(c.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 													</TableCell>

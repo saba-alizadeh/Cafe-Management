@@ -236,7 +236,12 @@ const CustomerDashboard = () => {
                 <Toolbar />
                 <Routes>
                     <Route index element={<CustomerOverview />} />
+                    <Route path="cart" element={<ShoppingCartPage />} />
                     <Route path="reservations" element={<Reservations />} />
+                    <Route path="reservations/tables" element={<TableReservations />} />
+                    <Route path="reservations/events" element={<EventReservations />} />
+                    <Route path="reservations/cinema" element={<CinemaReservations />} />
+                    <Route path="reservations/shared" element={<SharedSpaceReservations />} />
                     <Route path="reviews" element={<Reviews />} />
                     <Route path="profile" element={<UserProfile />} />
                 </Routes>

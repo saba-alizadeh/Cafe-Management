@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query
+from typing import List, Optional
 from bson import ObjectId
 from datetime import datetime
 from app.database import get_database, connect_to_mongo
@@ -13,7 +13,7 @@ from app.routers.auth import _get_request_user
 from app.db_helpers import (
     require_cafe_access, get_cafe_films_collection,
     get_cafe_movie_sessions_collection, get_cafe_information_collection,
-    get_cafe_cinema_images_collection
+    get_cafe_cinema_images_collection, get_cafe_id_for_access
 )
 import base64
 
@@ -38,6 +38,7 @@ async def upload_cinema_image(
 ):
     """
     Upload a cinema image (movie poster or session image). Returns a URL that can be stored in movie session records.
+    Requires café membership (admin/manager/barista only).
     """
     db = get_database()
     if db is None:
@@ -121,8 +122,15 @@ async def get_cinema_image(image_id: str):
 
 # Films endpoints
 @router.get("/films", response_model=List[FilmResponse])
-async def list_films(current_user: TokenData = Depends(get_current_user)):
-    """List all films for the current user's cafe"""
+async def list_films(
+    current_user: TokenData = Depends(get_current_user),
+    cafe_id: Optional[str] = Query(None, description="Café ID (optional for customers)")
+):
+    """
+    List all films for a café.
+    - Customers can access any café by providing cafe_id
+    - Admin/Manager/Barista access their own café
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -133,7 +141,7 @@ async def list_films(current_user: TokenData = Depends(get_current_user)):
                 detail="Database connection not available"
             )
     
-    cafe_id = await require_cafe_access(db, current_user)
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     await _ensure_cafe_has_cinema(db, cafe_id)
     
     films_col = get_cafe_films_collection(db, cafe_id)
@@ -146,6 +154,7 @@ async def list_films(current_user: TokenData = Depends(get_current_user)):
             duration_minutes=film.get("duration_minutes", 0),
             genre=film.get("genre"),
             rating=film.get("rating"),
+            banner_url=film.get("banner_url"),
             created_at=film.get("created_at", datetime.utcnow()),
             updated_at=film.get("updated_at")
         ))
@@ -179,6 +188,7 @@ async def create_film(
         "duration_minutes": film_data.duration_minutes,
         "genre": film_data.genre,
         "rating": film_data.rating,
+        "banner_url": film_data.banner_url,
         "created_at": datetime.utcnow(),
         "updated_at": None
     }
@@ -193,6 +203,7 @@ async def create_film(
         duration_minutes=film_doc["duration_minutes"],
         genre=film_doc["genre"],
         rating=film_doc["rating"],
+        banner_url=film_doc.get("banner_url"),
         created_at=film_doc["created_at"],
         updated_at=film_doc["updated_at"]
     )
@@ -246,6 +257,8 @@ async def update_film(
         update_data["genre"] = film_data.genre
     if film_data.rating is not None:
         update_data["rating"] = film_data.rating
+    if film_data.banner_url is not None:
+        update_data["banner_url"] = film_data.banner_url
     
     if update_data:
         update_data["updated_at"] = datetime.utcnow()
@@ -262,6 +275,7 @@ async def update_film(
         duration_minutes=updated["duration_minutes"],
         genre=updated.get("genre"),
         rating=updated.get("rating"),
+        banner_url=updated.get("banner_url"),
         created_at=updated.get("created_at", datetime.utcnow()),
         updated_at=updated.get("updated_at")
     )
@@ -306,8 +320,15 @@ async def delete_film(
 
 # Movie Sessions endpoints
 @router.get("/sessions", response_model=List[MovieSessionResponse])
-async def list_movie_sessions(current_user: TokenData = Depends(get_current_user)):
-    """List all movie sessions for the current user's cafe"""
+async def list_movie_sessions(
+    current_user: TokenData = Depends(get_current_user),
+    cafe_id: Optional[str] = Query(None, description="Café ID (optional for customers)")
+):
+    """
+    List all movie sessions for a café.
+    - Customers can access any café by providing cafe_id
+    - Admin/Manager/Barista access their own café
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -318,7 +339,7 @@ async def list_movie_sessions(current_user: TokenData = Depends(get_current_user
                 detail="Database connection not available"
             )
     
-    cafe_id = await require_cafe_access(db, current_user)
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     await _ensure_cafe_has_cinema(db, cafe_id)
     
     sessions_col = get_cafe_movie_sessions_collection(db, cafe_id)

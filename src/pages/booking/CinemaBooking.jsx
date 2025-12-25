@@ -41,24 +41,38 @@ const CinemaBooking = () => {
             return;
         }
 
+        // Get selected café from localStorage
+        const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
+        if (!selectedCafe || !selectedCafe.id) {
+            setError('لطفاً ابتدا یک کافه انتخاب کنید');
+            setLoading(false);
+            return;
+        }
+
         try {
-            // Fetch cafe information to get cinema_seating_capacity
-            const res = await fetch(`${apiBaseUrl}/cafes`, {
-                headers: { Authorization: `Bearer ${authToken}` }
-            });
+            // Fetch cinema sessions and films for the selected café
+            const [sessionsRes, filmsRes] = await Promise.all([
+                fetch(`${apiBaseUrl}/cinema/sessions?cafe_id=${selectedCafe.id}`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                }),
+                fetch(`${apiBaseUrl}/cinema/films?cafe_id=${selectedCafe.id}`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                })
+            ]);
             
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
+            if (!sessionsRes.ok || !filmsRes.ok) {
+                const data = await sessionsRes.json().catch(() => ({}));
                 setError(data.detail || 'خطا در بارگذاری اطلاعات سینما');
                 setLoading(false);
                 return;
             }
             
-            const cafes = await res.json();
-            const cafe = Array.isArray(cafes) && cafes.length > 0 ? cafes[0] : null;
+            // Use the selected café's cinema capacity if available
+            // Otherwise, use a default value
+            const cafe = selectedCafe;
+            let capacity = cafe?.cinema_seating_capacity || 64; // Default cinema capacity
             
-            if (cafe && cafe.cinema_seating_capacity) {
-                const capacity = cafe.cinema_seating_capacity;
+            if (capacity) {
                 setTotalSeats(capacity);
                 
                 // Calculate rows and seats per row dynamically

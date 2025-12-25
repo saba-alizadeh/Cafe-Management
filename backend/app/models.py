@@ -534,6 +534,7 @@ class FilmBase(BaseModel):
     duration_minutes: int = Field(..., ge=1, le=300, description="Film duration in minutes")
     genre: Optional[str] = Field(default=None, max_length=100, description="Film genre")
     rating: Optional[str] = Field(default=None, max_length=10, description="Film rating (e.g., PG, PG-13, R)")
+    banner_url: Optional[str] = Field(default=None, max_length=500, description="URL of the film banner image")
 
 
 class FilmCreate(FilmBase):
@@ -546,6 +547,7 @@ class FilmUpdate(BaseModel):
     duration_minutes: Optional[int] = Field(None, ge=1, le=300)
     genre: Optional[str] = Field(None, max_length=100)
     rating: Optional[str] = Field(None, max_length=10)
+    banner_url: Optional[str] = Field(None, max_length=500)
 
 
 class FilmResponse(FilmBase):

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
     Box, Typography, Card, CardContent, Table, TableHead, TableRow, TableCell,
     TableBody, Button, IconButton, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
-    DialogActions, TextField, Grid, Chip
+    DialogActions, TextField, Grid, Chip, Stack
 } from '@mui/material';
 import { Add, Edit, Delete, Work } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
@@ -150,21 +150,23 @@ const CoworkingManagement = () => {
                                     </TableCell>
                                     <TableCell>{table.amenities || '-'}</TableCell>
                                     <TableCell align="center">
-                                        <IconButton size="small" onClick={() => {
-                                            setEditingTable(table);
-                                            setForm({
-                                                name: table.name,
-                                                capacity: table.capacity.toString(),
-                                                is_available: table.is_available,
-                                                amenities: table.amenities || ''
-                                            });
-                                            setDialogOpen(true);
-                                        }}>
-                                            <Edit />
-                                        </IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleDelete(table.id)}>
-                                            <Delete />
-                                        </IconButton>
+                                        <Stack direction="row" spacing={1} justifyContent="center">
+                                            <IconButton size="small" onClick={() => {
+                                                setEditingTable(table);
+                                                setForm({
+                                                    name: table.name,
+                                                    capacity: table.capacity.toString(),
+                                                    is_available: table.is_available,
+                                                    amenities: table.amenities || ''
+                                                });
+                                                setDialogOpen(true);
+                                            }}>
+                                                <Edit />
+                                            </IconButton>
+                                            <IconButton size="small" color="error" onClick={() => handleDelete(table.id)}>
+                                                <Delete />
+                                            </IconButton>
+                                        </Stack>
                                     </TableCell>
                                 </TableRow>
                             ))}

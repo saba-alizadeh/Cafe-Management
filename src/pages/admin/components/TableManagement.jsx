@@ -421,25 +421,11 @@ const TableManagement = () => {
 													</TableCell>
 													<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
-															<IconButton
-																color="primary"
-																onClick={() => handleEditClick(table)}
-																sx={{
-																	bgcolor: 'primary.light',
-																	'&:hover': { bgcolor: 'primary.main' }
-																}}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => handleEditClick(table)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																color="error"
-																onClick={() => handleDelete(table.id)}
-																sx={{
-																	bgcolor: 'error.light',
-																	'&:hover': { bgcolor: 'error.main' }
-																}}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(table.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 													</TableCell>

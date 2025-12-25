@@ -446,27 +446,11 @@ const RewardsPenalties = () => {
 													<TableCell>{r.date || '-'}</TableCell>
 													<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
-															<IconButton
-																color="primary"
-																size="small"
-																onClick={() => handleEdit(r)}
-																sx={{
-																	bgcolor: 'primary.light',
-																	'&:hover': { bgcolor: 'primary.main' }
-																}}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => handleEdit(r)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																color="error"
-																size="small"
-																onClick={() => handleDelete(r.id)}
-																sx={{
-																	bgcolor: 'error.light',
-																	'&:hover': { bgcolor: 'error.main' }
-																}}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(r.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 													</TableCell>

@@ -509,29 +509,11 @@ const EmployeeManagement = () => {
 												</TableCell>
 												<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
-															<IconButton
-																color="primary"
-																onClick={() => handleEditClick(e)}
-																sx={{
-																	bgcolor: 'white',
-																	border: '1px solid',
-																	borderColor: 'primary.main',
-																	'&:hover': { bgcolor: 'primary.light', color: 'white' }
-																}}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => handleEditClick(e)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																color="error"
-																onClick={() => handleDelete(e.id)}
-																sx={{
-																	bgcolor: 'white',
-																	border: '1px solid',
-																	borderColor: 'error.main',
-																	'&:hover': { bgcolor: 'error.light', color: 'white' }
-																}}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(e.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 												</TableCell>

@@ -379,27 +379,11 @@ const ShiftScheduling = () => {
 													</TableCell>
 													<TableCell align="right">
 														<Stack direction="row" spacing={1} justifyContent="flex-end">
-															<IconButton
-																size="small"
-																color="primary"
-																onClick={() => handleEdit(shift)}
-																sx={{
-																	bgcolor: 'primary.light',
-																	'&:hover': { bgcolor: 'primary.main' }
-																}}
-															>
-																<Edit fontSize="small" />
+															<IconButton size="small" onClick={() => handleEdit(shift)}>
+																<Edit />
 															</IconButton>
-															<IconButton
-																size="small"
-																color="error"
-																onClick={() => handleDelete(shift.id)}
-																sx={{
-																	bgcolor: 'error.light',
-																	'&:hover': { bgcolor: 'error.main' }
-																}}
-															>
-																<Delete fontSize="small" />
+															<IconButton size="small" color="error" onClick={() => handleDelete(shift.id)}>
+																<Delete />
 															</IconButton>
 														</Stack>
 													</TableCell>

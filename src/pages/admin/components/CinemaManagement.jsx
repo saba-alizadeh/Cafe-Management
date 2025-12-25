@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import {
     Box, Typography, Card, CardContent, Grid, TextField, Table, TableHead, TableRow, TableCell,
     TableBody, Button, IconButton, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
-    DialogActions, Chip, Divider, Select, MenuItem, FormControl, InputLabel
+    DialogActions, Chip, Divider, Select, MenuItem, FormControl, InputLabel, Stack
 } from '@mui/material';
-import { Add, Edit, Delete, Movie } from '@mui/icons-material';
+import { Add, Edit, Delete, Movie, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const CinemaManagement = () => {
@@ -19,11 +19,12 @@ const CinemaManagement = () => {
     const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
     const [editingFilm, setEditingFilm] = useState(null);
     const [editingSession, setEditingSession] = useState(null);
+    const [uploadingBanner, setUploadingBanner] = useState(false);
     const [filmForm, setFilmForm] = useState({
-        title: '', description: '', duration_minutes: '', genre: '', rating: ''
+        title: '', description: '', duration_minutes: '', genre: '', rating: '', banner_url: ''
     });
     const [sessionForm, setSessionForm] = useState({
-        film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: '', image_url: ''
+        film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: ''
     });
 
     const getToken = () => token || localStorage.getItem('authToken');
@@ -64,6 +65,48 @@ const CinemaManagement = () => {
         }
     };
 
+    const handleBannerUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploadingBanner(true);
+        setError('');
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(`${apiBaseUrl}/cinema/upload-image`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${getToken()}`
+                },
+                body: formData
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(data.detail || data.message || 'خطا در آپلود تصویر');
+                setUploadingBanner(false);
+                return;
+            }
+
+            const imageUrl = data.url;
+            if (!imageUrl) {
+                setError('آدرس فایل بازگشتی نامعتبر است');
+                setUploadingBanner(false);
+                return;
+            }
+
+            setFilmForm(prev => ({ ...prev, banner_url: imageUrl }));
+        } catch (err) {
+            console.error('Image upload exception:', err);
+            setError('خطا در ارتباط با سرور هنگام آپلود تصویر: ' + err.message);
+        } finally {
+            setUploadingBanner(false);
+        }
+    };
+
     const handleFilmSubmit = async () => {
         setSaving(true);
         setError('');
@@ -84,7 +127,8 @@ const CinemaManagement = () => {
                     description: filmForm.description || null,
                     duration_minutes: parseInt(filmForm.duration_minutes),
                     genre: filmForm.genre || null,
-                    rating: filmForm.rating || null
+                    rating: filmForm.rating || null,
+                    banner_url: filmForm.banner_url || null
                 })
             });
             if (!res.ok) {
@@ -109,13 +153,7 @@ const CinemaManagement = () => {
             return;
         }
         
-        if (!sessionForm.image_url && !editingSession) {
-            setError('آدرس تصویر الزامی است');
-            return;
-        }
-        
         setSaving(true);
-        setError('');
         setError('');
         const authToken = getToken();
         try {
@@ -124,21 +162,24 @@ const CinemaManagement = () => {
                 : `${apiBaseUrl}/cinema/sessions`;
             const method = editingSession ? 'PUT' : 'POST';
             
+            // Get the film to use its banner_url as the session image
+            const film = films.find(f => f.id === sessionForm.film_id);
+            const imageUrl = film?.banner_url || '';
+            
+            if (!imageUrl && !editingSession) {
+                setError('لطفاً ابتدا برای فیلم تصویر بنر آپلود کنید');
+                setSaving(false);
+                return;
+            }
+            
             const requestBody = {
                 film_id: sessionForm.film_id,
                 session_date: sessionForm.session_date,
                 start_time: sessionForm.start_time,
                 available_seats: parseInt(sessionForm.available_seats),
-                price_per_seat: parseFloat(sessionForm.price_per_seat)
+                price_per_seat: parseFloat(sessionForm.price_per_seat),
+                image_url: imageUrl
             };
-            
-            // Only include image_url if provided (for create) or if updating
-            if (sessionForm.image_url) {
-                requestBody.image_url = sessionForm.image_url;
-            } else if (!editingSession) {
-                // Default image for new sessions if none provided
-                requestBody.image_url = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>';
-            }
             
             const res = await fetch(url, {
                 method,
@@ -219,7 +260,7 @@ const CinemaManagement = () => {
                                 <Button size="small" variant="outlined" startIcon={<Add />}
                                     onClick={() => {
                                         setEditingFilm(null);
-                                        setFilmForm({ title: '', description: '', duration_minutes: '', genre: '', rating: '' });
+                                        setFilmForm({ title: '', description: '', duration_minutes: '', genre: '', rating: '', banner_url: '' });
                                         setFilmDialogOpen(true);
                                     }}>
                                     افزودن فیلم
@@ -239,22 +280,25 @@ const CinemaManagement = () => {
                                             <TableCell>{film.title}</TableCell>
                                             <TableCell>{film.duration_minutes}</TableCell>
                                             <TableCell>
-                                                <IconButton size="small" onClick={() => {
-                                                    setEditingFilm(film);
-                                                    setFilmForm({
-                                                        title: film.title,
-                                                        description: film.description || '',
-                                                        duration_minutes: film.duration_minutes.toString(),
-                                                        genre: film.genre || '',
-                                                        rating: film.rating || ''
-                                                    });
-                                                    setFilmDialogOpen(true);
-                                                }}>
-                                                    <Edit />
-                                                </IconButton>
-                                                <IconButton size="small" color="error" onClick={() => handleDeleteFilm(film.id)}>
-                                                    <Delete />
-                                                </IconButton>
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <IconButton size="small" onClick={() => {
+                                                        setEditingFilm(film);
+                                                        setFilmForm({
+                                                            title: film.title,
+                                                            description: film.description || '',
+                                                            duration_minutes: film.duration_minutes.toString(),
+                                                            genre: film.genre || '',
+                                                            rating: film.rating || '',
+                                                            banner_url: film.banner_url || ''
+                                                        });
+                                                        setFilmDialogOpen(true);
+                                                    }}>
+                                                        <Edit />
+                                                    </IconButton>
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteFilm(film.id)}>
+                                                        <Delete />
+                                                    </IconButton>
+                                                </Stack>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -272,7 +316,7 @@ const CinemaManagement = () => {
                                 <Button size="small" variant="outlined" startIcon={<Add />}
                                     onClick={() => {
                                         setEditingSession(null);
-                                        setSessionForm({ film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: '', image_url: '' });
+                                        setSessionForm({ film_id: '', session_date: '', start_time: '', available_seats: '', price_per_seat: '' });
                                         setSessionDialogOpen(true);
                                     }}>
                                     افزودن جلسه
@@ -296,23 +340,24 @@ const CinemaManagement = () => {
                                                 <TableCell>{session.session_date}</TableCell>
                                                 <TableCell>{session.start_time}</TableCell>
                                                 <TableCell>
-                                                    <IconButton size="small" onClick={() => {
-                                                        setEditingSession(session);
-                                                        setSessionForm({
-                                                            film_id: session.film_id,
-                                                            session_date: session.session_date,
-                                                            start_time: session.start_time,
-                                                            available_seats: session.available_seats.toString(),
-                                                            price_per_seat: session.price_per_seat.toString(),
-                                                            image_url: session.image_url || ''
-                                                        });
-                                                        setSessionDialogOpen(true);
-                                                    }}>
-                                                        <Edit />
-                                                    </IconButton>
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteSession(session.id)}>
-                                                        <Delete />
-                                                    </IconButton>
+                                                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                        <IconButton size="small" onClick={() => {
+                                                            setEditingSession(session);
+                                                            setSessionForm({
+                                                                film_id: session.film_id,
+                                                                session_date: session.session_date,
+                                                                start_time: session.start_time,
+                                                                available_seats: session.available_seats.toString(),
+                                                                price_per_seat: session.price_per_seat.toString()
+                                                            });
+                                                            setSessionDialogOpen(true);
+                                                        }}>
+                                                            <Edit />
+                                                        </IconButton>
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteSession(session.id)}>
+                                                            <Delete />
+                                                        </IconButton>
+                                                    </Stack>
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -348,6 +393,49 @@ const CinemaManagement = () => {
                         <Grid item xs={12}>
                             <TextField fullWidth label="رتبه‌بندی" value={filmForm.rating}
                                 onChange={(e) => setFilmForm({ ...filmForm, rating: e.target.value })} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <input
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                id="film-banner-upload"
+                                type="file"
+                                onChange={handleBannerUpload}
+                                disabled={saving || uploadingBanner}
+                            />
+                            <label htmlFor="film-banner-upload">
+                                <Button
+                                    variant="outlined"
+                                    component="span"
+                                    startIcon={<CloudUpload />}
+                                    disabled={saving || uploadingBanner}
+                                    fullWidth
+                                    sx={{ mb: 2 }}
+                                >
+                                    {uploadingBanner ? 'در حال آپلود...' : 'آپلود تصویر بنر فیلم'}
+                                </Button>
+                            </label>
+                            {filmForm.banner_url && (
+                                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                                    <Box
+                                        component="img"
+                                        src={filmForm.banner_url.startsWith('/') ? `${apiBaseUrl}${filmForm.banner_url}` : filmForm.banner_url}
+                                        alt="Banner preview"
+                                        sx={{ maxWidth: '100%', maxHeight: 200, mb: 1, borderRadius: 1 }}
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                        }}
+                                    />
+                                    <Button
+                                        size="small"
+                                        color="error"
+                                        onClick={() => setFilmForm(prev => ({ ...prev, banner_url: '' }))}
+                                        disabled={saving}
+                                    >
+                                        حذف تصویر
+                                    </Button>
+                                </Box>
+                            )}
                         </Grid>
                     </Grid>
                 </DialogContent>
@@ -392,12 +480,6 @@ const CinemaManagement = () => {
                         <Grid item xs={6}>
                             <TextField fullWidth label="قیمت هر صندلی *" type="number" value={sessionForm.price_per_seat}
                                 onChange={(e) => setSessionForm({ ...sessionForm, price_per_seat: e.target.value })} />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField fullWidth label="آدرس تصویر *" value={sessionForm.image_url}
-                                onChange={(e) => setSessionForm({ ...sessionForm, image_url: e.target.value })}
-                                placeholder="https://example.com/poster.jpg"
-                                helperText="آدرس تصویر پوستر فیلم الزامی است" />
                         </Grid>
                     </Grid>
                 </DialogContent>

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query
+from typing import List, Optional
 from bson import ObjectId
 from datetime import datetime
 from app.database import get_database, connect_to_mongo
@@ -12,7 +12,7 @@ from app.auth import get_current_user
 from app.db_helpers import (
     require_cafe_access, get_cafe_events_collection,
     get_cafe_event_sessions_collection, get_cafe_information_collection,
-    get_cafe_event_images_collection
+    get_cafe_event_images_collection, get_cafe_id_for_access
 )
 import base64
 
@@ -26,6 +26,7 @@ async def upload_event_image(
 ):
     """
     Upload an event image. Returns a URL that can be stored in event records.
+    Requires café membership (admin/manager/barista only).
     """
     db = get_database()
     if db is None:
@@ -120,8 +121,15 @@ async def _ensure_cafe_has_events(db, cafe_id: str):
 
 # Events endpoints
 @router.get("", response_model=List[EventResponse])
-async def list_events(current_user: TokenData = Depends(get_current_user)):
-    """List all events for the current user's cafe"""
+async def list_events(
+    current_user: TokenData = Depends(get_current_user),
+    cafe_id: Optional[str] = Query(None, description="Café ID (optional for customers)")
+):
+    """
+    List all events for a café.
+    - Customers can access any café by providing cafe_id
+    - Admin/Manager/Barista access their own café
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -132,7 +140,7 @@ async def list_events(current_user: TokenData = Depends(get_current_user)):
                 detail="Database connection not available"
             )
     
-    cafe_id = await require_cafe_access(db, current_user)
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     await _ensure_cafe_has_events(db, cafe_id)
     
     events_col = get_cafe_events_collection(db, cafe_id)
@@ -342,8 +350,17 @@ async def delete_event(
 
 # Event Sessions endpoints
 @router.get("/sessions", response_model=List[EventSessionResponse])
-async def list_event_sessions(current_user: TokenData = Depends(get_current_user)):
-    """List all event sessions for the current user's cafe"""
+async def list_event_sessions(
+    current_user: TokenData = Depends(get_current_user),
+    cafe_id: Optional[str] = Query(None, description="Café ID (optional for customers)"),
+    event_id: Optional[str] = Query(None, description="Filter by event ID")
+):
+    """
+    List event sessions for a café.
+    - Customers can access any café by providing cafe_id
+    - Admin/Manager/Barista access their own café
+    - Optionally filter by event_id
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -354,12 +371,29 @@ async def list_event_sessions(current_user: TokenData = Depends(get_current_user
                 detail="Database connection not available"
             )
     
-    cafe_id = await require_cafe_access(db, current_user)
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     await _ensure_cafe_has_events(db, cafe_id)
     
     sessions_col = get_cafe_event_sessions_collection(db, cafe_id)
+    
+    # Build query filter
+    query = {}
+    if event_id:
+        query["event_id"] = event_id
+    
     sessions = []
-    async for session in sessions_col.find({}):
+    async for session in sessions_col.find(query):
+        # Filter out past sessions for customers
+        session_date = session.get("session_date", "")
+        start_time = session.get("start_time", "")
+        if session_date and start_time:
+            try:
+                session_datetime = datetime.strptime(f"{session_date} {start_time}", "%Y-%m-%d %H:%M")
+                if session_datetime < datetime.utcnow():
+                    continue  # Skip past sessions
+            except:
+                pass  # If date parsing fails, include the session
+        
         sessions.append(EventSessionResponse(
             id=str(session["_id"]),
             event_id=session.get("event_id", ""),

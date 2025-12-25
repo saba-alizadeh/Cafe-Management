@@ -246,10 +246,56 @@ async def require_cafe_access(db, current_user: TokenData):
     """
     Ensure the current user has a cafe_id and return it.
     Raises HTTPException if user doesn't belong to a café.
+    This is used for admin/manager/barista operations that require café membership.
     """
     from fastapi import HTTPException, status
     
     cafe_id = await get_user_cafe_id(db, current_user)
+    if cafe_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User must belong to a café to access this resource"
+        )
+    return cafe_id
+
+
+async def get_cafe_id_for_access(db, current_user: TokenData, cafe_id_param: str = None):
+    """
+    Get cafe_id for accessing café resources.
+    - For customers: Uses provided cafe_id_param or gets the first available café from cafes_master
+    - For admin/manager/barista: Uses their own cafe_id (requires membership)
+    
+    This allows customers to access any café's data for making reservations.
+    """
+    from fastapi import HTTPException, status
+    from app.routers.auth import _get_request_user
+    
+    # Get user to check their role
+    user = await _get_request_user(db, current_user)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    user_role = user.get("role", "customer")
+    
+    # For customers, allow access to any café
+    if user_role == "customer":
+        if cafe_id_param:
+            return str(cafe_id_param)
+        # If no cafe_id provided, get the first available café from cafes_master
+        cafes_master = db["cafes_master"]
+        first_cafe = await cafes_master.find_one({})
+        if first_cafe and first_cafe.get("cafe_id"):
+            return str(first_cafe.get("cafe_id"))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No café found. Please specify a café."
+        )
+    
+    # For admin/manager/barista, require café membership
+    cafe_id = get_cafe_id_from_user(user)
     if cafe_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

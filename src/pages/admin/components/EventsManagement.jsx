@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import {
     Box, Typography, Card, CardContent, Grid, TextField, Table, TableHead, TableRow, TableCell,
     TableBody, Button, IconButton, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
-    DialogActions, Divider, Select, MenuItem, FormControl, InputLabel
+    DialogActions, Divider, Select, MenuItem, FormControl, InputLabel, Stack
 } from '@mui/material';
-import { Add, Edit, Delete, Event } from '@mui/icons-material';
+import { Add, Edit, Delete, Event, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const EventsManagement = () => {
@@ -19,8 +19,9 @@ const EventsManagement = () => {
     const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
     const [editingSession, setEditingSession] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [eventForm, setEventForm] = useState({
-        name: '', description: '', duration_minutes: '', price_per_person: '', image_urls: ''
+        name: '', description: '', duration_minutes: '', price_per_person: '', image_urls: []
     });
     const [sessionForm, setSessionForm] = useState({
         event_id: '', session_date: '', start_time: '', available_spots: '', price_per_person: ''
@@ -64,6 +65,48 @@ const EventsManagement = () => {
         }
     };
 
+    const handleImageUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploadingImage(true);
+        setError('');
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(`${apiBaseUrl}/events/upload-image`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${getToken()}`
+                },
+                body: formData
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(data.detail || data.message || 'خطا در آپلود تصویر');
+                setUploadingImage(false);
+                return;
+            }
+
+            const imageUrl = data.url;
+            if (!imageUrl) {
+                setError('آدرس فایل بازگشتی نامعتبر است');
+                setUploadingImage(false);
+                return;
+            }
+
+            setEventForm(prev => ({ ...prev, image_urls: [...(prev.image_urls || []), imageUrl] }));
+        } catch (err) {
+            console.error('Image upload exception:', err);
+            setError('خطا در ارتباط با سرور هنگام آپلود تصویر: ' + err.message);
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     const handleEventSubmit = async () => {
         // Validation
         if (!eventForm.name || !eventForm.duration_minutes || !eventForm.price_per_person) {
@@ -71,12 +114,8 @@ const EventsManagement = () => {
             return;
         }
         
-        const imageUrls = eventForm.image_urls 
-            ? eventForm.image_urls.split(',').map(url => url.trim()).filter(url => url.length > 0)
-            : [];
-        
-        if (imageUrls.length === 0 && !editingEvent) {
-            setError('حداقل یک آدرس تصویر الزامی است');
+        if (!eventForm.image_urls || eventForm.image_urls.length === 0) {
+            setError('حداقل یک تصویر الزامی است');
             return;
         }
         
@@ -93,16 +132,9 @@ const EventsManagement = () => {
                 name: eventForm.name,
                 description: eventForm.description || null,
                 duration_minutes: parseInt(eventForm.duration_minutes),
-                price_per_person: parseFloat(eventForm.price_per_person)
+                price_per_person: parseFloat(eventForm.price_per_person),
+                image_urls: eventForm.image_urls
             };
-            
-            // Only include image_urls if provided (for create) or if updating
-            if (imageUrls.length > 0) {
-                requestBody.image_urls = imageUrls;
-            } else if (!editingEvent) {
-                // Default image for new events if none provided
-                requestBody.image_urls = ['data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>'];
-            }
             
             const res = await fetch(url, {
                 method,
@@ -220,7 +252,7 @@ const EventsManagement = () => {
                                 <Button size="small" variant="outlined" startIcon={<Add />}
                                     onClick={() => {
                                         setEditingEvent(null);
-                                        setEventForm({ name: '', description: '', duration_minutes: '', price_per_person: '', image_urls: '' });
+                                        setEventForm({ name: '', description: '', duration_minutes: '', price_per_person: '', image_urls: [] });
                                         setEventDialogOpen(true);
                                     }}>
                                     افزودن رویداد
@@ -242,22 +274,24 @@ const EventsManagement = () => {
                                             <TableCell>{event.duration_minutes}</TableCell>
                                             <TableCell>{event.price_per_person.toLocaleString()} تومان</TableCell>
                                             <TableCell>
-                                                <IconButton size="small" onClick={() => {
-                                                    setEditingEvent(event);
-                                                    setEventForm({
-                                                        name: event.name,
-                                                        description: event.description || '',
-                                                        duration_minutes: event.duration_minutes.toString(),
-                                                        price_per_person: event.price_per_person.toString(),
-                                                        image_urls: event.image_urls ? event.image_urls.join(', ') : ''
-                                                    });
-                                                    setEventDialogOpen(true);
-                                                }}>
-                                                    <Edit />
-                                                </IconButton>
-                                                <IconButton size="small" color="error" onClick={() => handleDeleteEvent(event.id)}>
-                                                    <Delete />
-                                                </IconButton>
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <IconButton size="small" onClick={() => {
+                                                        setEditingEvent(event);
+                                                        setEventForm({
+                                                            name: event.name,
+                                                            description: event.description || '',
+                                                            duration_minutes: event.duration_minutes.toString(),
+                                                            price_per_person: event.price_per_person.toString(),
+                                                            image_urls: event.image_urls || []
+                                                        });
+                                                        setEventDialogOpen(true);
+                                                    }}>
+                                                        <Edit />
+                                                    </IconButton>
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteEvent(event.id)}>
+                                                        <Delete />
+                                                    </IconButton>
+                                                </Stack>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -299,22 +333,24 @@ const EventsManagement = () => {
                                                 <TableCell>{session.session_date}</TableCell>
                                                 <TableCell>{session.start_time}</TableCell>
                                                 <TableCell>
-                                                    <IconButton size="small" onClick={() => {
-                                                        setEditingSession(session);
-                                                        setSessionForm({
-                                                            event_id: session.event_id,
-                                                            session_date: session.session_date,
-                                                            start_time: session.start_time,
-                                                            available_spots: session.available_spots.toString(),
-                                                            price_per_person: session.price_per_person ? session.price_per_person.toString() : ''
-                                                        });
-                                                        setSessionDialogOpen(true);
-                                                    }}>
-                                                        <Edit />
-                                                    </IconButton>
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteSession(session.id)}>
-                                                        <Delete />
-                                                    </IconButton>
+                                                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                        <IconButton size="small" onClick={() => {
+                                                            setEditingSession(session);
+                                                            setSessionForm({
+                                                                event_id: session.event_id,
+                                                                session_date: session.session_date,
+                                                                start_time: session.start_time,
+                                                                available_spots: session.available_spots.toString(),
+                                                                price_per_person: session.price_per_person ? session.price_per_person.toString() : ''
+                                                            });
+                                                            setSessionDialogOpen(true);
+                                                        }}>
+                                                            <Edit />
+                                                        </IconButton>
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteSession(session.id)}>
+                                                            <Delete />
+                                                        </IconButton>
+                                                    </Stack>
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -348,10 +384,54 @@ const EventsManagement = () => {
                                 onChange={(e) => setEventForm({ ...eventForm, price_per_person: e.target.value })} />
                         </Grid>
                         <Grid item xs={12}>
-                            <TextField fullWidth label="آدرس تصاویر (جدا شده با کاما) *" value={eventForm.image_urls}
-                                onChange={(e) => setEventForm({ ...eventForm, image_urls: e.target.value })}
-                                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                                helperText="حداقل یک آدرس تصویر الزامی است" />
+                            <input
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                id="event-image-upload"
+                                type="file"
+                                onChange={handleImageUpload}
+                                disabled={saving || uploadingImage}
+                            />
+                            <label htmlFor="event-image-upload">
+                                <Button
+                                    variant="outlined"
+                                    component="span"
+                                    startIcon={<CloudUpload />}
+                                    disabled={saving || uploadingImage}
+                                    fullWidth
+                                    sx={{ mb: 2 }}
+                                >
+                                    {uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر رویداد'}
+                                </Button>
+                            </label>
+                            {eventForm.image_urls && eventForm.image_urls.length > 0 && (
+                                <Box sx={{ mt: 2 }}>
+                                    {eventForm.image_urls.map((url, index) => (
+                                        <Box key={index} sx={{ mb: 2, textAlign: 'center' }}>
+                                            <Box
+                                                component="img"
+                                                src={url.startsWith('/') ? `${apiBaseUrl}${url}` : url}
+                                                alt={`Event image ${index + 1}`}
+                                                sx={{ maxWidth: '100%', maxHeight: 200, mb: 1, borderRadius: 1 }}
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                }}
+                                            />
+                                            <Button
+                                                size="small"
+                                                color="error"
+                                                onClick={() => {
+                                                    const newUrls = eventForm.image_urls.filter((_, i) => i !== index);
+                                                    setEventForm(prev => ({ ...prev, image_urls: newUrls }));
+                                                }}
+                                                disabled={saving}
+                                            >
+                                                حذف تصویر
+                                            </Button>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
                         </Grid>
                     </Grid>
                 </DialogContent>

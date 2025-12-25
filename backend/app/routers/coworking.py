@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional
 from bson import ObjectId
 from datetime import datetime
 from app.database import get_database, connect_to_mongo
@@ -10,7 +10,7 @@ from app.models import (
 from app.auth import get_current_user
 from app.db_helpers import (
     require_cafe_access, get_cafe_coworking_tables_collection,
-    get_cafe_information_collection
+    get_cafe_information_collection, get_cafe_id_for_access
 )
 
 router = APIRouter(prefix="/api/coworking", tags=["coworking"])
@@ -28,8 +28,15 @@ async def _ensure_cafe_has_coworking(db, cafe_id: str):
 
 
 @router.get("/tables", response_model=List[CoworkingTableResponse])
-async def list_coworking_tables(current_user: TokenData = Depends(get_current_user)):
-    """List all co-working tables for the current user's cafe"""
+async def list_coworking_tables(
+    current_user: TokenData = Depends(get_current_user),
+    cafe_id: Optional[str] = Query(None, description="Café ID (optional for customers)")
+):
+    """
+    List all co-working tables for a café.
+    - Customers can access any café by providing cafe_id
+    - Admin/Manager/Barista access their own café
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -40,7 +47,7 @@ async def list_coworking_tables(current_user: TokenData = Depends(get_current_us
                 detail="Database connection not available"
             )
     
-    cafe_id = await require_cafe_access(db, current_user)
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     await _ensure_cafe_has_coworking(db, cafe_id)
     
     tables_col = get_cafe_coworking_tables_collection(db, cafe_id)

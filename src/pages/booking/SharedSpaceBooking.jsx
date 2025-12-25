@@ -30,8 +30,16 @@ const SharedSpaceBooking = () => {
             return;
         }
 
+        // Get selected café from localStorage
+        const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
+        if (!selectedCafe || !selectedCafe.id) {
+            setError('لطفاً ابتدا یک کافه انتخاب کنید');
+            setLoading(false);
+            return;
+        }
+
         try {
-            const res = await fetch(`${apiBaseUrl}/coworking/tables`, {
+            const res = await fetch(`${apiBaseUrl}/coworking/tables?cafe_id=${selectedCafe.id}`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
             
