@@ -45,34 +45,42 @@ const SharedSpaceReservations = () => {
         }
 
         try {
-            // Fetch available co-working tables from API
-            const res = await fetch(`${apiBaseUrl}/coworking/tables?cafe_id=${selectedCafe.id}`, {
+            // Fetch user coworking reservations from API
+            const res = await fetch(`${apiBaseUrl}/reservations?reservation_type=coworking&cafe_id=${selectedCafe.id}`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
             
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setError(data.detail || 'خطا در بارگذاری میزها');
+                setError(data.detail || 'خطا در بارگذاری رزروها');
                 setLoading(false);
                 return;
             }
             
-            const data = await res.json();
+            const reservationsData = await res.json();
             // Map API data to component format
-            const mappedDesks = Array.isArray(data) ? data
-                .filter(table => table.is_available !== false)
-                .map((table, index) => ({
-                    id: table.id,
-                    name: table.name || `میز ${index + 1}`,
-                    deskName: table.name || `میز ${index + 1}`,
-                    capacity: table.capacity || 1,
-                    amenities: table.amenities ? (typeof table.amenities === 'string' ? table.amenities.split(',').map(a => a.trim()) : table.amenities) : [],
-                    zone: ['آرام', 'همکاری', 'تلفنی'][index % 3],
-                    is_available: table.is_available,
-                    price: 100000 // Default price, can be updated if API provides this
+            // Only show completed/Confirmed reservations
+            const mappedReservations = Array.isArray(reservationsData) ? reservationsData
+                .filter(reservation => {
+                    // Only show reservations with completed or Confirmed status
+                    const status = reservation.status;
+                    return status === 'completed' || status === 'Confirmed';
+                })
+                .map((reservation) => ({
+                    id: reservation.id,
+                    name: `رزرو فضای مشترک - ${reservation.date}`,
+                    deskName: reservation.table_id || '',
+                    tableId: reservation.table_id,
+                    date: reservation.date,
+                    time: reservation.time,
+                    capacity: reservation.number_of_people,
+                    numberOfPeople: reservation.number_of_people,
+                    status: reservation.status,
+                    notes: reservation.notes,
+                    price: 0
                 })) : [];
             
-            setReservations(mappedDesks);
+            setReservations(mappedReservations);
         } catch (err) {
             console.error(err);
             setError('خطا در ارتباط با سرور');
@@ -107,7 +115,7 @@ const SharedSpaceReservations = () => {
                         <CardContent sx={{ textAlign: 'center', py: 4 }}>
                             <BusinessCenter sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
                             <Typography variant="h6" color="text.secondary">
-                                هیچ میز فضای مشترکی برای رزرو وجود ندارد
+                                شما هنوز هیچ رزروی انجام نداده‌اید
                             </Typography>
                         </CardContent>
                     </Card>

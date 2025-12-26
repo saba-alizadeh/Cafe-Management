@@ -36,38 +36,20 @@ const EmployeeShifts = () => {
 		setLoading(true);
 		setError('');
 		try {
-			// TODO: Replace with actual employee shifts endpoint when available
-			// For now, try to get all shifts and filter by employee_id
-			// This requires the backend to have an endpoint like: /api/shifts/my-shifts
-			const res = await fetch(`${apiBaseUrl}/shifts`, {
+			// Use employee-specific endpoint to get only this employee's shifts
+			const res = await fetch(`${apiBaseUrl}/shifts/my-shifts`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 			
 			if (!res.ok) {
-				// If admin-only endpoint fails, try employee-specific endpoint
-				const employeeRes = await fetch(`${apiBaseUrl}/shifts/my-shifts`, {
-					headers: { Authorization: `Bearer ${token}` }
-				});
-				if (employeeRes.ok) {
-					const data = await employeeRes.json();
-					setShifts(data);
-					setLoading(false);
-					return;
-				}
-				
 				const data = await res.json().catch(() => ({}));
 				setError(data.detail || 'خطا در بارگذاری شیفت‌ها');
 				setLoading(false);
 				return;
 			}
 			
-			const allShifts = await res.json();
-			// Filter shifts for current employee (if user has employee_id)
-			// This is a workaround until employee-specific endpoint is available
-			const employeeShifts = user?.employee_id 
-				? allShifts.filter(s => s.employee_id === user.employee_id)
-				: allShifts;
-			setShifts(employeeShifts);
+			const data = await res.json();
+			setShifts(data);
 		} catch (err) {
 			console.error(err);
 			setError('خطا در ارتباط با سرور');

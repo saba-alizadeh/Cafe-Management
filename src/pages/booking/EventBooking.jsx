@@ -19,7 +19,7 @@ import {
     CircularProgress,
     Alert
 } from '@mui/material';
-import { Close as CloseIcon, EventAvailable } from '@mui/icons-material';
+import { Close as CloseIcon, EventAvailable, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -34,8 +34,13 @@ const timeSlots = [
 const EventBooking = () => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [openDialog, setOpenDialog] = useState(false);
-    const [numPeople, setNumPeople] = useState(1);
-    const [timeSlot, setTimeSlot] = useState('18:00');
+    const [eventSessions, setEventSessions] = useState([]);
+    const [loadingSessions, setLoadingSessions] = useState(false);
+    const [reservationData, setReservationData] = useState({
+        sessionId: '',
+        numberOfPeople: 1,
+        peopleNames: ['']
+    });
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -117,11 +122,41 @@ const EventBooking = () => {
         }
     };
 
-    const handleOpenEvent = (event) => {
+    const fetchEventSessions = async (eventId) => {
+        setLoadingSessions(true);
+        const authToken = token || localStorage.getItem('authToken');
+        const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
+        
+        if (!authToken || !selectedCafe?.id) {
+            setLoadingSessions(false);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${apiBaseUrl}/events/sessions?cafe_id=${selectedCafe.id}&event_id=${eventId}`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                setEventSessions(Array.isArray(data) ? data.filter(s => s.available_spots > 0) : []);
+            }
+        } catch (err) {
+            console.error('Error fetching event sessions:', err);
+        } finally {
+            setLoadingSessions(false);
+        }
+    };
+
+    const handleOpenEvent = async (event) => {
         setSelectedEvent(event);
+        setReservationData({
+            sessionId: '',
+            numberOfPeople: 1,
+            peopleNames: ['']
+        });
         setOpenDialog(true);
-        setNumPeople(1);
-        setTimeSlot('18:00');
+        await fetchEventSessions(event.id);
     };
 
     const handleCloseDialog = () => {
@@ -129,24 +164,67 @@ const EventBooking = () => {
         setSelectedEvent(null);
     };
 
-    const handleReserve = () => {
-        if (!selectedEvent || numPeople < 1) return;
+    const handleNumberOfPeopleChange = (value) => {
+        const numPeople = Math.max(1, parseInt(value) || 1);
+        const currentNames = reservationData.peopleNames;
+        const newNames = [];
+        
+        for (let i = 0; i < numPeople; i++) {
+            newNames.push(currentNames[i] || '');
+        }
+        
+        setReservationData({
+            ...reservationData,
+            numberOfPeople: numPeople,
+            peopleNames: newNames
+        });
+    };
 
+    const handleNameChange = (index, value) => {
+        const newNames = [...reservationData.peopleNames];
+        newNames[index] = value;
+        setReservationData({
+            ...reservationData,
+            peopleNames: newNames
+        });
+    };
+
+    const handleReserve = () => {
+        if (!reservationData.sessionId) {
+            alert('لطفاً یک بخش را انتخاب کنید');
+            return;
+        }
+        if (reservationData.numberOfPeople < 1) {
+            alert('تعداد نفرات باید حداقل 1 باشد');
+            return;
+        }
+        if (reservationData.peopleNames.some(name => !name.trim())) {
+            alert('لطفاً نام تمام شرکت‌کنندگان را وارد کنید');
+            return;
+        }
+        
+        const selectedSession = eventSessions.find(s => s.id === reservationData.sessionId);
+        const pricePerPerson = selectedSession?.price_per_person || selectedEvent?.price || 0;
+        
         const eventReservation = {
-            id: `event-${selectedEvent.id}-${Date.now()}`,
+            id: `event-${selectedEvent.id}-${reservationData.sessionId}-${Date.now()}`,
             type: 'event',
             name: `رزرو رویداد: ${selectedEvent.title}`,
             eventTitle: selectedEvent.title,
             eventDescription: selectedEvent.fullDescription,
-            people: numPeople,
-            timeSlot,
+            eventId: selectedEvent.id,
+            sessionId: reservationData.sessionId,
+            sessionDate: selectedSession?.session_date,
+            sessionTime: selectedSession?.start_time,
+            numberOfPeople: reservationData.numberOfPeople,
+            peopleNames: reservationData.peopleNames,
             quantity: 1,
-            price: selectedEvent.price * numPeople
+            price: pricePerPerson * reservationData.numberOfPeople
         };
 
         addToCart(eventReservation);
         alert('رویداد به سبد خرید اضافه شد');
-        navigate(-1); // Go back to previous page
+        setOpenDialog(false);
     };
 
     return (
@@ -312,51 +390,92 @@ const EventBooking = () => {
                                 </Grid>
                             </Box>
 
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, textAlign: 'right' }}>
-                                تعداد شرکت‌کنندگان
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                value={numPeople}
-                                onChange={(e) => {
-                                    const value = parseInt(e.target.value) || 1;
-                                    setNumPeople(Math.max(1, value));
-                                }}
-                                inputProps={{ min: 1 }}
-                                sx={{ mb: 2 }}
-                            />
-
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, textAlign: 'right' }}>
-                                ساعت شروع
-                            </Typography>
-                            <FormControl fullWidth sx={{ mb: 3 }}>
+                            {/* Session Selection */}
+                            <FormControl fullWidth required sx={{ mb: 2 }}>
+                                <InputLabel>انتخاب بخش (Session)</InputLabel>
                                 <Select
-                                    value={timeSlot}
-                                    onChange={(e) => setTimeSlot(e.target.value)}
+                                    value={reservationData.sessionId}
+                                    onChange={(e) => setReservationData({ ...reservationData, sessionId: e.target.value })}
+                                    label="انتخاب بخش (Session)"
                                 >
-                                    {timeSlots.map((slot) => (
-                                        <MenuItem key={slot.value} value={slot.value}>
-                                            {slot.label}
-                                        </MenuItem>
-                                    ))}
+                                    {loadingSessions ? (
+                                        <MenuItem disabled>در حال بارگذاری...</MenuItem>
+                                    ) : eventSessions.length === 0 ? (
+                                        <MenuItem disabled>هیچ بخشی در دسترس نیست</MenuItem>
+                                    ) : (
+                                        eventSessions.map((session) => (
+                                            <MenuItem key={session.id} value={session.id}>
+                                                {new Date(session.session_date).toLocaleDateString('fa-IR')} - {session.start_time}
+                                                {session.end_time && ` تا ${session.end_time}`}
+                                                {session.available_spots > 0 && ` (${session.available_spots} جای خالی)`}
+                                            </MenuItem>
+                                        ))
+                                    )}
                                 </Select>
                             </FormControl>
 
-                            <Box sx={{ mb: 2, p: 2, backgroundColor: 'var(--color-secondary)', borderRadius: 1 }}>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'right' }}>
-                                    مبلغ کل:
+                            {/* Number of People */}
+                            <TextField
+                                label="تعداد نفرات"
+                                type="number"
+                                value={reservationData.numberOfPeople}
+                                onChange={(e) => handleNumberOfPeopleChange(e.target.value)}
+                                inputProps={{ min: 1 }}
+                                fullWidth
+                                required
+                                sx={{ mb: 2 }}
+                            />
+
+                            {/* People Names */}
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                    نام شرکت‌کنندگان:
                                 </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)', textAlign: 'right' }}>
-                                    {(selectedEvent.price * numPeople).toLocaleString('fa-IR')} تومان
-                                </Typography>
+                                {reservationData.peopleNames.map((name, index) => (
+                                    <TextField
+                                        key={index}
+                                        label={`نام نفر ${index + 1}`}
+                                        value={name}
+                                        onChange={(e) => handleNameChange(index, e.target.value)}
+                                        fullWidth
+                                        required
+                                        sx={{ mb: 2 }}
+                                        InputProps={{
+                                            startAdornment: <Person sx={{ mr: 1, color: 'text.secondary' }} />
+                                        }}
+                                    />
+                                ))}
                             </Box>
+
+                            {/* Price Display */}
+                            {reservationData.sessionId && (
+                                <Box sx={{ mb: 2, p: 2, bgcolor: 'var(--color-accent-soft)', borderRadius: 2 }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                        قیمت هر نفر:
+                                    </Typography>
+                                    <Typography variant="h6" color="var(--color-primary)">
+                                        {(() => {
+                                            const selectedSession = eventSessions.find(s => s.id === reservationData.sessionId);
+                                            const pricePerPerson = selectedSession?.price_per_person || selectedEvent?.price || 0;
+                                            return pricePerPerson.toLocaleString();
+                                        })()} تومان
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                        مجموع: {(() => {
+                                            const selectedSession = eventSessions.find(s => s.id === reservationData.sessionId);
+                                            const pricePerPerson = selectedSession?.price_per_person || selectedEvent?.price || 0;
+                                            return (pricePerPerson * reservationData.numberOfPeople).toLocaleString();
+                                        })()} تومان
+                                    </Typography>
+                                </Box>
+                            )}
 
                             <Button
                                 fullWidth
                                 variant="contained"
                                 size="large"
                                 onClick={handleReserve}
+                                disabled={!reservationData.sessionId || loadingSessions}
                                 sx={{
                                     backgroundColor: 'var(--color-primary)',
                                     color: 'white',
@@ -365,7 +484,7 @@ const EventBooking = () => {
                                     mb: 1
                                 }}
                             >
-                                رزرو کنید
+                                افزودن به سبد خرید
                             </Button>
                             <Button
                                 fullWidth

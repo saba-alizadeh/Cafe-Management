@@ -25,7 +25,8 @@ import {
 	CircularProgress,
 	Chip,
 	Autocomplete,
-	InputAdornment
+	InputAdornment,
+	MenuItem
 } from '@mui/material';
 import { Edit, Delete, CloudUpload, LocalOffer } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
@@ -45,7 +46,9 @@ const ProductManagement = () => {
 		description: '',
 		image_url: '',
 		discount_percent: 0,
-		labels: []
+		labels: [],
+		coffee_blends: [],
+		coffee_type: ''
 	});
 	const [uploadingImage, setUploadingImage] = useState(false);
 	const [availableLabels, setAvailableLabels] = useState([
@@ -58,6 +61,16 @@ const ProductManagement = () => {
 		'اسنک',
 		'صبحانه'
 	]);
+	const [availableCoffeeTypes, setAvailableCoffeeTypes] = useState([
+		'Robusta',
+		'Arabica'
+	]);
+	const [editingBlendIndex, setEditingBlendIndex] = useState(null);
+	const [blendForm, setBlendForm] = useState({ ratio: '', price: 0 });
+	const isCoffeeProduct = form.labels && form.labels.some(label => 
+		label.toLowerCase().includes('قهوه') || label.toLowerCase().includes('coffee')
+	);
+	const availableBlendRatios = ['100%', '80-20', '60-40', '50-50'];
 
 	useEffect(() => {
 		if (token) fetchProducts();
@@ -97,7 +110,9 @@ const ProductManagement = () => {
 				description: product.description || '',
 				image_url: product.image_url || '',
 				discount_percent: product.discount_percent || 0,
-				labels: product.labels || []
+				labels: product.labels || [],
+				coffee_blends: product.coffee_blends || [],
+				coffee_type: product.coffee_type || ''
 			});
 		} else {
 			setEditingProduct(null);
@@ -108,15 +123,21 @@ const ProductManagement = () => {
 				description: '',
 				image_url: '',
 				discount_percent: 0,
-				labels: []
+				labels: [],
+				coffee_blends: [],
+				coffee_type: ''
 			});
 		}
+		setEditingBlendIndex(null);
+		setBlendForm({ ratio: '', price: 0 });
 		setOpenDialog(true);
 	};
 
 	const handleCloseDialog = () => {
 		setOpenDialog(false);
 		setEditingProduct(null);
+		setEditingBlendIndex(null);
+		setBlendForm({ ratio: '', price: 0 });
 		setForm({
 			name: '',
 			price: 0,
@@ -124,8 +145,62 @@ const ProductManagement = () => {
 			description: '',
 			image_url: '',
 			discount_percent: 0,
-			labels: []
+			labels: [],
+			coffee_blends: [],
+			coffee_type: ''
 		});
+	};
+
+	const handleAddBlend = () => {
+		if (!blendForm.ratio || blendForm.price <= 0) {
+			setError('لطفاً نسبت و قیمت را وارد کنید');
+			return;
+		}
+		// Check if ratio already exists
+		if (form.coffee_blends.some(b => b.ratio === blendForm.ratio)) {
+			setError('این نسبت قبلاً اضافه شده است');
+			return;
+		}
+		setForm(prev => ({
+			...prev,
+			coffee_blends: [...prev.coffee_blends, { ratio: blendForm.ratio, price: blendForm.price }]
+		}));
+		setBlendForm({ ratio: '', price: 0 });
+		setError('');
+	};
+
+	const handleEditBlend = (index) => {
+		const blend = form.coffee_blends[index];
+		setBlendForm({ ratio: blend.ratio, price: blend.price });
+		setEditingBlendIndex(index);
+	};
+
+	const handleUpdateBlend = () => {
+		if (!blendForm.ratio || blendForm.price <= 0) {
+			setError('لطفاً نسبت و قیمت را وارد کنید');
+			return;
+		}
+		// Check if ratio already exists in another blend
+		if (form.coffee_blends.some((b, idx) => b.ratio === blendForm.ratio && idx !== editingBlendIndex)) {
+			setError('این نسبت قبلاً اضافه شده است');
+			return;
+		}
+		setForm(prev => ({
+			...prev,
+			coffee_blends: prev.coffee_blends.map((b, idx) => 
+				idx === editingBlendIndex ? { ratio: blendForm.ratio, price: blendForm.price } : b
+			)
+		}));
+		setBlendForm({ ratio: '', price: 0 });
+		setEditingBlendIndex(null);
+		setError('');
+	};
+
+	const handleRemoveBlend = (index) => {
+		setForm(prev => ({
+			...prev,
+			coffee_blends: prev.coffee_blends.filter((_, idx) => idx !== index)
+		}));
 	};
 
 	const handleImageUpload = async (event) => {
@@ -465,6 +540,162 @@ const ProductManagement = () => {
 								)}
 								disabled={saving}
 							/>
+							{isCoffeeProduct && (
+								<>
+									<Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
+										<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+											گزینه‌های ترکیب قهوه (هر ترکیب با قیمت خود)
+										</Typography>
+										
+										{/* Existing Blends */}
+										{form.coffee_blends && form.coffee_blends.length > 0 && (
+											<Box sx={{ mb: 2 }}>
+												{form.coffee_blends.map((blend, index) => (
+													<Box key={index} sx={{ 
+														display: 'flex', 
+														alignItems: 'center', 
+														gap: 1, 
+														mb: 1,
+														p: 1,
+														bgcolor: 'grey.50',
+														borderRadius: 1
+													}}>
+														<Chip label={blend.ratio} color="primary" />
+														<Typography variant="body2" sx={{ flexGrow: 1 }}>
+															{blend.price.toLocaleString('fa-IR')} تومان
+														</Typography>
+														<IconButton 
+															size="small" 
+															onClick={() => handleEditBlend(index)}
+															disabled={saving}
+														>
+															<Edit fontSize="small" />
+														</IconButton>
+														<IconButton 
+															size="small" 
+															color="error"
+															onClick={() => handleRemoveBlend(index)}
+															disabled={saving}
+														>
+															<Delete fontSize="small" />
+														</IconButton>
+													</Box>
+												))}
+											</Box>
+										)}
+
+										{/* Add/Edit Blend Form */}
+										<Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
+											<Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+												{editingBlendIndex !== null ? 'ویرایش ترکیب' : 'افزودن ترکیب جدید'}
+											</Typography>
+											<Box sx={{ mb: 2 }}>
+												<Typography variant="body2" sx={{ mb: 1 }}>نسبت ترکیب:</Typography>
+												<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+													{availableBlendRatios.map((ratio) => {
+														const isSelected = blendForm.ratio === ratio;
+														const isUsed = form.coffee_blends.some(b => b.ratio === ratio && 
+															(editingBlendIndex === null || form.coffee_blends.findIndex(b => b.ratio === ratio) !== editingBlendIndex));
+														return (
+															<Button
+																key={ratio}
+																variant={isSelected ? 'contained' : 'outlined'}
+																size="small"
+																onClick={() => {
+																	if (!isUsed) {
+																		setBlendForm(prev => ({ ...prev, ratio }));
+																	}
+																}}
+																disabled={saving || (editingBlendIndex !== null && !isSelected) || isUsed}
+																sx={{
+																	minWidth: 70,
+																	...(isSelected && {
+																		backgroundColor: 'var(--color-accent)',
+																		'&:hover': { backgroundColor: 'var(--color-accent)' }
+																	}),
+																	...(isUsed && {
+																		opacity: 0.5,
+																		cursor: 'not-allowed'
+																	})
+																}}
+															>
+																{ratio}
+															</Button>
+														);
+													})}
+												</Box>
+											</Box>
+											<Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+												<TextField
+													label="قیمت"
+													type="number"
+													size="small"
+													value={blendForm.price}
+													onChange={(e) => setBlendForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+													disabled={saving}
+													inputProps={{ min: 0, step: 0.01 }}
+													InputProps={{
+														endAdornment: <InputAdornment position="end">تومان</InputAdornment>
+													}}
+													sx={{ flexGrow: 1 }}
+												/>
+												{editingBlendIndex !== null ? (
+													<>
+														<Button
+															variant="contained"
+															size="small"
+															onClick={handleUpdateBlend}
+															disabled={saving}
+														>
+															ذخیره
+														</Button>
+														<Button
+															variant="outlined"
+															size="small"
+															onClick={() => {
+																setEditingBlendIndex(null);
+																setBlendForm({ ratio: '', price: 0 });
+															}}
+															disabled={saving}
+														>
+															انصراف
+														</Button>
+													</>
+												) : (
+													<Button
+														variant="contained"
+														size="small"
+														onClick={handleAddBlend}
+														disabled={saving || !blendForm.ratio || blendForm.price <= 0}
+													>
+														افزودن
+													</Button>
+												)}
+											</Box>
+										</Box>
+									</Box>
+									<Autocomplete
+										options={availableCoffeeTypes}
+										freeSolo
+										value={form.coffee_type}
+										onChange={(event, newValue) => {
+											setForm(prev => ({ ...prev, coffee_type: newValue || '' }));
+											// Add new custom option if it doesn't exist
+											if (newValue && !availableCoffeeTypes.includes(newValue)) {
+												setAvailableCoffeeTypes(prev => [...prev, newValue]);
+											}
+										}}
+										renderInput={(params) => (
+											<TextField
+												{...params}
+												label="نوع قهوه (Robusta, Arabica و ...)"
+												placeholder="نوع قهوه را انتخاب یا وارد کنید"
+											/>
+										)}
+										disabled={saving}
+									/>
+								</>
+							)}
 							<TextField
 								label="توضیحات (اختیاری)"
 								fullWidth

@@ -47,43 +47,41 @@ const EventReservations = () => {
         }
 
         try {
-            // Fetch available events from API
-            const res = await fetch(`${apiBaseUrl}/events?cafe_id=${selectedCafe.id}`, {
+            // Fetch user event reservations from API
+            const res = await fetch(`${apiBaseUrl}/reservations?reservation_type=event&cafe_id=${selectedCafe.id}`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
             
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setError(data.detail || 'خطا در بارگذاری رویدادها');
+                setError(data.detail || 'خطا در بارگذاری رزروها');
                 setLoading(false);
                 return;
             }
             
-            const data = await res.json();
+            const reservationsData = await res.json();
             // Map API data to component format
-            const mappedEvents = Array.isArray(data) ? data.map((event) => {
-                const hours = Math.floor(event.duration_minutes / 60);
-                const minutes = event.duration_minutes % 60;
-                const durationText = minutes > 0 ? `${hours}.${minutes} ساعت` : `${hours} ساعت`;
-                
-                const imageUrl = event.image_urls && event.image_urls.length > 0 
-                    ? event.image_urls[0] 
-                    : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>';
-                
-                return {
-                    id: event.id,
-                    name: event.name || 'رویداد بدون نام',
-                    eventTitle: event.name || 'رویداد بدون نام',
-                    description: event.description || '',
-                    image: imageUrl,
-                    price: event.price_per_person || 0,
-                    duration: durationText,
-                    duration_minutes: event.duration_minutes,
-                    maxPeople: 50
-                };
-            }) : [];
+            // Only show completed/Confirmed reservations
+            const mappedReservations = Array.isArray(reservationsData) ? reservationsData
+                .filter(reservation => {
+                    // Only show reservations with completed or Confirmed status
+                    const status = reservation.status;
+                    return status === 'completed' || status === 'Confirmed';
+                })
+                .map((reservation) => ({
+                    id: reservation.id,
+                    name: `رزرو رویداد - ${reservation.date}`,
+                    eventId: reservation.event_id,
+                    sessionId: reservation.session_id,
+                    date: reservation.date,
+                    time: reservation.time,
+                    numberOfPeople: reservation.number_of_people,
+                    attendeeNames: reservation.attendee_names || [],
+                    status: reservation.status,
+                    notes: reservation.notes
+                })) : [];
             
-            setReservations(mappedEvents);
+            setReservations(mappedReservations);
         } catch (err) {
             console.error(err);
             setError('خطا در ارتباط با سرور');
@@ -181,7 +179,7 @@ const EventReservations = () => {
                         <CardContent sx={{ textAlign: 'center', py: 4 }}>
                             <Event sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
                             <Typography variant="h6" color="text.secondary">
-                                هیچ رویدادی برای رزرو وجود ندارد
+                                شما هنوز هیچ رزروی انجام نداده‌اید
                             </Typography>
                         </CardContent>
                     </Card>

@@ -20,6 +20,7 @@ const HomePage = () => {
     const [selectedCafe, setSelectedCafe] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAbout, setShowAbout] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
     const { cafeSlug } = useParams();
@@ -118,8 +119,12 @@ const HomePage = () => {
             <HeaderBar selectedCafe={selectedCafe} onAboutClick={() => setShowAbout(true)} />
             <HeroSection selectedCafe={selectedCafe} />
             <BookingOptions selectedCafe={selectedCafe} />
-            <CategoriesNavigation selectedCafe={selectedCafe} />
-            <MenuSection selectedCafe={selectedCafe} />
+            <CategoriesNavigation 
+                selectedCafe={selectedCafe} 
+                selectedCategory={selectedCategory}
+                onCategorySelect={setSelectedCategory}
+            />
+            <MenuSection selectedCafe={selectedCafe} selectedCategory={selectedCategory} />
             <DrinkCustomizer selectedCafe={selectedCafe} />
             <SpecialDiscounts selectedCafe={selectedCafe} />
             {/* {<ChefRecommendations selectedCafe={selectedCafe} />}  */}

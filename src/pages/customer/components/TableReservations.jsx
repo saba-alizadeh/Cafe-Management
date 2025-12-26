@@ -45,34 +45,42 @@ const TableReservations = () => {
         }
 
         try {
-            // Fetch available tables from API
-            const res = await fetch(`${apiBaseUrl}/tables?cafe_id=${selectedCafe.id}`, {
+            // Fetch user reservations from API
+            const res = await fetch(`${apiBaseUrl}/reservations?reservation_type=table&cafe_id=${selectedCafe.id}`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
             
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setError(data.detail || 'خطا در بارگذاری میزها');
+                setError(data.detail || 'خطا در بارگذاری رزروها');
                 setLoading(false);
                 return;
             }
             
             const data = await res.json();
             // Map API data to component format
-            const mappedTables = Array.isArray(data) ? data
-                .filter(table => table.is_active !== false && table.status === 'available')
-                .map((table, index) => ({
-                    id: table.id,
-                    name: `میز ${table.name || index + 1}`,
-                    tableNumber: table.name || `میز ${index + 1}`,
-                    location: table.status === 'available' ? 'مرکز' : 'پنجره',
-                    guests: table.capacity || 2,
-                    capacity: table.capacity || 2,
-                    status: table.status,
-                    price: 80000 // Default price, can be updated if API provides this
+            // Only show completed/Confirmed reservations
+            const mappedReservations = Array.isArray(data) ? data
+                .filter(reservation => {
+                    // Only show reservations with completed or Confirmed status
+                    const status = reservation.status;
+                    return status === 'completed' || status === 'Confirmed';
+                })
+                .map((reservation) => ({
+                    id: reservation.id,
+                    name: `رزرو میز ${reservation.table_id || ''}`,
+                    tableNumber: reservation.table_id || '',
+                    location: 'مرکز',
+                    guests: reservation.number_of_people,
+                    capacity: reservation.number_of_people,
+                    status: reservation.status,
+                    date: reservation.date,
+                    time: reservation.time,
+                    notes: reservation.notes,
+                    price: 0
                 })) : [];
             
-            setReservations(mappedTables);
+            setReservations(mappedReservations);
         } catch (err) {
             console.error(err);
             setError('خطا در ارتباط با سرور');
@@ -107,7 +115,7 @@ const TableReservations = () => {
                         <CardContent sx={{ textAlign: 'center', py: 4 }}>
                             <Restaurant sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
                             <Typography variant="h6" color="text.secondary">
-                                هیچ میز آزادی برای رزرو وجود ندارد
+                                شما هنوز هیچ رزروی انجام نداده‌اید
                             </Typography>
                         </CardContent>
                     </Card>
@@ -120,24 +128,35 @@ const TableReservations = () => {
                                         <Typography variant="h6" sx={{ mb: 2 }}>
                                             {reservation.name}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            شماره میز: {reservation.tableNumber}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            موقعیت: {reservation.location}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            ظرفیت: {reservation.capacity} نفر
-                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                            <CalendarToday fontSize="small" color="action" />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {reservation.date}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                            <AccessTime fontSize="small" color="action" />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {reservation.time}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                            <People fontSize="small" color="action" />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {reservation.guests} نفر
+                                            </Typography>
+                                        </Box>
+                                        {reservation.notes && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                یادداشت: {reservation.notes}
+                                            </Typography>
+                                        )}
                                         <Chip 
-                                            label={reservation.status === 'available' ? 'آزاد' : 'رزرو شده'} 
+                                            label={reservation.status === 'completed' || reservation.status === 'Confirmed' ? 'تایید شده' : reservation.status} 
                                             size="small" 
-                                            color={reservation.status === 'available' ? 'success' : 'default'}
+                                            color={reservation.status === 'completed' || reservation.status === 'Confirmed' ? 'success' : 'default'}
                                             sx={{ mb: 2 }}
                                         />
-                                        <Typography variant="h6" sx={{ mb: 2, color: 'var(--color-primary)' }}>
-                                            رایگان
-                                        </Typography>
                                         <Button
                                             fullWidth
                                             variant="contained"

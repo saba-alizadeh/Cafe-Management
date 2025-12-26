@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Grid, Card, CardContent, Button, Chip, TextField, MenuItem, CircularProgress, Alert } from '@mui/material';
+import { Box, Container, Typography, Grid, Card, CardContent, Button, Chip, TextField, MenuItem, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 
 const CafeBooking = () => {
     const [selected, setSelected] = useState(null);
-    const [guests, setGuests] = useState(2);
     const [tables, setTables] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [reservationDialog, setReservationDialog] = useState(false);
+    const [reservationData, setReservationData] = useState({
+        date: '',
+        time: '',
+        people: 1
+    });
     const { user, apiBaseUrl, token } = useAuth();
     const { addToCart } = useCart();
     const navigate = useNavigate();
@@ -99,20 +104,33 @@ const CafeBooking = () => {
                                 <Grid container spacing={2}>
                                     {tables.map((t) => (
                                         <Grid item xs={12} sm={6} md={4} key={t.id || t.tableNumber}>
-                                            <Card
-                                                onClick={() => setSelected(t)}
-                                                sx={{ cursor: 'pointer', border: selected?.id === t.id ? '2px solid var(--color-primary)' : '1px solid var(--color-accent-soft)' }}
-                                            >
-                                                <CardContent sx={{ textAlign: 'right' }}>
-                                                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{t.tableNumber}</Typography>
-                                                    <Chip label={t.location} size="small" sx={{ mt: 1 }} />
-                                                    <Typography sx={{ mt: 1 }} color="text.secondary">تعداد صندلی: {t.seats}</Typography>
+                                            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                                <CardContent sx={{ textAlign: 'right', flexGrow: 1 }}>
+                                                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>{t.tableNumber}</Typography>
+                                                    <Chip label={t.location} size="small" sx={{ mb: 1 }} />
+                                                    <Typography sx={{ mb: 1 }} color="text.secondary">تعداد صندلی: {t.seats}</Typography>
                                                     <Chip 
                                                         label={t.status === 'available' ? 'آزاد' : 'رزرو شده'} 
                                                         size="small" 
                                                         color={t.status === 'available' ? 'success' : 'default'}
-                                                        sx={{ mt: 1 }} 
+                                                        sx={{ mb: 2 }} 
                                                     />
+                                                    <Button
+                                                        fullWidth
+                                                        variant="contained"
+                                                        onClick={() => {
+                                                            setSelected(t);
+                                                            setReservationData({
+                                                                date: '',
+                                                                time: '',
+                                                                people: 1
+                                                            });
+                                                            setReservationDialog(true);
+                                                        }}
+                                                        sx={{ bgcolor: 'var(--color-primary)', '&:hover': { bgcolor: 'var(--color-primary-dark)' } }}
+                                                    >
+                                                        رزرو میز
+                                                    </Button>
                                                 </CardContent>
                                             </Card>
                                         </Grid>
@@ -120,53 +138,87 @@ const CafeBooking = () => {
                                 </Grid>
                             )}
                         </Grid>
-                    <Grid item xs={12} md={4}>
-                        <Card sx={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-accent-soft)' }}>
-                            <CardContent sx={{ textAlign: 'right' }}>
-                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>جزئیات انتخاب</Typography>
-                                {selected ? (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                        <Typography><strong>شماره میز:</strong> {selected.tableNumber}</Typography>
-                                        <Typography><strong>موقعیت:</strong> {selected.location}</Typography>
-                                        <Typography><strong>تعداد صندلی:</strong> {selected.seats}</Typography>
-                                        <TextField
-                                            label="مهمانان"
-                                            type="number"
-                                            size="small"
-                                            value={guests}
-                                            onChange={(e) => setGuests(Number(e.target.value))}
-                                            sx={{ mt: 1 }}
-                                            inputProps={{ min: 1, max: selected.seats }}
-                                        />
-                                        <Button fullWidth variant="contained" sx={{ mt: 2, bgcolor: 'var(--color-primary)' }} onClick={() => {
-                                            if (selected) {
-                                                const tableReservation = {
-                                                    id: `table-${selected.id || Date.now()}`,
-                                                    type: 'table',
-                                                    name: `رزرو میز ${selected.tableNumber}`,
-                                                    tableNumber: selected.tableNumber,
-                                                    tableId: selected.id,
-                                                    location: selected.location,
-                                                    guests,
-                                                    quantity: 1,
-                                                    price: pricePerTable
-                                                };
-                                                addToCart(tableReservation);
-                                                alert('میز به سبد خرید اضافه شد');
-                                                navigate(-1); // Go back to previous page
-                                            }
-                                        }}>
-                                            افزودن به سبد خرید
-                                        </Button>
-                                    </Box>
-                                ) : (
-                                    <Typography color="text.secondary">برای مشاهده جزئیات یک میز را انتخاب کنید</Typography>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </Grid>
                     </Grid>
                 )}
+
+                {/* Reservation Dialog */}
+                <Dialog open={reservationDialog} onClose={() => setReservationDialog(false)} maxWidth="sm" fullWidth>
+                    <DialogTitle>رزرو میز {selected?.tableNumber}</DialogTitle>
+                    <DialogContent>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                            <TextField
+                                label="تاریخ"
+                                type="date"
+                                value={reservationData.date}
+                                onChange={(e) => setReservationData({ ...reservationData, date: e.target.value })}
+                                InputLabelProps={{ shrink: true }}
+                                fullWidth
+                                required
+                            />
+                            <TextField
+                                label="ساعت"
+                                type="time"
+                                value={reservationData.time}
+                                onChange={(e) => setReservationData({ ...reservationData, time: e.target.value })}
+                                InputLabelProps={{ shrink: true }}
+                                fullWidth
+                                required
+                            />
+                            <TextField
+                                label="تعداد نفرات"
+                                type="number"
+                                value={reservationData.people}
+                                onChange={(e) => {
+                                    const people = Math.max(1, Math.min(selected?.seats || 1, parseInt(e.target.value) || 1));
+                                    setReservationData({ ...reservationData, people });
+                                }}
+                                inputProps={{ min: 1, max: selected?.seats || 1 }}
+                                fullWidth
+                                required
+                            />
+                            <Typography variant="body2" color="text.secondary">
+                                ظرفیت میز: {selected?.seats} نفر
+                            </Typography>
+                        </Box>
+                    </DialogContent>
+                    <DialogActions sx={{ direction: 'rtl', p: 2 }}>
+                        <Button onClick={() => setReservationDialog(false)}>انصراف</Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => {
+                                if (!reservationData.date || !reservationData.time) {
+                                    alert('لطفاً تاریخ و ساعت را وارد کنید');
+                                    return;
+                                }
+                                if (reservationData.people < 1 || reservationData.people > selected?.seats) {
+                                    alert(`تعداد نفرات باید بین 1 تا ${selected?.seats} باشد`);
+                                    return;
+                                }
+                                
+                                const tableReservation = {
+                                    id: `table-${selected.id}-${Date.now()}`,
+                                    type: 'table',
+                                    name: `رزرو میز ${selected.tableNumber}`,
+                                    tableNumber: selected.tableNumber,
+                                    tableId: selected.id,
+                                    location: selected.location,
+                                    date: reservationData.date,
+                                    time: reservationData.time,
+                                    people: reservationData.people,
+                                    quantity: 1,
+                                    price: 0 // Table reservations are free
+                                };
+                                
+                                addToCart(tableReservation);
+                                alert('رزرو میز به سبد خرید اضافه شد');
+                                setReservationDialog(false);
+                            }}
+                            sx={{ bgcolor: 'var(--color-primary)', '&:hover': { bgcolor: 'var(--color-primary-dark)' } }}
+                        >
+                            افزودن به سبد خرید
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Container>
         </Box>
     );

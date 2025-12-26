@@ -510,6 +510,107 @@ async def admin_login(credentials: UserLogin):
     )
 
 
+@router.post("/employee-login", response_model=Token)
+async def employee_login(credentials: UserLogin):
+    """
+    Username/password login for employee roles (waiter, barista, floor_staff, bartender).
+    """
+    if not credentials.username or not credentials.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username and password are required"
+        )
+
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available. Please check MongoDB connection."
+            )
+
+    # Search for employee by username across all cafes
+    from app.db_helpers import get_cafe_employees_collection
+    
+    employee = None
+    cafe_id = None
+    
+    # Search across all cafes
+    cafes_master = db["cafes_master"]
+    async for cafe in cafes_master.find({}):
+        cafe_id_str = str(cafe.get("cafe_id", ""))
+        if cafe_id_str:
+            employees_col = get_cafe_employees_collection(db, cafe_id_str)
+            found_employee = await employees_col.find_one({"username": credentials.username})
+            if found_employee:
+                employee = found_employee
+                cafe_id = cafe_id_str
+                break
+    
+    if not employee:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+    if employee.get("role") not in ["waiter", "barista", "floor_staff", "bartender"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied for this user"
+        )
+
+    if not employee.get("password") or not verify_password(credentials.password, employee.get("password")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+    if not employee.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Employee account is inactive"
+        )
+
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    token_data = {
+        "sub": employee.get("username"),
+        "user_id": str(employee["_id"]),
+        "role": employee["role"],
+        "phone": employee.get("phone")
+    }
+
+    access_token = create_access_token(
+        data=token_data,
+        expires_delta=access_token_expires
+    )
+
+    # Create user response from employee data
+    user_response = UserResponse(
+        id=str(employee["_id"]),
+        username=employee.get("username"),
+        email=employee.get("email"),
+        phone=employee.get("phone"),
+        role=employee["role"],
+        name=f"{employee.get('firstName', '')} {employee.get('lastName', '')}".strip() or employee.get("name", ""),
+        firstName=employee.get("firstName"),
+        lastName=employee.get("lastName"),
+        address=employee.get("address"),
+        details=employee.get("details"),
+        cafe_id=employee.get("cafe_id") or (int(cafe_id) if cafe_id and cafe_id.isdigit() else None),
+        created_at=employee.get("created_at"),
+        is_active=employee.get("is_active", True),
+        profile_image_url=employee.get("profile_image_url")
+    )
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user=user_response
+    )
+
+
 @router.post("/verify-otp")
 async def verify_otp(otp_request: VerifyOTPRequest):
     """
@@ -921,16 +1022,23 @@ async def create_employee(employee: EmployeeCreate, current_user: TokenData = De
 
     employees_collection = get_cafe_employees_collection(db, cafe_id)
 
-    # Unique constraints: nationalId and phone (within this café)
+    # Unique constraints: nationalId, phone, and username (within this café)
     existing_nid = await employees_collection.find_one({"nationalId": employee.nationalId})
     if existing_nid:
         raise HTTPException(status_code=400, detail="کد ملی قبلا ثبت شده است.")
     existing_phone = await employees_collection.find_one({"phone": employee.phone})
     if existing_phone:
         raise HTTPException(status_code=400, detail="شماره تلفن قبلا ثبت شده است.")
+    if employee.username:
+        existing_username = await employees_collection.find_one({"username": employee.username})
+        if existing_username:
+            raise HTTPException(status_code=400, detail="نام کاربری قبلا ثبت شده است.")
 
-    doc = employee.model_dump()
+    doc = employee.model_dump(exclude={'password'})
     doc["cafe_id"] = cafe_id  # Store café ID for reference
+    # Hash password if provided
+    if employee.password:
+        doc["password"] = get_password_hash(employee.password)
     doc["created_at"] = datetime.utcnow()
     result = await employees_collection.insert_one(doc)
     created = await employees_collection.find_one({"_id": result.inserted_id})
@@ -1042,7 +1150,7 @@ async def update_employee(
     update_data = {}
     employee_dict = employee_update.model_dump(exclude_unset=True)
     
-    # Check for unique constraints if updating nationalId or phone (within this café)
+    # Check for unique constraints if updating nationalId, phone, or username (within this café)
     if "nationalId" in employee_dict and employee_dict["nationalId"]:
         existing_nid = await employees_collection.find_one({"nationalId": employee_dict["nationalId"], "_id": {"$ne": oid}})
         if existing_nid:
@@ -1054,6 +1162,16 @@ async def update_employee(
         if existing_phone:
             raise HTTPException(status_code=400, detail="شماره تلفن قبلا ثبت شده است.")
         update_data["phone"] = employee_dict["phone"]
+
+    if "username" in employee_dict and employee_dict["username"]:
+        existing_username = await employees_collection.find_one({"username": employee_dict["username"], "_id": {"$ne": oid}})
+        if existing_username:
+            raise HTTPException(status_code=400, detail="نام کاربری قبلا ثبت شده است.")
+        update_data["username"] = employee_dict["username"]
+
+    # Handle password separately - hash it if provided
+    if "password" in employee_dict and employee_dict["password"]:
+        update_data["password"] = get_password_hash(employee_dict["password"])
 
     # Add other fields
     for field in ["firstName", "lastName", "role", "iban", "father_name", "date_of_birth", "address"]:

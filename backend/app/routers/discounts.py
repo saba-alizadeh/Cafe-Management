@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from datetime import datetime
+from pydantic import BaseModel
 from app.database import get_database, connect_to_mongo
 from app.models import OffCodeCreate, OffCodeUpdate, OffCodeResponse
 from app.auth import get_current_user, TokenData
@@ -10,6 +11,20 @@ from app.db_helpers import (
 )
 
 router = APIRouter(prefix="/api/discounts", tags=["discounts"])
+
+
+class DiscountVerifyRequest(BaseModel):
+    code: str
+    cafe_id: str
+    total_amount: float
+
+
+class DiscountVerifyResponse(BaseModel):
+    valid: bool
+    discount_percent: float = 0
+    discount_amount: float = 0
+    final_amount: float = 0
+    message: str = ""
 
 
 @router.get("", response_model=list[OffCodeResponse])
@@ -142,3 +157,68 @@ async def delete_discount_code(code_id: str, current_user: TokenData = Depends(g
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Code not found")
     return None
+
+
+@router.post("/verify", response_model=DiscountVerifyResponse)
+async def verify_discount_code(request: DiscountVerifyRequest):
+    """Verify and apply a discount code (public endpoint for customers)"""
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+    
+    try:
+        cafe_id = ObjectId(request.cafe_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid café ID")
+    
+    codes_collection = get_cafe_offcodes_collection(db, str(cafe_id))
+    code_upper = request.code.upper().strip()
+    
+    # Find the discount code
+    discount_code = await codes_collection.find_one({"code": code_upper})
+    
+    if not discount_code:
+        return DiscountVerifyResponse(
+            valid=False,
+            message="کد تخفیف یافت نشد"
+        )
+    
+    # Check if code is active
+    if not discount_code.get("is_active", True):
+        return DiscountVerifyResponse(
+            valid=False,
+            message="کد تخفیف غیرفعال است"
+        )
+    
+    # Check expiration
+    expires_at = discount_code.get("expires_at")
+    if expires_at and datetime.utcnow() > expires_at:
+        return DiscountVerifyResponse(
+            valid=False,
+            message="کد تخفیف منقضی شده است"
+        )
+    
+    # Check max uses
+    max_uses = discount_code.get("max_uses")
+    current_uses = discount_code.get("current_uses", 0)
+    if max_uses and current_uses >= max_uses:
+        return DiscountVerifyResponse(
+            valid=False,
+            message="کد تخفیف به حداکثر استفاده رسیده است"
+        )
+    
+    # Calculate discount
+    discount_percent = discount_code.get("percent", 0)
+    discount_amount = (request.total_amount * discount_percent) / 100
+    final_amount = request.total_amount - discount_amount
+    
+    return DiscountVerifyResponse(
+        valid=True,
+        discount_percent=discount_percent,
+        discount_amount=discount_amount,
+        final_amount=final_amount,
+        message="کد تخفیف با موفقیت اعمال شد"
+    )

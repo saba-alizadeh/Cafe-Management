@@ -146,10 +146,17 @@ async def create_product(product: ProductCreate, current_user: TokenData = Depen
 
     products_collection = get_cafe_products_collection(db, cafe_id)
     
-    # Check if product with same name already exists in this café
-    existing = await products_collection.find_one({"name": product.name})
-    if existing:
-        raise HTTPException(status_code=400, detail="Product with this name already exists")
+    # For coffee products, allow same name with different blends
+    # For non-coffee products, check if name already exists
+    is_coffee = product.labels and any(
+        label.lower() in ['قهوه', 'coffee'] for label in (product.labels or [])
+    )
+    
+    if not is_coffee:
+        # For non-coffee products, check if name already exists
+        existing = await products_collection.find_one({"name": product.name})
+        if existing:
+            raise HTTPException(status_code=400, detail="Product with this name already exists")
 
     doc = product.model_dump()
     doc["cafe_id"] = cafe_id  # Store café ID for reference
@@ -187,6 +194,22 @@ async def update_product(
         oid = ObjectId(product_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid product ID")
+
+    # Check if updating name would create a duplicate (only for non-coffee products)
+    if "name" in product_update.model_dump(exclude_unset=True):
+        existing_product = await products_collection.find_one({"_id": oid})
+        if existing_product:
+            is_coffee = existing_product.get("labels") and any(
+                label.lower() in ['قهوه', 'coffee'] for label in (existing_product.get("labels") or [])
+            )
+            if not is_coffee:
+                # For non-coffee products, check if another product with same name exists
+                existing = await products_collection.find_one({
+                    "name": product_update.name,
+                    "_id": {"$ne": oid}
+                })
+                if existing:
+                    raise HTTPException(status_code=400, detail="Product with this name already exists")
 
     update_data = product_update.model_dump(exclude_none=True)
     if not update_data:

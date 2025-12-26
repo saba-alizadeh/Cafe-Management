@@ -9,6 +9,7 @@ import BaristaDashboard from "./pages/barista/BaristaDashboard";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import NotFound from "./pages/NotFound";
 import AdminManagerLogin from "./pages/AdminManagerLogin";
+import EmployeeLogin from "./pages/EmployeeLogin";
 import CinemaBooking from "./pages/booking/CinemaBooking";
 import CafeBooking from "./pages/booking/CafeBooking";
 import SharedSpaceBooking from "./pages/booking/SharedSpaceBooking";
@@ -31,6 +32,7 @@ function App() {
                     <Route path="/booking/shared" element={<SharedSpaceBooking />} />
                     <Route path="/booking/event" element={<EventBooking />} />
                     <Route path="/admin-login" element={<AdminManagerLogin />} />
+                    <Route path="/employee-login" element={<EmployeeLogin />} />
                     <Route path="/admin/*" element={<AdminDashboard />} />
                     <Route path="/manager/*" element={<ManagerDashboard />} />
                     <Route path="/barista/*" element={<BaristaDashboard />} />

@@ -50,6 +50,8 @@ const EmployeeManagement = () => {
 		firstName: '',
 		lastName: '',
 		role: 'waiter',
+		username: '',
+		password: '',
 		iban: '',
 		father_name: '',
 		date_of_birth: '',
@@ -61,6 +63,8 @@ const EmployeeManagement = () => {
 		firstName: '',
 		lastName: '',
 		role: 'waiter',
+		username: '',
+		password: '',
 		iban: '',
 		father_name: '',
 		date_of_birth: '',
@@ -149,6 +153,8 @@ const EmployeeManagement = () => {
 				firstName: '',
 				lastName: '',
 				role: 'waiter',
+				username: '',
+				password: '',
 				iban: '',
 				father_name: '',
 				date_of_birth: '',
@@ -223,6 +229,8 @@ const EmployeeManagement = () => {
 			firstName: employee.firstName || '',
 			lastName: employee.lastName || '',
 			role: employee.role || 'waiter',
+			username: employee.username || '',
+			password: '', // Don't show existing password
 			iban: employee.iban || '',
 			father_name: employee.father_name || '',
 			date_of_birth: employee.date_of_birth || '',
@@ -245,11 +253,17 @@ const EmployeeManagement = () => {
 			// Clean form data: convert empty strings to null for optional fields
 			const formData = {
 				...editForm,
+				username: editForm.username?.trim() || null,
+				password: editForm.password?.trim() || null, // Only update if provided
 				iban: editForm.iban?.trim() || null,
 				father_name: editForm.father_name?.trim() || null,
 				date_of_birth: editForm.date_of_birth?.trim() || null,
 				address: editForm.address?.trim() || null
 			};
+			// Remove password from update if empty
+			if (!formData.password) {
+				delete formData.password;
+			}
 			const res = await fetch(`${apiBaseUrl}/auth/employees/${editingEmployee.id}`, {
 				method: 'PUT',
 				headers: {
@@ -360,6 +374,27 @@ const EmployeeManagement = () => {
 												</MenuItem>
 											))}
 										</TextField>
+									</Grid>
+									<Grid item xs={12} md={6}>
+										<TextField
+											label="نام کاربری (برای ورود)"
+											fullWidth
+											value={form.username}
+											onChange={handleChange('username')}
+											disabled={saving}
+											helperText="اختیاری - برای ورود کارمند به سیستم"
+										/>
+									</Grid>
+									<Grid item xs={12} md={6}>
+										<TextField
+											label="رمز عبور (برای ورود)"
+											fullWidth
+											type="password"
+											value={form.password}
+											onChange={handleChange('password')}
+											disabled={saving}
+											helperText="اختیاری - حداقل ۶ کاراکتر"
+										/>
 									</Grid>
 									<Grid item xs={12} md={6}>
 										<TextField
@@ -598,6 +633,27 @@ const EmployeeManagement = () => {
 									</MenuItem>
 								))}
 							</TextField>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="نام کاربری (برای ورود)"
+								fullWidth
+								value={editForm.username}
+								onChange={handleEditChange('username')}
+								disabled={saving}
+								helperText="اختیاری - برای ورود کارمند به سیستم"
+							/>
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField
+								label="رمز عبور جدید (برای تغییر)"
+								fullWidth
+								type="password"
+								value={editForm.password}
+								onChange={handleEditChange('password')}
+								disabled={saving}
+								helperText="اختیاری - فقط در صورت نیاز به تغییر رمز"
+							/>
 						</Grid>
 						<Grid item xs={12} md={6}>
 							<TextField

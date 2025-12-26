@@ -1054,8 +1054,10 @@ const HomePage = () => {
                 onRemoveItem={(itemId) => {
                     setCart(cart.filter(item => item.id !== itemId));
                 }}
-                onCheckout={() => {
-                    alert('سفارش شما با موفقیت ثبت شد.');
+                onCheckout={(discountInfo, discountCode) => {
+                    const total = cart.reduce((sum, item) => sum + ((item.price || item.basePrice || 0) * item.quantity), 0);
+                    const finalTotal = discountInfo && discountInfo.valid ? discountInfo.final_amount : total;
+                    alert(`سفارش شما با موفقیت ثبت شد.\nمبلغ نهایی: ${finalTotal.toLocaleString()} تومان`);
                     setCart([]);
                 }}
             />

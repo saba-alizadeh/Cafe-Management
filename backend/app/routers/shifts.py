@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 
 @router.get("", response_model=list[ShiftSchedulingResponse])
 async def list_shifts(current_user: TokenData = Depends(get_current_user)):
-    """Get all shifts for the current user's café"""
+    """Get all shifts for the current user's café (admin only)"""
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -30,6 +30,59 @@ async def list_shifts(current_user: TokenData = Depends(get_current_user)):
 
     shifts_collection = get_cafe_shift_schedules_collection(db, cafe_id)
     cursor = shifts_collection.find({}).sort("date", -1)
+    shifts = []
+    async for doc in cursor:
+        doc["id"] = str(doc["_id"])
+        doc.pop("_id", None)
+        shifts.append(ShiftSchedulingResponse(**doc))
+    return shifts
+
+
+@router.get("/my-shifts", response_model=list[ShiftSchedulingResponse])
+async def get_my_shifts(current_user: TokenData = Depends(get_current_user)):
+    """Get shifts for the currently logged-in employee"""
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+
+    # Get employee from employees collection
+    from app.db_helpers import get_cafe_employees_collection
+    
+    # Search for employee by username (from token)
+    employee = None
+    cafe_id = None
+    
+    # Search across all cafes
+    cafes_master = db["cafes_master"]
+    async for cafe in cafes_master.find({}):
+        cafe_id_str = str(cafe.get("cafe_id", ""))
+        if cafe_id_str:
+            employees_col = get_cafe_employees_collection(db, cafe_id_str)
+            # Try to find employee by username or user_id
+            found_employee = None
+            if current_user.username:
+                found_employee = await employees_col.find_one({"username": current_user.username})
+            if not found_employee and current_user.user_id:
+                try:
+                    found_employee = await employees_col.find_one({"_id": ObjectId(current_user.user_id)})
+                except:
+                    pass
+            
+            if found_employee:
+                employee = found_employee
+                cafe_id = cafe_id_str
+                break
+    
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get shifts for this employee
+    shifts_collection = get_cafe_shift_schedules_collection(db, cafe_id)
+    employee_id = str(employee["_id"])
+    cursor = shifts_collection.find({"employee_id": employee_id}).sort("date", -1)
     shifts = []
     async for doc in cursor:
         doc["id"] = str(doc["_id"])

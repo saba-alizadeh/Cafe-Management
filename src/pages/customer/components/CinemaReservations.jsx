@@ -55,28 +55,21 @@ const CinemaReservations = () => {
         }
 
         try {
-            // Fetch cinema sessions and films from API
-            const [sessionsRes, filmsRes] = await Promise.all([
-                fetch(`${apiBaseUrl}/cinema/sessions?cafe_id=${selectedCafe.id}`, {
-                    headers: { Authorization: `Bearer ${authToken}` }
-                }),
-                fetch(`${apiBaseUrl}/cinema/films?cafe_id=${selectedCafe.id}`, {
-                    headers: { Authorization: `Bearer ${authToken}` }
-                })
-            ]);
+            // Fetch user cinema reservations from API
+            const res = await fetch(`${apiBaseUrl}/reservations?reservation_type=cinema&cafe_id=${selectedCafe.id}`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
             
-            if (!sessionsRes.ok || !filmsRes.ok) {
-                const data = await sessionsRes.json().catch(() => ({}));
-                setError(data.detail || 'خطا در بارگذاری جلسات سینما');
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'خطا در بارگذاری رزروها');
                 setLoading(false);
                 return;
             }
             
-            const sessions = await sessionsRes.json();
-            const films = await filmsRes.json();
+            const reservationsData = await res.json();
             
             // Get cinema capacity from selected café
-            const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
             if (selectedCafe?.cinema_seating_capacity) {
                 setCinemaCapacity(selectedCafe.cinema_seating_capacity);
                 // Calculate rows and seats per row
@@ -90,32 +83,27 @@ const CinemaReservations = () => {
             }
             
             // Map API data to component format
-            const mappedSessions = Array.isArray(sessions) ? sessions
-                .filter(session => {
-                    // Filter sessions that are in the future or today
-                    const sessionDate = new Date(session.session_date);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return sessionDate >= today && session.available_seats > 0;
+            // Only show completed/Confirmed reservations
+            const mappedReservations = Array.isArray(reservationsData) ? reservationsData
+                .filter(reservation => {
+                    // Only show reservations with completed or Confirmed status
+                    const status = reservation.status;
+                    return status === 'completed' || status === 'Confirmed';
                 })
-                .map((session) => {
-                    const film = films.find(f => f.id === session.film_id);
-                    return {
-                        id: session.id,
-                        name: film?.title || 'فیلم بدون نام',
-                        filmTitle: film?.title || 'فیلم بدون نام',
-                        filmId: session.film_id,
-                        sessionDate: session.session_date,
-                        sessionTime: session.start_time,
-                        endTime: session.end_time,
-                        availableSeats: session.available_seats,
-                        price: session.price_per_seat || 0,
-                        image: session.image_url || (film?.banner_url || ''),
-                        duration: film?.duration_minutes || 0
-                    };
-                }) : [];
+                .map((reservation) => ({
+                    id: reservation.id,
+                    name: `رزرو سینما - ${reservation.date}`,
+                    sessionId: reservation.session_id,
+                    sessionDate: reservation.date,
+                    sessionTime: reservation.time,
+                    seatNumbers: reservation.seat_numbers || [],
+                    attendeeNames: reservation.attendee_names || [],
+                    numberOfPeople: reservation.number_of_people,
+                    status: reservation.status,
+                    notes: reservation.notes
+                })) : [];
             
-            setReservations(mappedSessions);
+            setReservations(mappedReservations);
         } catch (err) {
             console.error(err);
             setError('خطا در ارتباط با سرور');
@@ -256,7 +244,7 @@ const CinemaReservations = () => {
                         <CardContent sx={{ textAlign: 'center', py: 4 }}>
                             <Movie sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
                             <Typography variant="h6" color="text.secondary">
-                                هیچ جلسه سینمایی برای رزرو وجود ندارد
+                                شما هنوز هیچ رزروی انجام نداده‌اید
                             </Typography>
                         </CardContent>
                     </Card>

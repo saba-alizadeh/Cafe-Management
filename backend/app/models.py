@@ -166,6 +166,8 @@ class EmployeeBase(BaseModel):
     lastName: str = Field(..., min_length=1, max_length=100)
     role: str = Field(..., pattern="^(waiter|floor_staff|bartender)$")
     is_active: bool = True
+    username: Optional[str] = Field(default=None, min_length=3, max_length=50, description="Username for login")
+    password: Optional[str] = Field(default=None, min_length=6, description="Password for login (will be hashed)")
     iban: Optional[str] = Field(default=None, max_length=34, description="IBAN (Sheba number)")
     father_name: Optional[str] = Field(default=None, max_length=100, description="Father's name")
     date_of_birth: Optional[str] = Field(default=None, max_length=10, description="Date of birth (YYYY-MM-DD)")
@@ -190,6 +192,8 @@ class EmployeeUpdate(BaseModel):
     firstName: Optional[str] = Field(default=None, min_length=1, max_length=100)
     lastName: Optional[str] = Field(default=None, min_length=1, max_length=100)
     role: Optional[str] = Field(default=None, pattern="^(waiter|floor_staff|bartender)$")
+    username: Optional[str] = Field(default=None, min_length=3, max_length=50, description="Username for login")
+    password: Optional[str] = Field(default=None, min_length=6, description="Password for login (will be hashed)")
     iban: Optional[str] = Field(default=None, max_length=34, description="IBAN (Sheba number)")
     father_name: Optional[str] = Field(default=None, max_length=100, description="Father's name")
     date_of_birth: Optional[str] = Field(default=None, max_length=10, description="Date of birth (YYYY-MM-DD)")
@@ -293,15 +297,23 @@ class OffCodeResponse(OffCodeBase):
     model_config = {"from_attributes": True}
 
 
+# Coffee Blend Model
+class CoffeeBlendOption(BaseModel):
+    ratio: str = Field(..., description="Blend ratio (e.g., '100%', '80-20', '60-40', '50-50')")
+    price: float = Field(..., ge=0, description="Price for this specific blend")
+
+
 # Product Models
 class ProductBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    price: float = Field(..., ge=0, description="Product price")
+    price: float = Field(..., ge=0, description="Base product price (default price)")
     is_active: bool = Field(default=True, description="Whether the product is active")
     description: Optional[str] = Field(None, max_length=1000)
     image_url: Optional[str] = None
     discount_percent: Optional[float] = Field(None, ge=0, le=100, description="Discount percentage (0-100)")
     labels: Optional[List[str]] = Field(None, description="Product labels/categories (e.g., 'warm drinks', 'cold drinks')")
+    coffee_blends: Optional[List[CoffeeBlendOption]] = Field(None, description="Coffee blend options with prices (for coffee products)")
+    coffee_type: Optional[str] = Field(None, description="Coffee type (e.g., 'Robusta', 'Arabica')")
 
 
 class ProductCreate(ProductBase):
@@ -316,6 +328,8 @@ class ProductUpdate(BaseModel):
     image_url: Optional[str] = None
     discount_percent: Optional[float] = Field(None, ge=0, le=100)
     labels: Optional[List[str]] = None
+    coffee_blends: Optional[List[CoffeeBlendOption]] = None
+    coffee_type: Optional[str] = None
 
 
 class ProductResponse(ProductBase):
@@ -670,6 +684,55 @@ class EventResponse(EventBase):
 
 class EventSessionResponse(EventSessionBase):
     id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Reservation Models
+class ReservationBase(BaseModel):
+    reservation_type: str = Field(..., description="Type: table, cinema, event, coworking")
+    cafe_id: str
+    date: str
+    time: str
+    number_of_people: int = Field(..., ge=1)
+    status: str = Field(default="pending", description="pending, confirmed, completed, cancelled")
+    notes: Optional[str] = None
+
+
+class TableReservationCreate(ReservationBase):
+    reservation_type: str = "table"
+    table_id: str
+
+
+class CinemaReservationCreate(ReservationBase):
+    reservation_type: str = "cinema"
+    session_id: str
+    seat_numbers: List[str] = Field(..., min_length=1)
+    attendee_names: List[str] = Field(default_factory=list)
+
+
+class EventReservationCreate(ReservationBase):
+    reservation_type: str = "event"
+    event_id: str
+    session_id: str
+    attendee_names: List[str] = Field(default_factory=list)
+
+
+class CoworkingReservationCreate(ReservationBase):
+    reservation_type: str = "coworking"
+    table_id: str
+
+
+class ReservationResponse(ReservationBase):
+    id: str
+    user_id: str
+    table_id: Optional[str] = None
+    session_id: Optional[str] = None
+    event_id: Optional[str] = None
+    seat_numbers: Optional[List[str]] = None
+    attendee_names: Optional[List[str]] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

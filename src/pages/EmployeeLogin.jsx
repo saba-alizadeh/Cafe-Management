@@ -11,11 +11,11 @@ import {
     CircularProgress,
     Stack
 } from '@mui/material';
-import { AdminPanelSettings, Business, Person } from '@mui/icons-material';
+import { Person, Restaurant } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const AdminManagerLogin = () => {
+const EmployeeLogin = () => {
     const { login, setAuthToken, apiBaseUrl } = useAuth();
     const navigate = useNavigate();
 
@@ -34,7 +34,7 @@ const AdminManagerLogin = () => {
         setError('');
 
         try {
-            const response = await fetch(`${apiBaseUrl}/auth/admin-login`, {
+            const response = await fetch(`${apiBaseUrl}/auth/employee-login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
@@ -55,15 +55,14 @@ const AdminManagerLogin = () => {
             const user = data.user || {};
             login(user, false);
 
-            if (user.role === 'admin') {
-                navigate('/admin');
-            } else if (user.role === 'manager') {
-                navigate('/manager');
+            // Redirect to waiter/barista panel based on role
+            if (user.role === 'barista' || user.role === 'waiter' || user.role === 'floor_staff' || user.role === 'bartender') {
+                navigate('/barista');
             } else {
                 setError('دسترسی برای این کاربر مجاز نیست.');
             }
         } catch (err) {
-            console.error('Admin/Manager login error:', err);
+            console.error('Employee login error:', err);
             setError('خطا در اتصال به سرور. لطفاً بعداً تلاش کنید.');
         } finally {
             setSubmitting(false);
@@ -83,12 +82,12 @@ const AdminManagerLogin = () => {
                 }}
             >
                 <Stack spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                    <AdminPanelSettings fontSize="large" color="primary" />
+                    <Person fontSize="large" color="primary" />
                     <Typography variant="h5" fontWeight={700} textAlign="center">
-                        ورود مدیر / ادمین
+                        ورود کارمند
                     </Typography>
                     <Typography variant="body2" color="text.secondary" textAlign="center">
-                        با نام کاربری و رمز عبور وارد شوید. کاربران پیش‌فرض: admin / admin123 و manager / manager123
+                        با نام کاربری و رمز عبور وارد شوید
                     </Typography>
                 </Stack>
 
@@ -129,7 +128,7 @@ const AdminManagerLogin = () => {
                                 '&:hover': { backgroundColor: 'var(--color-primary)' }
                             }}
                             disabled={submitting || !form.username.trim() || !form.password.trim()}
-                            startIcon={<Business />}
+                            startIcon={<Restaurant />}
                         >
                             ورود
                         </Button>
@@ -139,8 +138,7 @@ const AdminManagerLogin = () => {
                 <Box sx={{ mt: 3, textAlign: 'center' }}>
                     <Button
                         component={Link}
-                        to="/employee-login"
-                        startIcon={<Person />}
+                        to="/admin-login"
                         sx={{
                             textTransform: 'none',
                             color: 'text.secondary',
@@ -150,7 +148,7 @@ const AdminManagerLogin = () => {
                             }
                         }}
                     >
-                        ورود کارمند (Employee Login)
+                        ورود مدیر / ادمین
                     </Button>
                 </Box>
             </Paper>
@@ -158,5 +156,4 @@ const AdminManagerLogin = () => {
     );
 };
 
-export default AdminManagerLogin;
-
+export default EmployeeLogin;

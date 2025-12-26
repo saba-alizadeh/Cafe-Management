@@ -66,7 +66,7 @@ const SpecialDiscounts = () => {
                             pb: 2,
                         }}
                     >
-                        {specialItems.map((item) => (
+                        {specialItems.filter(item => item.discount && item.discount > 0).map((item) => (
                             <Card key={item.id} sx={{ minWidth: 200, bgcolor: 'rgba(255,255,255,0.1)' }}>
                                 <CardContent sx={{ textAlign: 'center', color: 'var(--color-secondary)' }}>
                                     <img
