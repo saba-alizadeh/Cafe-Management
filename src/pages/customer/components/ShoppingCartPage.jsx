@@ -7,13 +7,17 @@ import { ShoppingCart, Delete, Restaurant, Movie, Event, BusinessCenter } from '
 import { useCart } from '../../../context/CartContext';
 import { useAuth } from '../../../context/AuthContext';
 import ShoppingCartDrawer from '../../../components/ShoppingCart/ShoppingCartDrawer';
+import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
+import { useNavigate } from 'react-router-dom';
 
 const ShoppingCartPage = () => {
     const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
-    const { apiBaseUrl, token } = useAuth();
+    const { apiBaseUrl, token, user } = useAuth();
+    const navigate = useNavigate();
     const [drawerOpen, setDrawerOpen] = React.useState(false);
     const [checkoutError, setCheckoutError] = React.useState('');
     const [checkoutSuccess, setCheckoutSuccess] = React.useState(false);
+    const [authDialogOpen, setAuthDialogOpen] = React.useState(false);
 
     const getItemIcon = (type) => {
         switch(type) {
@@ -172,6 +176,13 @@ const ShoppingCartPage = () => {
                         setCheckoutError('');
                         setCheckoutSuccess(false);
                         
+                        // Check authentication first
+                        if (!user) {
+                            setDrawerOpen(false);
+                            setAuthDialogOpen(true);
+                            return;
+                        }
+
                         const authToken = token || localStorage.getItem('authToken');
                         if (!authToken) {
                             setCheckoutError('لطفاً ابتدا وارد سیستم شوید');
@@ -274,6 +285,21 @@ const ShoppingCartPage = () => {
                             console.error('Checkout error:', error);
                             setCheckoutError('خطا در ثبت سفارش. لطفاً دوباره تلاش کنید.');
                         }
+                    }}
+                />
+
+                <PhoneAuthDialog
+                    open={authDialogOpen}
+                    onClose={() => setAuthDialogOpen(false)}
+                    onAuthenticated={() => {
+                        setAuthDialogOpen(false);
+                        // After authentication, reopen drawer so user can checkout
+                        setDrawerOpen(true);
+                    }}
+                    onNewUser={() => {
+                        setAuthDialogOpen(false);
+                        // New user: redirect to profile page
+                        navigate('/customer/profile');
                     }}
                 />
             </Container>

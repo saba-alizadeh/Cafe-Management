@@ -3,6 +3,8 @@ import { Box, Container, Typography, Button, CircularProgress, Alert, Dialog, Di
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { getImageUrl } from '../../utils/imageUtils';
+import PhoneAuthDialog from '../../components/auth/PhoneAuthDialog';
 
 const seatColors = {
     selected: 'var(--color-accent)',
@@ -23,6 +25,7 @@ const CinemaBooking = () => {
     const [seatsPerRow, setSeatsPerRow] = useState(8);
     const [occupiedSeats, setOccupiedSeats] = useState([]);
     const [reservationDialog, setReservationDialog] = useState(false);
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const [activeStep, setActiveStep] = useState(0);
     const { user, apiBaseUrl, token } = useAuth();
     const { addToCart } = useCart();
@@ -108,7 +111,7 @@ const CinemaBooking = () => {
                         endTime: session.end_time,
                         availableSeats: session.available_seats,
                         price: session.price_per_seat || 0,
-                        image: session.image_url || (film?.banner_url || ''),
+                        image: getImageUrl(session.image_url || film?.banner_url || '', apiBaseUrl) || (session.image_url || film?.banner_url || ''),
                         duration: film?.duration_minutes || 0
                     };
                 }) : [];
@@ -190,6 +193,13 @@ const CinemaBooking = () => {
     };
 
     const handleAddToCart = () => {
+        // Check authentication first
+        if (!user) {
+            setReservationDialog(false);
+            setAuthDialogOpen(true);
+            return;
+        }
+
         if (peopleNames.some(name => !name.trim())) {
             alert('لطفاً نام تمام شرکت‌کنندگان را وارد کنید');
             return;
@@ -527,6 +537,20 @@ const CinemaBooking = () => {
                         )}
                     </DialogActions>
                 </Dialog>
+
+                <PhoneAuthDialog
+                    open={authDialogOpen}
+                    onClose={() => setAuthDialogOpen(false)}
+                    onAuthenticated={() => {
+                        setAuthDialogOpen(false);
+                        // Stay on current page after authentication
+                    }}
+                    onNewUser={() => {
+                        setAuthDialogOpen(false);
+                        // New user: redirect to profile page
+                        navigate('/customer/profile');
+                    }}
+                />
             </Container>
         </Box>
     );

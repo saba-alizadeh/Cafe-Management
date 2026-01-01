@@ -22,17 +22,10 @@ import {
     Event
 } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const AboutCafe = ({ selectedCafe }) => {
     const { apiBaseUrl } = useAuth();
-
-    const getImageUrl = (imageUrl) => {
-        if (!imageUrl) return null;
-        if (imageUrl.startsWith('/')) {
-            return `${apiBaseUrl}${imageUrl}`;
-        }
-        return imageUrl;
-    };
 
     if (!selectedCafe) {
         return null;
@@ -52,7 +45,7 @@ const AboutCafe = ({ selectedCafe }) => {
                 <Box sx={{ textAlign: 'center', mb: 6 }}>
                     {selectedCafe.logo_url && (
                         <Avatar
-                            src={getImageUrl(selectedCafe.logo_url)}
+                            src={getImageUrl(selectedCafe.logo_url, apiBaseUrl)}
                             alt={selectedCafe.name}
                             sx={{
                                 width: 120,

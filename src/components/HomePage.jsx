@@ -41,6 +41,9 @@ import menuImage2 from '../assets/MenuPics/2.png';
 import menuImage3 from '../assets/MenuPics/3.png';
 import menuImage4 from '../assets/MenuPics/4.png';
 import ShoppingCartDrawer from './ShoppingCart/ShoppingCartDrawer';
+import ProductDetailModal from './ProductDetailModal';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
 const HomePage = () => {
     const [cartItems, setCartItems] = useState(3);
@@ -452,11 +455,15 @@ const HomePage = () => {
                             <Card
                                 sx={{
                                     position: 'relative',
-                                    height: 420, // ارتفاع ثابت کارت
                                     display: 'flex',
                                     flexDirection: 'column',
                                     transition: 'all 0.3s ease',
+                                    cursor: 'pointer',
                                     '&:hover': { transform: 'translateY(-4px)', boxShadow: 4 },
+                                }}
+                                onClick={() => {
+                                    setSelectedProduct({ ...item, isCoffee: false });
+                                    setModalOpen(true);
                                 }}
                             >
                                 <Box sx={{ position: 'relative' }}>
@@ -465,7 +472,7 @@ const HomePage = () => {
                                         alt={item.name}
                                         style={{
                                             width: '100%',
-                                            height: '200px',
+                                            height: '150px',
                                             objectFit: 'cover',
                                             borderTopLeftRadius: 8,
                                             borderTopRightRadius: 8,
@@ -473,9 +480,9 @@ const HomePage = () => {
                                     />
                                 </Box>
 
-                                <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: 1.5, '&:last-child': { pb: 1.5 } }}>
                                     <Box>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1rem' }}>
                                             {item.name}
                                         </Typography>
 
@@ -483,30 +490,24 @@ const HomePage = () => {
                                             variant="body2"
                                             color="text.secondary"
                                             sx={{
-                                                mb: 2,
+                                                mb: 0.5,
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 display: '-webkit-box',
                                                 WebkitLineClamp: 2, 
                                                 WebkitBoxOrient: 'vertical',
+                                                fontSize: '0.75rem',
+                                                lineHeight: 1.4,
                                             }}
                                         >
                                             {item.description}
                                         </Typography>
                                     </Box>
 
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Box>
-                                            {item.discount > 0 && (
-                                                <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>
-                                                    {item.originalPrice.toLocaleString()} تومان
-                                                </Typography>
-                                            )}
-                                            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                                                {item.price.toLocaleString()} تومان
-                                            </Typography>
-                                        </Box>
-                                        <IconButton sx={{ bgcolor: 'var(--color-accent-soft)', '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' } }}>+</IconButton>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)', fontSize: '1rem' }}>
+                                            {item.price.toLocaleString()} تومان
+                                        </Typography>
                                     </Box>
                                 </CardContent>
                             </Card>
@@ -663,13 +664,18 @@ const HomePage = () => {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'space-between',
-                                height: 360,  // ارتفاع ثابت
                                 borderRadius: 2,
                                 overflow: 'hidden',
                                 transition: '0.3s',
+                                cursor: 'pointer',
                                 '&:hover': { transform: 'translateY(-4px)', boxShadow: 4 },
-                            }}>
-                                <Box sx={{ height: 180, overflow: 'hidden' }}>
+                            }}
+                            onClick={() => {
+                                setSelectedProduct({ ...item, isCoffee: false });
+                                setModalOpen(true);
+                            }}
+                            >
+                                <Box sx={{ height: 150, overflow: 'hidden' }}>
                                     <img
                                         src={item.image}
                                         alt={item.name}
@@ -677,35 +683,30 @@ const HomePage = () => {
                                     />
                                 </Box>
 
-                                <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: 1.5, '&:last-child': { pb: 1.5 } }}>
                                     <Box>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }} noWrap>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1rem' }} noWrap>
                                             {item.name}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary"
                                             sx={{
-                                                mb: 2,
+                                                mb: 0.5,
                                                 overflow: 'hidden',
                                                 display: '-webkit-box',
-                                                WebkitLineClamp: 3,  // حداکثر ۳ خط توضیحات
+                                                WebkitLineClamp: 2,
                                                 WebkitBoxOrient: 'vertical',
-                                                textOverflow: 'ellipsis'
+                                                textOverflow: 'ellipsis',
+                                                fontSize: '0.75rem',
+                                                lineHeight: 1.4,
                                             }}>
                                             {item.description}
                                         </Typography>
                                     </Box>
 
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--color-primary)', fontSize: '1rem' }}>
                                             {item.price.toLocaleString()} تومان
                                         </Typography>
-                                        <Button variant="outlined" sx={{
-                                            borderColor: 'var(--color-primary)',
-                                            color: 'var(--color-primary)',
-                                            '&:hover': { bgcolor: 'var(--color-primary)', color: 'var(--color-secondary)' }
-                                        }}>
-                                            Add to Cart
-                                        </Button>
                                     </Box>
                                 </CardContent>
                             </Card>
@@ -1059,6 +1060,27 @@ const HomePage = () => {
                     const finalTotal = discountInfo && discountInfo.valid ? discountInfo.final_amount : total;
                     alert(`سفارش شما با موفقیت ثبت شد.\nمبلغ نهایی: ${finalTotal.toLocaleString()} تومان`);
                     setCart([]);
+                }}
+            />
+
+            <ProductDetailModal
+                open={modalOpen}
+                onClose={() => {
+                    setModalOpen(false);
+                    setSelectedProduct(null);
+                }}
+                product={selectedProduct}
+                apiBaseUrl={apiBaseUrl}
+                onReserve={(productData) => {
+                    const cartItem = {
+                        id: `product-${productData.id}`,
+                        type: 'product',
+                        name: productData.name,
+                        price: productData.finalPrice || productData.price,
+                        quantity: 1,
+                    };
+                    addToCart(cartItem);
+                    alert(`${productData.name} به سبد خرید اضافه شد`);
                 }}
             />
         </Box>

@@ -294,12 +294,23 @@ async def get_cafe_id_for_access(db, current_user: TokenData, cafe_id_param: str
             detail="No café found. Please specify a café."
         )
     
-    # For admin/manager/barista, require café membership
-    cafe_id = get_cafe_id_from_user(user)
-    if cafe_id is None:
+    # For admin/manager/barista, check if they can access the requested cafe
+    user_cafe_id = get_cafe_id_from_user(user)
+    if user_cafe_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User must belong to a café to access this resource"
         )
-    return cafe_id
+    
+    # If cafe_id_param is provided, verify it matches the user's cafe
+    if cafe_id_param:
+        if str(cafe_id_param) != str(user_cafe_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only access data for your own café"
+            )
+        return str(cafe_id_param)
+    
+    # If no cafe_id_param provided, use user's own cafe
+    return str(user_cafe_id)
 

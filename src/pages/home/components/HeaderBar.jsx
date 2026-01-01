@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { AppBar, Toolbar, Box, Typography, Button, IconButton, Badge, Avatar } from '@mui/material';
-import { Search, Favorite, Home, ShoppingCart, Info } from '@mui/icons-material';
+import { Search, Favorite, Home, ShoppingCart, Info, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 import ShoppingCartDrawer from '../../../components/ShoppingCart/ShoppingCartDrawer';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const HeaderBar = ({ selectedCafe, onAboutClick }) => {
     const [authDialogOpen, setAuthDialogOpen] = useState(false);
@@ -31,13 +32,6 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
         }
     };
 
-    const getImageUrl = (imageUrl) => {
-        if (!imageUrl) return null;
-        if (imageUrl.startsWith('/')) {
-            return `${apiBaseUrl}${imageUrl}`;
-        }
-        return imageUrl;
-    };
 
     const handleBackToHome = () => {
         // Get selected cafe from localStorage
@@ -66,16 +60,24 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
             <AppBar position="fixed" sx={{ bgcolor: 'var(--color-secondary)', color: 'var(--color-primary)', boxShadow: 'none', direction: 'rtl' }}>
                 <Toolbar>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                        {/* Cafe Logo */}
+                        {/* Cafe Logo - ONLY use logo_url, never banner_url or image_url */}
                         {selectedCafe?.logo_url && (
                             <Avatar
-                                src={getImageUrl(selectedCafe.logo_url)}
-                                alt={selectedCafe.name}
+                                src={getImageUrl(selectedCafe.logo_url, apiBaseUrl)}
+                                alt={`${selectedCafe.name} logo`}
                                 sx={{
                                     width: 40,
                                     height: 40,
                                     mr: 1,
                                     bgcolor: 'var(--color-primary)',
+                                    border: '2px solid',
+                                    borderColor: 'var(--color-primary)',
+                                }}
+                                imgProps={{
+                                    style: {
+                                        objectFit: 'contain',
+                                        padding: '4px',
+                                    }
                                 }}
                             />
                         )}
@@ -118,13 +120,30 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
                         </IconButton>
                     </Badge>
                     <Box sx={{ display: 'flex', gap: 1, marginRight: '7px' }}>
-                        <Button
-                            variant="contained"
-                            sx={{ bgcolor: 'var(--color-primary)' }}
-                            onClick={requireAuthAndGoProfile}
-                        >
-                            ورود | ثبت نام
-                        </Button>
+                        {user ? (
+                            <IconButton
+                                sx={{ 
+                                    bgcolor: 'var(--color-primary)', 
+                                    color: 'var(--color-secondary)',
+                                    '&:hover': {
+                                        bgcolor: 'var(--color-primary)',
+                                        opacity: 0.9
+                                    }
+                                }}
+                                onClick={() => navigate('/customer')}
+                                title="پنل کاربری"
+                            >
+                                <Person />
+                            </IconButton>
+                        ) : (
+                            <Button
+                                variant="contained"
+                                sx={{ bgcolor: 'var(--color-primary)' }}
+                                onClick={requireAuthAndGoProfile}
+                            >
+                                ورود | ثبت نام
+                            </Button>
+                        )}
                     </Box>
                 </Toolbar>
             </AppBar>
@@ -145,7 +164,12 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
                         removeFromCart(itemId, item.type);
                     }
                 }}
-                onCheckout={() => {
+                onCheckout={(discountInfo, discountCode) => {
+                    // Check authentication (ShoppingCartDrawer already checks, but double-check here)
+                    if (!user) {
+                        setAuthDialogOpen(true);
+                        return;
+                    }
                     alert('سفارش شما با موفقیت ثبت شد.');
                     clearCart();
                 }}
@@ -156,10 +180,12 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
                 onClose={() => setAuthDialogOpen(false)}
                 onAuthenticated={(user) => {
                     setAuthDialogOpen(false);
-                    // Redirect regular users (customers) to /customer
-                    if (user && user.role === 'customer') {
-                        navigate('/customer');
-                    }
+                    // Existing user: stay on current page (no redirect)
+                }}
+                onNewUser={(user) => {
+                    setAuthDialogOpen(false);
+                    // New user: redirect to profile page to complete registration
+                    navigate('/customer/profile');
                 }}
             />
         </>

@@ -118,16 +118,24 @@ const PhoneAuthDialog = ({ open, onClose, onAuthenticated, onNewUser = null }) =
                 return;
             }
 
-            const { token: authToken, user } = data;
+            const { token: authToken, user, isNewUser } = data;
             setToken(authToken);
             if (authToken) {
                 setAuthToken(authToken);
             }
 
-            login(user || { phone: phone.trim(), role: 'customer' }, false);
-            onAuthenticated && onAuthenticated(user || { phone: phone.trim() });
+            login(user || { phone: phone.trim(), role: 'customer' }, isNewUser || false);
             resetState();
             onClose();
+            
+            // Handle redirect based on isNewUser flag
+            if (isNewUser) {
+                // New user: redirect to profile page to complete registration
+                onNewUser && onNewUser(user || { phone: phone.trim() });
+            } else {
+                // Existing user: stay on current page
+                onAuthenticated && onAuthenticated(user || { phone: phone.trim() });
+            }
         } catch (err) {
             if (err.name === 'AbortError') {
                 setError('زمان اتصال به سرور به پایان رسید. لطفاً اتصال اینترنت خود را بررسی کنید.');

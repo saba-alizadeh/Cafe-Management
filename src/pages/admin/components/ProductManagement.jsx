@@ -30,6 +30,7 @@ import {
 } from '@mui/material';
 import { Edit, Delete, CloudUpload, LocalOffer } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const ProductManagement = () => {
 	const { apiBaseUrl, token } = useAuth();
@@ -366,7 +367,7 @@ const ProductManagement = () => {
 												<TableCell>
 													<Avatar
 														variant="rounded"
-														src={p.image_url}
+														src={getImageUrl(p.image_url, apiBaseUrl) || p.image_url}
 														alt={p.name}
 														sx={{ width: 56, height: 56 }}
 													>
@@ -730,7 +731,7 @@ const ProductManagement = () => {
 									<Box sx={{ mt: 2, textAlign: 'center' }}>
 										<Avatar
 											variant="rounded"
-											src={form.image_url.startsWith('/') ? `${apiBaseUrl}${form.image_url}` : form.image_url}
+											src={getImageUrl(form.image_url, apiBaseUrl) || form.image_url}
 											alt="Product preview"
 											sx={{ width: 120, height: 120, mx: 'auto', mb: 1 }}
 											onError={(e) => {

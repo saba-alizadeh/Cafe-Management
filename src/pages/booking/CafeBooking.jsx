@@ -3,6 +3,7 @@ import { Box, Container, Typography, Grid, Card, CardContent, Button, Chip, Text
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import PhoneAuthDialog from '../../components/auth/PhoneAuthDialog';
 
 const CafeBooking = () => {
     const [selected, setSelected] = useState(null);
@@ -10,6 +11,7 @@ const CafeBooking = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [reservationDialog, setReservationDialog] = useState(false);
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const [reservationData, setReservationData] = useState({
         date: '',
         time: '',
@@ -186,6 +188,13 @@ const CafeBooking = () => {
                         <Button
                             variant="contained"
                             onClick={() => {
+                                // Check authentication first
+                                if (!user) {
+                                    setReservationDialog(false);
+                                    setAuthDialogOpen(true);
+                                    return;
+                                }
+
                                 if (!reservationData.date || !reservationData.time) {
                                     alert('لطفاً تاریخ و ساعت را وارد کنید');
                                     return;
@@ -219,6 +228,20 @@ const CafeBooking = () => {
                         </Button>
                     </DialogActions>
                 </Dialog>
+
+                <PhoneAuthDialog
+                    open={authDialogOpen}
+                    onClose={() => setAuthDialogOpen(false)}
+                    onAuthenticated={() => {
+                        setAuthDialogOpen(false);
+                        // Stay on current page after authentication
+                    }}
+                    onNewUser={() => {
+                        setAuthDialogOpen(false);
+                        // New user: redirect to profile page
+                        navigate('/customer/profile');
+                    }}
+                />
             </Container>
         </Box>
     );

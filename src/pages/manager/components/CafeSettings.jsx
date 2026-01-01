@@ -41,6 +41,7 @@ import {
     Refresh
 } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const CafeSettings = () => {
     const { apiBaseUrl, token } = useAuth();
@@ -908,7 +909,7 @@ const CafeSettings = () => {
                                         </Typography>
                                         <Box
                                             component="img"
-                                            src={formData.image_url.startsWith('/') ? `${apiBaseUrl}${formData.image_url}` : formData.image_url}
+                                            src={getImageUrl(formData.image_url, apiBaseUrl) || formData.image_url}
                                             alt="Cafe"
                                             sx={{
                                                 maxWidth: '300px',

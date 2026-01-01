@@ -3,6 +3,7 @@ import { Box, Container, Typography, Grid, Card, CardContent, Chip, Button, Text
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import PhoneAuthDialog from '../../components/auth/PhoneAuthDialog';
 
 const SharedSpaceBooking = () => {
     const [selected, setSelected] = useState(null);
@@ -10,6 +11,7 @@ const SharedSpaceBooking = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [reservationDialog, setReservationDialog] = useState(false);
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const [reservationData, setReservationData] = useState({
         date: '',
         time: '',
@@ -234,6 +236,20 @@ const SharedSpaceBooking = () => {
                         </Button>
                     </DialogActions>
                 </Dialog>
+
+                <PhoneAuthDialog
+                    open={authDialogOpen}
+                    onClose={() => setAuthDialogOpen(false)}
+                    onAuthenticated={() => {
+                        setAuthDialogOpen(false);
+                        // Stay on current page after authentication
+                    }}
+                    onNewUser={() => {
+                        setAuthDialogOpen(false);
+                        // New user: redirect to profile page
+                        navigate('/customer/profile');
+                    }}
+                />
             </Container>
         </Box>
     );

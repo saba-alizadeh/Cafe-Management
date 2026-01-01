@@ -11,13 +11,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
+# CORS middleware - Allow all origins in development for easier debugging
+# In production, restrict to specific domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Add your frontend URLs
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins - change to specific domains in production
+    allow_credentials=False,  # Set to False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include routers

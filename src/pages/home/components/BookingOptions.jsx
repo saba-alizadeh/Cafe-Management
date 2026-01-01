@@ -7,6 +7,7 @@ import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 
 const BookingOptions = () => {
     const [authDialogOpen, setAuthDialogOpen] = useState(false);
+    const [targetLink, setTargetLink] = useState(null);
     const { user } = useAuth();
     const navigate = useNavigate();
     const bookingOptions = [
@@ -48,6 +49,7 @@ const BookingOptions = () => {
         if (user) {
             navigate(link);
         } else {
+            setTargetLink(link);
             setAuthDialogOpen(true);
         }
     };
@@ -79,13 +81,14 @@ const BookingOptions = () => {
                 }} />
             </Box>
 
-            <Grid container spacing={4} justifyContent="center">
+            <Grid container spacing={3} justifyContent="center" alignItems="stretch">
                 {bookingOptions.map((option, index) => {
                     const IconComponent = option.icon;
                     return (
-                        <Grid item xs={12} sm={6} md={3} key={index}>
+                        <Grid item xs={12} sm={6} md={3} key={index} sx={{ display: 'flex' }}>
                             <Card 
                                 sx={{ 
+                                    width: '100%',
                                     height: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -101,12 +104,14 @@ const BookingOptions = () => {
                             >
                                     <CardContent sx={{ 
                                         textAlign: 'center', 
-                                        py: 4,
-                                        px: 3,
+                                        py: 3,
+                                        px: 2,
                                         display: 'flex',
                                         flexDirection: 'column',
                                         flexGrow: 1,
-                                        justifyContent: 'space-between'
+                                        justifyContent: 'space-between',
+                                        height: '100%',
+                                        '&:last-child': { pb: 3 }
                                     }}>
                                         {/* Icon */}
                                         <Box sx={{ 
@@ -190,10 +195,23 @@ const BookingOptions = () => {
         </Container>
         <PhoneAuthDialog
             open={authDialogOpen}
-            onClose={() => setAuthDialogOpen(false)}
+            onClose={() => {
+                setAuthDialogOpen(false);
+                setTargetLink(null);
+            }}
             onAuthenticated={(user) => {
                 setAuthDialogOpen(false);
-                navigate('/customer');
+                // Existing user: navigate to the booking page they clicked
+                if (targetLink) {
+                    navigate(targetLink);
+                }
+                setTargetLink(null);
+            }}
+            onNewUser={(user) => {
+                setAuthDialogOpen(false);
+                // New user: redirect to profile page
+                navigate('/customer/profile');
+                setTargetLink(null);
             }}
         />
         </>

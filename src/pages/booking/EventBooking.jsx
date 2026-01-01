@@ -23,6 +23,8 @@ import { Close as CloseIcon, EventAvailable, Person } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { getImageUrl } from '../../utils/imageUtils';
+import PhoneAuthDialog from '../../components/auth/PhoneAuthDialog';
 
 const timeSlots = [
     { value: '18:00', label: '6:00 PM' },
@@ -44,6 +46,7 @@ const EventBooking = () => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const { user, apiBaseUrl, token } = useAuth();
     const { addToCart } = useCart();
     const navigate = useNavigate();
@@ -92,9 +95,12 @@ const EventBooking = () => {
                 const durationText = minutes > 0 ? `${hours}.${minutes} ساعت` : `${hours} ساعت`;
                 
                 // Get first image URL or use default
-                const imageUrl = event.image_urls && event.image_urls.length > 0 
+                const rawImageUrl = event.image_urls && event.image_urls.length > 0 
                     ? event.image_urls[0] 
                     : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%236c8c68" width="400" height="300"/><circle cx="200" cy="150" r="40" fill="%23fcede9"/></svg>';
+                
+                // Construct full image URL using utility function
+                const imageUrl = getImageUrl(rawImageUrl, apiBaseUrl) || rawImageUrl;
                 
                 // Split description into short and full
                 const description = event.description || '';
@@ -190,6 +196,13 @@ const EventBooking = () => {
     };
 
     const handleReserve = () => {
+        // Check authentication first
+        if (!user) {
+            setOpenDialog(false);
+            setAuthDialogOpen(true);
+            return;
+        }
+
         if (!reservationData.sessionId) {
             alert('لطفاً یک بخش را انتخاب کنید');
             return;
@@ -502,6 +515,20 @@ const EventBooking = () => {
                     </>
                 )}
             </Dialog>
+
+            <PhoneAuthDialog
+                open={authDialogOpen}
+                onClose={() => setAuthDialogOpen(false)}
+                onAuthenticated={() => {
+                    setAuthDialogOpen(false);
+                    // Stay on current page after authentication
+                }}
+                onNewUser={() => {
+                    setAuthDialogOpen(false);
+                    // New user: redirect to profile page
+                    navigate('/customer/profile');
+                }}
+            />
         </Box>
     );
 };

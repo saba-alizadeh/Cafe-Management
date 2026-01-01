@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response, Query, status
+from typing import Optional
 from bson import ObjectId
 from datetime import datetime
 from app.database import get_database, connect_to_mongo
 from app.models import ProductCreate, ProductUpdate, ProductResponse
-from app.auth import get_current_user, TokenData
-from app.routers.auth import _get_request_user, _require_admin
+from app.auth import get_current_user, get_current_user_optional, TokenData
+from app.routers.auth import _get_request_user, _require_admin, _require_cafe_member
 from app.db_helpers import (
-    get_cafe_products_collection, require_cafe_access, get_cafe_product_images_collection
+    get_cafe_products_collection, require_cafe_access, get_cafe_product_images_collection,
+    get_cafe_id_for_access
 )
 import base64
 
@@ -32,7 +34,7 @@ async def upload_product_image(
             )
 
     user = await _get_request_user(db, current_user)
-    _require_admin(user)
+    _require_cafe_member(user)  # Allow admin, manager, and barista
     
     cafe_id = await require_cafe_access(db, current_user)
 
@@ -103,20 +105,41 @@ async def get_product_image(image_id: str):
 
 
 @router.get("", response_model=list[ProductResponse])
-async def list_products(current_user: TokenData = Depends(get_current_user)):
-    """Get all products for the current user's café"""
+async def list_products(
+    current_user: Optional[TokenData] = Depends(get_current_user_optional),
+    cafe_id: Optional[str] = Query(None, description="Café ID (required if not authenticated)")
+):
+    """
+    List all products for a café (PUBLIC ENDPOINT - no authentication required).
+    - Public access: anyone can view products if cafe_id is provided
+    - If authenticated: customers can access any café, cafe members access their own café
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
         db = get_database()
-        if db is None:
-            raise HTTPException(status_code=503, detail="Database connection not available.")
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database connection not available.")
 
-    user = await _get_request_user(db, current_user)
-    _require_admin(user)
-    
-    # Get café ID and enforce isolation
-    cafe_id = await require_cafe_access(db, current_user)
+    # If not authenticated, cafe_id is required
+    if current_user is None:
+        if not cafe_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="cafe_id is required for public access"
+            )
+        # Public access - use cafe_id directly
+        products_collection = get_cafe_products_collection(db, cafe_id)
+        cursor = products_collection.find({}).sort("name", 1)
+        products = []
+        async for doc in cursor:
+            doc["id"] = str(doc["_id"])
+            doc.pop("_id", None)
+            products.append(ProductResponse(**doc))
+        return products
+
+    # Get café ID - allows customers to access any café, cafe members access their own
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
 
     products_collection = get_cafe_products_collection(db, cafe_id)
     cursor = products_collection.find({}).sort("name", 1)

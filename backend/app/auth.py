@@ -12,6 +12,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -57,3 +58,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return token_data
 
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional)):
+    """Get current user from JWT token, returns None if no token provided (for public endpoints)"""
+    if token is None:
+        return None
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        username: Optional[str] = payload.get("sub")
+        phone: Optional[str] = payload.get("phone")
+        user_id: Optional[str] = payload.get("user_id")
+        
+        if username is None and phone is None and user_id is None:
+            return None
+        
+        token_data = TokenData(username=username, phone=phone, user_id=user_id)
+        return token_data
+    except (JWTError, Exception):
+        # If token is invalid, just return None (public access)
+        return None

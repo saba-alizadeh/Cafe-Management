@@ -6,6 +6,7 @@ import {
 import { Movie, Person } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const seatColors = {
     selected: 'var(--color-accent)',
@@ -257,7 +258,7 @@ const CinemaReservations = () => {
                                         <CardMedia
                                             component="img"
                                             height="200"
-                                            image={reservation.image.startsWith('/') ? `${apiBaseUrl}${reservation.image}` : reservation.image}
+                                            image={getImageUrl(reservation.image, apiBaseUrl) || reservation.image}
                                             alt={reservation.name}
                                         />
                                     )}

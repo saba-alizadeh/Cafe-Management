@@ -978,6 +978,21 @@ def _require_admin(user):
         )
 
 
+def _require_cafe_member(user):
+    """Require user to be admin, manager, or barista (cafe member)"""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    role = user.get("role")
+    if role not in ["admin", "manager", "barista"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only cafe members (admin, manager, or barista) can access this resource"
+        )
+
+
 @router.get("/employees", response_model=list[EmployeeResponse])
 async def list_employees(current_user: TokenData = Depends(get_current_user)):
     """Get all employees for the current user's café"""

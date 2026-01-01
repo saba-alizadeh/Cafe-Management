@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LocationOn, Phone, LocalCafe, Movie, BusinessCenter, Event, AdminPanelSettings } from '@mui/icons-material';
+import { getImageUrl } from '../utils/imageUtils';
 
 // Default cafe image - a beautiful coffee cup illustration
 const DefaultCafeImage = ({ name }) => (
@@ -137,13 +138,6 @@ const CafeSelection = () => {
         navigate(`/${cafeSlug}`);
     };
 
-    const getImageUrl = (imageUrl) => {
-        if (!imageUrl) return null;
-        if (imageUrl.startsWith('/')) {
-            return `${apiBaseUrl}${imageUrl}`;
-        }
-        return imageUrl;
-    };
 
     return (
         <Box sx={{ 
@@ -264,27 +258,38 @@ const CafeSelection = () => {
                                     }}
                                     onClick={() => handleSelectCafe(cafe)}
                                 >
-                                    {/* Image Section - Use banner_url if available, otherwise image_url */}
-                                    {(cafe.banner_url || cafe.image_url) && !imageErrors.has(cafe.id) ? (
-                                        <CardMedia
-                                            component="img"
-                                            height="280"
-                                            image={getImageUrl(cafe.banner_url || cafe.image_url)}
-                                            alt={cafe.name}
-                                            sx={{ 
-                                                objectFit: 'cover',
-                                                transition: 'transform 0.4s ease',
-                                                '&:hover': {
-                                                    transform: 'scale(1.05)',
-                                                }
-                                            }}
-                                            onError={() => {
-                                                setImageErrors(prev => new Set(prev).add(cafe.id));
-                                            }}
-                                        />
-                                    ) : (
-                                        <DefaultCafeImage name={cafe.name} />
-                                    )}
+                                    {/* Banner Image Section - ONLY use banner_url, never logo_url or image_url */}
+                                    <Box
+                                        sx={{
+                                            width: '100%',
+                                            height: '280px',
+                                            overflow: 'hidden',
+                                            position: 'relative',
+                                            bgcolor: 'var(--color-accent-soft)',
+                                        }}
+                                    >
+                                        {cafe.banner_url && !imageErrors.has(cafe.id) ? (
+                                            <CardMedia
+                                                component="img"
+                                                image={getImageUrl(cafe.banner_url, apiBaseUrl)}
+                                                alt={`${cafe.name} banner`}
+                                                sx={{ 
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'cover',
+                                                    transition: 'transform 0.4s ease',
+                                                    '&:hover': {
+                                                        transform: 'scale(1.05)',
+                                                    }
+                                                }}
+                                                onError={() => {
+                                                    setImageErrors(prev => new Set(prev).add(cafe.id));
+                                                }}
+                                            />
+                                        ) : (
+                                            <DefaultCafeImage name={cafe.name} />
+                                        )}
+                                    </Box>
 
                                     <CardContent sx={{ 
                                         flexGrow: 1, 

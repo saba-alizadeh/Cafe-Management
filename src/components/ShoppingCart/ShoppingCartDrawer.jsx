@@ -25,15 +25,17 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import PhoneAuthDialog from '../auth/PhoneAuthDialog';
 
 const ShoppingCartDrawer = ({ open, onClose, cartItems, onUpdateQuantity, onRemoveItem, onCheckout }) => {
     const navigate = useNavigate();
-    const { apiBaseUrl } = useAuth();
+    const { apiBaseUrl, user } = useAuth();
     const [discountCode, setDiscountCode] = React.useState('');
     const [discountInfo, setDiscountInfo] = React.useState(null);
     const [discountError, setDiscountError] = React.useState('');
     const [verifyingDiscount, setVerifyingDiscount] = React.useState(false);
     const [appliedDiscountCode, setAppliedDiscountCode] = React.useState('');
+    const [authDialogOpen, setAuthDialogOpen] = React.useState(false);
 
     const getTotalPrice = () => {
         return cartItems.reduce((total, item) => total + ((item.price || item.basePrice || 0) * item.quantity), 0);
@@ -104,6 +106,12 @@ const ShoppingCartDrawer = ({ open, onClose, cartItems, onUpdateQuantity, onRemo
     };
 
     const handleCheckout = () => {
+        // Check authentication first
+        if (!user) {
+            setAuthDialogOpen(true);
+            return;
+        }
+        
         // Pass discount info to checkout handler
         onCheckout(discountInfo, appliedDiscountCode);
         onClose();
@@ -280,6 +288,22 @@ const ShoppingCartDrawer = ({ open, onClose, cartItems, onUpdateQuantity, onRemo
                     </>
                 )}
             </Box>
+
+            <PhoneAuthDialog
+                open={authDialogOpen}
+                onClose={() => setAuthDialogOpen(false)}
+                onAuthenticated={() => {
+                    setAuthDialogOpen(false);
+                    // After authentication, proceed with checkout
+                    onCheckout(discountInfo, appliedDiscountCode);
+                    onClose();
+                }}
+                onNewUser={() => {
+                    setAuthDialogOpen(false);
+                    // New user: redirect to profile page
+                    navigate('/customer/profile');
+                }}
+            />
         </Drawer>
     );
 };

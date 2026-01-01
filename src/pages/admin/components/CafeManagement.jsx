@@ -21,6 +21,7 @@ import {
 	Image as ImageIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const CafeManagement = () => {
 	const { apiBaseUrl, token } = useAuth();
@@ -83,10 +84,10 @@ const CafeManagement = () => {
 					banner_url: adminCafe.banner_url || ''
 				});
 				if (adminCafe.logo_url) {
-					setLogoPreview(adminCafe.logo_url.startsWith('/') ? `${apiBaseUrl}${adminCafe.logo_url}` : adminCafe.logo_url);
+					setLogoPreview(getImageUrl(adminCafe.logo_url, apiBaseUrl) || adminCafe.logo_url);
 				}
 				if (adminCafe.banner_url) {
-					setBannerPreview(adminCafe.banner_url.startsWith('/') ? `${apiBaseUrl}${adminCafe.banner_url}` : adminCafe.banner_url);
+					setBannerPreview(getImageUrl(adminCafe.banner_url, apiBaseUrl) || adminCafe.banner_url);
 				}
 			}
 		} catch (err) {

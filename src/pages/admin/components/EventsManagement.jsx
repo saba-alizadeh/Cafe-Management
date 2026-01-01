@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, Event, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const EventsManagement = () => {
     const { apiBaseUrl, token } = useAuth();
@@ -410,7 +411,7 @@ const EventsManagement = () => {
                                         <Box key={index} sx={{ mb: 2, textAlign: 'center' }}>
                                             <Box
                                                 component="img"
-                                                src={url.startsWith('/') ? `${apiBaseUrl}${url}` : url}
+                                                src={getImageUrl(url, apiBaseUrl) || url}
                                                 alt={`Event image ${index + 1}`}
                                                 sx={{ maxWidth: '100%', maxHeight: 200, mb: 1, borderRadius: 1 }}
                                                 onError={(e) => {

@@ -17,12 +17,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
+import ProductDetailModal from '../../../components/ProductDetailModal';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const MenuSection = ({ selectedCafe, selectedCategory }) => {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const { user, apiBaseUrl, token } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -45,21 +49,18 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
     }
 
     try {
-      // Try to fetch products - if no auth, might need a public endpoint
+      // Fetch products for the selected cafe - public access (no auth required)
       const headers = {};
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`;
       }
-
-      // Note: This assumes there's a public endpoint or the endpoint works without auth
-      // If not, you may need to create a public products endpoint in the backend
       const res = await fetch(`${apiBaseUrl}/products?cafe_id=${selectedCafe.id}`, {
         headers
       });
       
       if (!res.ok) {
-        // If endpoint requires auth and fails, use fallback data
-        console.warn('Could not fetch products from API, using fallback');
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || 'خطا در بارگذاری محصولات');
         setProducts([]);
         setLoading(false);
         return;
@@ -113,22 +114,27 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
     }
   };
 
-  const handleAddClick = (item) => {
-    // For coffee products, use selected blend price
-    const finalPrice = item.isCoffee && item.selectedBlendPrice ? item.selectedBlendPrice : item.price;
+  const handleCardClick = (item) => {
+    setSelectedProduct(item);
+    setModalOpen(true);
+  };
+
+  const handleReserve = (productData) => {
     const cartItem = {
-      id: `product-${item.id}${item.selectedBlendRatio ? `-${item.selectedBlendRatio}` : ''}`,
+      id: `product-${productData.id}${productData.selectedBlendRatio ? `-${productData.selectedBlendRatio}` : ''}`,
       type: 'product',
-      name: item.selectedBlendRatio ? `${item.name} (${item.selectedBlendRatio})` : item.name,
-      price: finalPrice,
+      name: productData.selectedBlendRatio 
+        ? `${productData.name} (${productData.selectedBlendRatio})` 
+        : productData.name,
+      price: productData.finalPrice,
       quantity: 1,
-      ...(item.isCoffee && item.selectedBlendRatio && {
-        coffee_blend_ratio: item.selectedBlendRatio,
-        coffee_type: item.coffee_type
+      ...(productData.isCoffee && productData.selectedBlendRatio && {
+        coffee_blend_ratio: productData.selectedBlendRatio,
+        coffee_type: productData.selectedCoffeeType || productData.coffee_type
       })
     };
     addToCart(cartItem);
-    alert(`${item.name}${item.selectedBlendRatio ? ` با ترکیب ${item.selectedBlendRatio}` : ''} به سبد خرید اضافه شد`);
+    alert(`${productData.name}${productData.selectedBlendRatio ? ` با ترکیب ${productData.selectedBlendRatio}` : ''} به سبد خرید اضافه شد`);
   };
 
 
@@ -141,7 +147,7 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
         alignItems: 'center',
       }}
     >
-      <Container maxWidth="md">
+      <Container maxWidth="xl">
         <Box sx={{ textAlign: 'center', mb: 5 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
             {selectedCategory || 'منوی کافه'}
@@ -186,25 +192,28 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
             </Typography>
           </Box>
         ) : (
-          <Grid
-            container
-            spacing={4}
-            justifyContent="center"
-            alignItems="stretch"
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 2,
+              justifyContent: { xs: 'center', sm: 'flex-start' },
+            }}
           >
             {products.map((item) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={6}
+            <Box
               key={item.id}
-              sx={{ display: 'flex', justifyContent: 'center' }}
+              sx={{
+                flexBasis: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)', lg: 'calc(12.5% - 14px)' },
+                maxWidth: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)', lg: 'calc(12.5% - 14px)' },
+                minWidth: { xs: '280px', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)', lg: 'calc(12.5% - 14px)' },
+                display: 'flex',
+                justifyContent: 'center',
+              }}
             >
               <Card
                 sx={{
                   width: '100%',
-                  maxWidth: 400,
                   textAlign: 'center',
                   borderRadius: 3,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -212,17 +221,19 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
+                  cursor: 'pointer',
                   '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
                 }}
+                onClick={() => handleCardClick(item)}
               >
                 {/* Image */}
                 <Box sx={{ position: 'relative' }}>
                   <img
-                    src={item.image && item.image.startsWith('/') ? `${apiBaseUrl}${item.image}` : (item.image || '')}
+                    src={getImageUrl(item.image, apiBaseUrl) || ''}
                     alt={item.name}
                     style={{
                       width: '100%',
-                      height: 200,
+                      height: 150,
                       objectFit: 'cover',
                       borderTopLeftRadius: 12,
                       borderTopRightRadius: 12,
@@ -264,12 +275,14 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    p: 1.5,
+                    '&:last-child': { pb: 1.5 }
                   }}
                 >
-                  <Box>
+                  <Box sx={{ width: '100%' }}>
                     <Typography
                       variant="h6"
-                      sx={{ fontWeight: 'bold', mb: 1 }}
+                      sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1rem' }}
                     >
                       {item.name}
                     </Typography>
@@ -280,11 +293,11 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         display: '-webkit-box',
-                        WebkitLineClamp: 3,
+                        WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
-                        lineHeight: 1.5,
-                        minHeight: '4.5em',
-                        px: 1,
+                        lineHeight: 1.4,
+                        fontSize: '0.75rem',
+                        mb: 0.5,
                       }}
                     >
                       {item.description}
@@ -296,85 +309,22 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      mt: 3,
                       width: '100%',
-                      px: 2,
+                      mt: 0.5,
                     }}
                   >
-                    <Box sx={{ textAlign: 'left', flexGrow: 1 }}>
-                      {item.discount > 0 && (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            textDecoration: 'line-through',
-                            color: 'text.secondary',
-                          }}
-                        >
-                          {(item.selectedBlendPrice || item.originalPrice).toLocaleString()} تومان
-                        </Typography>
-                      )}
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 'bold', color: 'var(--color-primary)' }}
-                      >
-                        {(item.selectedBlendPrice || item.price).toLocaleString()} تومان
-                      </Typography>
-                      
-                      {/* Coffee Blend Buttons - Below Price */}
-                      {item.isCoffee && item.coffee_blends && item.coffee_blends.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontSize: '0.75rem' }}>
-                            انتخاب ترکیب:
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                            {item.coffee_blends.map((blend, idx) => (
-                              <Button
-                                key={idx}
-                                variant={item.selectedBlendRatio === blend.ratio ? 'contained' : 'outlined'}
-                                size="small"
-                                onClick={() => {
-                                  const updatedProducts = products.map(p => 
-                                    p.id === item.id 
-                                      ? { ...p, selectedBlendRatio: blend.ratio, selectedBlendPrice: blend.price }
-                                      : p
-                                  );
-                                  setProducts(updatedProducts);
-                                }}
-                                sx={{
-                                  minWidth: 60,
-                                  fontSize: '0.7rem',
-                                  ...(item.selectedBlendRatio === blend.ratio && {
-                                    backgroundColor: 'var(--color-accent)',
-                                    '&:hover': { backgroundColor: 'var(--color-accent)' }
-                                  })
-                                }}
-                              >
-                                {blend.ratio}
-                              </Button>
-                            ))}
-                          </Box>
-                        </Box>
-                      )}
-                    </Box>
-                    <IconButton
-                      sx={{
-                        bgcolor: 'var(--color-accent-soft)',
-                        color: 'var(--color-primary)',
-                        '&:hover': {
-                          bgcolor: 'var(--color-primary)',
-                          color: 'var(--color-secondary)',
-                        },
-                      }}
-                      onClick={() => handleAddClick(item)}
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 'bold', color: 'var(--color-primary)', fontSize: '1rem' }}
                     >
-                      +
-                    </IconButton>
+                      {(item.selectedBlendPrice || item.price).toLocaleString()} تومان
+                    </Typography>
                   </Box>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
             ))}
-          </Grid>
+          </Box>
         )}
       </Container>
       <PhoneAuthDialog
@@ -386,6 +336,16 @@ const MenuSection = ({ selectedCafe, selectedCategory }) => {
         }}
       />
 
+      <ProductDetailModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        product={selectedProduct}
+        apiBaseUrl={apiBaseUrl}
+        onReserve={handleReserve}
+      />
     </Box>
   );
 };

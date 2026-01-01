@@ -11,6 +11,7 @@ import {
     Avatar
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const UserProfile = () => {
     const { user, login, token, fetchUserProfile, apiBaseUrl } = useAuth();
@@ -260,7 +261,7 @@ const UserProfile = () => {
                     <Grid container spacing={2} sx={{ mb: 2 }} alignItems="center">
                         <Grid item>
                             <Avatar
-                                src={profileImageUrl ? `${apiBaseUrl.replace('/api', '')}${profileImageUrl}` : undefined}
+                                src={profileImageUrl ? getImageUrl(profileImageUrl, apiBaseUrl) : undefined}
                                 alt="Profile"
                                 sx={{ width: 72, height: 72 }}
                             >

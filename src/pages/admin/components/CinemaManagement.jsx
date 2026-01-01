@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, Movie, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const CinemaManagement = () => {
     const { apiBaseUrl, token } = useAuth();
@@ -419,7 +420,7 @@ const CinemaManagement = () => {
                                 <Box sx={{ mt: 2, textAlign: 'center' }}>
                                     <Box
                                         component="img"
-                                        src={filmForm.banner_url.startsWith('/') ? `${apiBaseUrl}${filmForm.banner_url}` : filmForm.banner_url}
+                                        src={getImageUrl(filmForm.banner_url, apiBaseUrl) || filmForm.banner_url}
                                         alt="Banner preview"
                                         sx={{ maxWidth: '100%', maxHeight: 200, mb: 1, borderRadius: 1 }}
                                         onError={(e) => {

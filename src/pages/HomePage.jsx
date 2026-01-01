@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import HeaderBar from './home/components/HeaderBar';
 import HeroSection from './home/components/HeroSection';
 import AboutCafe from './home/components/AboutCafe';
@@ -15,6 +16,7 @@ import CustomerReviews from './home/components/CustomerReviews';
 // import BranchesSection from './home/components/BranchesSection';
 import ContactSection from './home/components/ContactSection';
 import SocialLinks from './home/components/SocialLinks';
+import { useFavicon } from '../hooks/useFavicon';
 
 const HomePage = () => {
     const [selectedCafe, setSelectedCafe] = useState(null);
@@ -24,6 +26,10 @@ const HomePage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { cafeSlug } = useParams();
+    const { apiBaseUrl } = useAuth();
+    
+    // Update favicon based on selected cafe logo
+    useFavicon(selectedCafe, apiBaseUrl);
 
     // Convert cafe name to URL-friendly slug
     const createCafeSlug = (name) => {
