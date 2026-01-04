@@ -41,7 +41,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     """Get current user from JWT token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate credentials. Please login again.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -54,7 +54,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             raise credentials_exception
         
         token_data = TokenData(username=username, phone=phone, user_id=user_id)
-    except JWTError:
+    except JWTError as e:
+        # Provide more specific error message
+        error_msg = str(e)
+        if "expired" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired. Please login again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         raise credentials_exception
     return token_data
 

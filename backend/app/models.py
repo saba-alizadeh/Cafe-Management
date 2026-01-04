@@ -248,6 +248,8 @@ class InventoryBase(BaseModel):
     quantity: float = Field(..., ge=0, description="Current quantity")
     unit: str = Field(..., min_length=1, max_length=50, description="Unit of measurement")
     min_quantity: Optional[float] = Field(None, ge=0, description="Minimum stock level")
+    image_url: Optional[str] = Field(None, description="Image URL for custom drink builder")
+    price: Optional[float] = Field(None, ge=0, description="Price for custom drink builder")
 
 
 class InventoryCreate(InventoryBase):
@@ -259,6 +261,8 @@ class InventoryUpdate(BaseModel):
     quantity: Optional[float] = Field(None, ge=0)
     unit: Optional[str] = Field(None, min_length=1, max_length=50)
     min_quantity: Optional[float] = Field(None, ge=0)
+    image_url: Optional[str] = None
+    price: Optional[float] = Field(None, ge=0)
 
 
 class InventoryResponse(InventoryBase):
@@ -733,6 +737,40 @@ class ReservationResponse(ReservationBase):
     event_id: Optional[str] = None
     seat_numbers: Optional[List[str]] = None
     attendee_names: Optional[List[str]] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Order Models (for product orders)
+class OrderItem(BaseModel):
+    product_id: Optional[str] = Field(None, description="Product ID if it's a regular product")
+    product_name: str = Field(..., description="Product name")
+    product_type: str = Field(..., description="Type: product, custom_drink, etc.")
+    price: float = Field(..., ge=0, description="Individual product price")
+    quantity: int = Field(..., ge=1, description="Quantity ordered")
+    custom_ingredients: Optional[str] = Field(None, description="For custom drinks")
+
+
+class OrderCreate(BaseModel):
+    cafe_id: str
+    items: List[OrderItem] = Field(..., min_length=1, description="Ordered items")
+    customer_name: Optional[str] = Field(None, description="Customer name")
+    customer_phone: Optional[str] = Field(None, description="Customer phone number")
+    table_number: Optional[str] = Field(None, description="Table number if applicable")
+    discount_code: Optional[str] = Field(None, description="Applied discount code")
+    discount_percent: Optional[float] = Field(None, ge=0, le=100, description="Discount percentage applied")
+    discount_amount: Optional[float] = Field(None, ge=0, description="Discount amount")
+    subtotal: float = Field(..., ge=0, description="Subtotal before discount")
+    total: float = Field(..., ge=0, description="Final total after discount")
+    notes: Optional[str] = Field(None, description="Additional notes")
+
+
+class OrderResponse(OrderCreate):
+    id: str
+    user_id: str
+    status: str = Field(default="pending", description="pending, confirmed, preparing, ready, completed, cancelled")
     created_at: datetime
     updated_at: Optional[datetime] = None
 

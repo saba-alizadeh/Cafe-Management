@@ -196,86 +196,129 @@ const ShoppingCartPage = () => {
                         }
 
                         try {
-                            // Create reservations for each cart item
-                            const reservationPromises = cartItems
-                                .filter(item => ['table', 'cinema', 'event', 'coworking'].includes(item.type))
-                                .map(async (item) => {
-                                    const reservationData = {
-                                        cafe_id: selectedCafe.id,
-                                        date: item.date || item.sessionDate || new Date().toISOString().split('T')[0],
-                                        time: item.time || item.sessionTime || '12:00',
-                                        number_of_people: item.people || item.numberOfPeople || item.quantity || 1,
-                                        status: 'confirmed',
-                                        notes: item.notes || ''
-                                    };
+                            // Separate reservations and product orders
+                            const reservationItems = cartItems.filter(item => ['table', 'cinema', 'event', 'coworking'].includes(item.type));
+                            const productItems = cartItems.filter(item => !['table', 'cinema', 'event', 'coworking'].includes(item.type));
+                            
+                            // Create reservations for reservation items
+                            const reservationPromises = reservationItems.map(async (item) => {
+                                const reservationData = {
+                                    cafe_id: selectedCafe.id,
+                                    date: item.date || item.sessionDate || new Date().toISOString().split('T')[0],
+                                    time: item.time || item.sessionTime || '12:00',
+                                    number_of_people: item.people || item.numberOfPeople || item.quantity || 1,
+                                    status: 'confirmed',
+                                    notes: item.notes || ''
+                                };
 
-                                    if (item.type === 'table') {
-                                        return fetch(`${apiBaseUrl}/reservations/table`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'Authorization': `Bearer ${authToken}`
-                                            },
-                                            body: JSON.stringify({
-                                                ...reservationData,
-                                                table_id: item.tableId
-                                            })
-                                        });
-                                    } else if (item.type === 'cinema') {
-                                        return fetch(`${apiBaseUrl}/reservations/cinema`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'Authorization': `Bearer ${authToken}`
-                                            },
-                                            body: JSON.stringify({
-                                                ...reservationData,
-                                                session_id: item.sessionId,
-                                                seat_numbers: item.selectedSeats || [],
-                                                attendee_names: item.peopleNames || []
-                                            })
-                                        });
-                                    } else if (item.type === 'event') {
-                                        return fetch(`${apiBaseUrl}/reservations/event`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'Authorization': `Bearer ${authToken}`
-                                            },
-                                            body: JSON.stringify({
-                                                ...reservationData,
-                                                event_id: item.eventId,
-                                                session_id: item.sessionId,
-                                                attendee_names: item.peopleNames || []
-                                            })
-                                        });
-                                    } else if (item.type === 'coworking') {
-                                        return fetch(`${apiBaseUrl}/reservations/coworking`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'Authorization': `Bearer ${authToken}`
-                                            },
-                                            body: JSON.stringify({
-                                                ...reservationData,
-                                                table_id: item.tableId
-                                            })
-                                        });
-                                    }
-                                    return Promise.resolve(null);
+                                if (item.type === 'table') {
+                                    return fetch(`${apiBaseUrl}/reservations/table`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${authToken}`
+                                        },
+                                        body: JSON.stringify({
+                                            ...reservationData,
+                                            table_id: item.tableId
+                                        })
+                                    });
+                                } else if (item.type === 'cinema') {
+                                    return fetch(`${apiBaseUrl}/reservations/cinema`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${authToken}`
+                                        },
+                                        body: JSON.stringify({
+                                            ...reservationData,
+                                            session_id: item.sessionId,
+                                            seat_numbers: item.selectedSeats || [],
+                                            attendee_names: item.peopleNames || []
+                                        })
+                                    });
+                                } else if (item.type === 'event') {
+                                    return fetch(`${apiBaseUrl}/reservations/event`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${authToken}`
+                                        },
+                                        body: JSON.stringify({
+                                            ...reservationData,
+                                            event_id: item.eventId,
+                                            session_id: item.sessionId,
+                                            attendee_names: item.peopleNames || []
+                                        })
+                                    });
+                                } else if (item.type === 'coworking') {
+                                    return fetch(`${apiBaseUrl}/reservations/coworking`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${authToken}`
+                                        },
+                                        body: JSON.stringify({
+                                            ...reservationData,
+                                            table_id: item.tableId
+                                        })
+                                    });
+                                }
+                                return Promise.resolve(null);
+                            });
+
+                            // Create order for product items
+                            let orderResult = null;
+                            if (productItems.length > 0) {
+                                const subtotal = productItems.reduce((sum, item) => sum + ((item.price || item.basePrice || 0) * item.quantity), 0);
+                                const finalTotal = discountInfo && discountInfo.valid ? discountInfo.final_amount : subtotal;
+                                
+                                const orderData = {
+                                    cafe_id: selectedCafe.id,
+                                    items: productItems.map(item => ({
+                                        product_id: item.productId || item.id,
+                                        product_name: item.name || item.title || 'آیتم بدون نام',
+                                        product_type: item.type || 'product',
+                                        price: item.price || item.basePrice || 0,
+                                        quantity: item.quantity || 1,
+                                        custom_ingredients: item.ingredients || null
+                                    })),
+                                    customer_name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.phone || null,
+                                    customer_phone: user.phone || null,
+                                    table_number: null, // Can be added later if needed
+                                    discount_code: discountCode || null,
+                                    discount_percent: discountInfo && discountInfo.valid ? discountInfo.discount_percent : null,
+                                    discount_amount: discountInfo && discountInfo.valid ? discountInfo.discount_amount : null,
+                                    subtotal: subtotal,
+                                    total: finalTotal,
+                                    notes: ''
+                                };
+
+                                const orderResponse = await fetch(`${apiBaseUrl}/orders`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${authToken}`
+                                    },
+                                    body: JSON.stringify(orderData)
                                 });
 
-                            const results = await Promise.allSettled(reservationPromises);
-                            const failed = results.filter(r => r.status === 'rejected' || (r.value && !r.value.ok));
+                                if (!orderResponse.ok) {
+                                    const errorData = await orderResponse.json().catch(() => ({}));
+                                    throw new Error(errorData.detail || 'خطا در ثبت سفارش');
+                                }
+                                orderResult = await orderResponse.json();
+                            }
+
+                            // Wait for all reservations
+                            const reservationResults = await Promise.allSettled(reservationPromises);
+                            const failedReservations = reservationResults.filter(r => r.status === 'rejected' || (r.value && !r.value.ok));
                             
-                            if (failed.length > 0) {
+                            if (failedReservations.length > 0) {
                                 setCheckoutError('برخی از رزروها با خطا مواجه شدند. لطفاً دوباره تلاش کنید.');
                                 return;
                             }
 
-                            const total = cartItems.reduce((sum, item) => sum + ((item.price || item.basePrice || 0) * item.quantity), 0);
-                            const finalTotal = discountInfo && discountInfo.valid ? discountInfo.final_amount : total;
-                            
                             setCheckoutSuccess(true);
                             setTimeout(() => {
                                 clearCart();
@@ -283,7 +326,7 @@ const ShoppingCartPage = () => {
                             }, 2000);
                         } catch (error) {
                             console.error('Checkout error:', error);
-                            setCheckoutError('خطا در ثبت سفارش. لطفاً دوباره تلاش کنید.');
+                            setCheckoutError(error.message || 'خطا در ثبت سفارش. لطفاً دوباره تلاش کنید.');
                         }
                     }}
                 />

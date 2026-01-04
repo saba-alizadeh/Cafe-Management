@@ -18,17 +18,13 @@ import {
 	DialogContent,
 	DialogActions,
 	TextField,
-	Switch,
-	FormControlLabel,
 	IconButton,
 	Alert,
 	CircularProgress,
 	Chip,
-	Autocomplete,
-	InputAdornment,
-	MenuItem
+	InputAdornment
 } from '@mui/material';
-import { Edit, Delete, CloudUpload, LocalOffer } from '@mui/icons-material';
+import { Edit, Delete, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 import { getImageUrl } from '../../../utils/imageUtils';
 
@@ -43,35 +39,10 @@ const ProductManagement = () => {
 	const [form, setForm] = useState({
 		name: '',
 		price: 0,
-		is_active: true,
-		description: '',
-		image_url: '',
-		discount_percent: 0,
-		labels: [],
-		coffee_blends: [],
-		coffee_type: ''
+		image_url: ''
 	});
 	const [uploadingImage, setUploadingImage] = useState(false);
-	const [availableLabels, setAvailableLabels] = useState([
-		'نوشیدنی گرم',
-		'نوشیدنی سرد',
-		'قهوه',
-		'چای',
-		'دسر',
-		'غذا',
-		'اسنک',
-		'صبحانه'
-	]);
-	const [availableCoffeeTypes, setAvailableCoffeeTypes] = useState([
-		'Robusta',
-		'Arabica'
-	]);
-	const [editingBlendIndex, setEditingBlendIndex] = useState(null);
-	const [blendForm, setBlendForm] = useState({ ratio: '', price: 0 });
-	const isCoffeeProduct = form.labels && form.labels.some(label => 
-		label.toLowerCase().includes('قهوه') || label.toLowerCase().includes('coffee')
-	);
-	const availableBlendRatios = ['100%', '80-20', '60-40', '50-50'];
+	const [imagePreview, setImagePreview] = useState(null);
 
 	useEffect(() => {
 		if (token) fetchProducts();
@@ -81,11 +52,29 @@ const ProductManagement = () => {
 	const fetchProducts = async () => {
 		setLoading(true);
 		setError('');
+		const authToken = token || localStorage.getItem('authToken');
+		if (!authToken) {
+			setError('لطفاً ابتدا وارد سیستم شوید');
+			setLoading(false);
+			window.location.href = '/admin-login';
+			return;
+		}
 		try {
 			const res = await fetch(`${apiBaseUrl}/products`, {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: { Authorization: `Bearer ${authToken}` }
 			});
 			if (!res.ok) {
+				if (res.status === 401) {
+					// Token expired or invalid
+					localStorage.removeItem('authToken');
+					localStorage.removeItem('cafeUser');
+					setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
+					setTimeout(() => {
+						window.location.href = '/admin-login';
+					}, 2000);
+					setLoading(false);
+					return;
+				}
 				const data = await res.json().catch(() => ({}));
 				setError(data.detail || 'خطا در بارگذاری محصولات');
 				setLoading(false);
@@ -107,109 +96,60 @@ const ProductManagement = () => {
 			setForm({
 				name: product.name,
 				price: product.price,
-				is_active: product.is_active,
-				description: product.description || '',
-				image_url: product.image_url || '',
-				discount_percent: product.discount_percent || 0,
-				labels: product.labels || [],
-				coffee_blends: product.coffee_blends || [],
-				coffee_type: product.coffee_type || ''
+				image_url: product.image_url || ''
 			});
+			setImagePreview(product.image_url ? getImageUrl(product.image_url, apiBaseUrl) || product.image_url : null);
 		} else {
 			setEditingProduct(null);
 			setForm({
 				name: '',
 				price: 0,
-				is_active: true,
-				description: '',
-				image_url: '',
-				discount_percent: 0,
-				labels: [],
-				coffee_blends: [],
-				coffee_type: ''
+				image_url: ''
 			});
+			setImagePreview(null);
 		}
-		setEditingBlendIndex(null);
-		setBlendForm({ ratio: '', price: 0 });
 		setOpenDialog(true);
 	};
 
 	const handleCloseDialog = () => {
 		setOpenDialog(false);
 		setEditingProduct(null);
-		setEditingBlendIndex(null);
-		setBlendForm({ ratio: '', price: 0 });
 		setForm({
 			name: '',
 			price: 0,
-			is_active: true,
-			description: '',
-			image_url: '',
-			discount_percent: 0,
-			labels: [],
-			coffee_blends: [],
-			coffee_type: ''
+			image_url: ''
 		});
-	};
-
-	const handleAddBlend = () => {
-		if (!blendForm.ratio || blendForm.price <= 0) {
-			setError('لطفاً نسبت و قیمت را وارد کنید');
-			return;
-		}
-		// Check if ratio already exists
-		if (form.coffee_blends.some(b => b.ratio === blendForm.ratio)) {
-			setError('این نسبت قبلاً اضافه شده است');
-			return;
-		}
-		setForm(prev => ({
-			...prev,
-			coffee_blends: [...prev.coffee_blends, { ratio: blendForm.ratio, price: blendForm.price }]
-		}));
-		setBlendForm({ ratio: '', price: 0 });
-		setError('');
-	};
-
-	const handleEditBlend = (index) => {
-		const blend = form.coffee_blends[index];
-		setBlendForm({ ratio: blend.ratio, price: blend.price });
-		setEditingBlendIndex(index);
-	};
-
-	const handleUpdateBlend = () => {
-		if (!blendForm.ratio || blendForm.price <= 0) {
-			setError('لطفاً نسبت و قیمت را وارد کنید');
-			return;
-		}
-		// Check if ratio already exists in another blend
-		if (form.coffee_blends.some((b, idx) => b.ratio === blendForm.ratio && idx !== editingBlendIndex)) {
-			setError('این نسبت قبلاً اضافه شده است');
-			return;
-		}
-		setForm(prev => ({
-			...prev,
-			coffee_blends: prev.coffee_blends.map((b, idx) => 
-				idx === editingBlendIndex ? { ratio: blendForm.ratio, price: blendForm.price } : b
-			)
-		}));
-		setBlendForm({ ratio: '', price: 0 });
-		setEditingBlendIndex(null);
-		setError('');
-	};
-
-	const handleRemoveBlend = (index) => {
-		setForm(prev => ({
-			...prev,
-			coffee_blends: prev.coffee_blends.filter((_, idx) => idx !== index)
-		}));
+		setImagePreview(null);
 	};
 
 	const handleImageUpload = async (event) => {
 		const file = event.target.files?.[0];
 		if (!file) return;
 
+		// Validate file type
+		if (!file.type.startsWith('image/')) {
+			setError('لطفاً یک فایل تصویری انتخاب کنید');
+			return;
+		}
+
+		// Create preview
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			setImagePreview(reader.result);
+		};
+		reader.readAsDataURL(file);
+
 		setUploadingImage(true);
 		setError('');
+
+		const authToken = token || localStorage.getItem('authToken');
+		if (!authToken) {
+			setError('لطفاً ابتدا وارد سیستم شوید');
+			setUploadingImage(false);
+			setImagePreview(null);
+			window.location.href = '/admin-login';
+			return;
+		}
 
 		try {
 			const formData = new FormData();
@@ -218,15 +158,28 @@ const ProductManagement = () => {
 			const res = await fetch(`${apiBaseUrl}/products/upload-image`, {
 				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${authToken}`
 				},
 				body: formData
 			});
+
+			if (res.status === 401) {
+				localStorage.removeItem('authToken');
+				localStorage.removeItem('cafeUser');
+				setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
+				setUploadingImage(false);
+				setImagePreview(null);
+				setTimeout(() => {
+					window.location.href = '/admin-login';
+				}, 2000);
+				return;
+			}
 
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
 				setError(data.detail || data.message || 'خطا در آپلود تصویر');
 				setUploadingImage(false);
+				setImagePreview(null);
 				return;
 			}
 
@@ -234,6 +187,7 @@ const ProductManagement = () => {
 			if (!imageUrl) {
 				setError('آدرس فایل بازگشتی نامعتبر است');
 				setUploadingImage(false);
+				setImagePreview(null);
 				return;
 			}
 
@@ -241,6 +195,7 @@ const ProductManagement = () => {
 		} catch (err) {
 			console.error('Image upload exception:', err);
 			setError('خطا در ارتباط با سرور هنگام آپلود تصویر: ' + err.message);
+			setImagePreview(null);
 		} finally {
 			setUploadingImage(false);
 		}
@@ -250,6 +205,13 @@ const ProductManagement = () => {
 		e.preventDefault();
 		setSaving(true);
 		setError('');
+		const authToken = token || localStorage.getItem('authToken');
+		if (!authToken) {
+			setError('لطفاً ابتدا وارد سیستم شوید');
+			setSaving(false);
+			window.location.href = '/admin-login';
+			return;
+		}
 		try {
 			const url = editingProduct
 				? `${apiBaseUrl}/products/${editingProduct.id}`
@@ -259,10 +221,20 @@ const ProductManagement = () => {
 				method,
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${authToken}`
 				},
 				body: JSON.stringify(form)
 			});
+			if (res.status === 401) {
+				localStorage.removeItem('authToken');
+				localStorage.removeItem('cafeUser');
+				setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
+				setSaving(false);
+				setTimeout(() => {
+					window.location.href = '/admin-login';
+				}, 2000);
+				return;
+			}
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
 				setError(data.detail || data.message || 'خطا در ذخیره محصول');
@@ -284,15 +256,30 @@ const ProductManagement = () => {
 	};
 
 	const handleToggleActive = async (productId, currentStatus) => {
+		const authToken = token || localStorage.getItem('authToken');
+		if (!authToken) {
+			setError('لطفاً ابتدا وارد سیستم شوید');
+			window.location.href = '/admin-login';
+			return;
+		}
 		try {
 			const res = await fetch(`${apiBaseUrl}/products/${productId}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${authToken}`
 				},
 				body: JSON.stringify({ is_active: !currentStatus })
 			});
+			if (res.status === 401) {
+				localStorage.removeItem('authToken');
+				localStorage.removeItem('cafeUser');
+				setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
+				setTimeout(() => {
+					window.location.href = '/admin-login';
+				}, 2000);
+				return;
+			}
 			if (res.ok) {
 				const data = await res.json();
 				setProducts((prev) => prev.map((p) => (p.id === productId ? data : p)));
@@ -305,11 +292,26 @@ const ProductManagement = () => {
 
 	const handleDelete = async (productId) => {
 		if (!window.confirm('آیا از حذف این محصول اطمینان دارید؟')) return;
+		const authToken = token || localStorage.getItem('authToken');
+		if (!authToken) {
+			setError('لطفاً ابتدا وارد سیستم شوید');
+			window.location.href = '/admin-login';
+			return;
+		}
 		try {
 			const res = await fetch(`${apiBaseUrl}/products/${productId}`, {
 				method: 'DELETE',
-				headers: { Authorization: `Bearer ${token}` }
+				headers: { Authorization: `Bearer ${authToken}` }
 			});
+			if (res.status === 401) {
+				localStorage.removeItem('authToken');
+				localStorage.removeItem('cafeUser');
+				setError('جلسه شما منقضی شده است. لطفاً دوباره وارد شوید.');
+				setTimeout(() => {
+					window.location.href = '/admin-login';
+				}, 2000);
+				return;
+			}
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}));
 				setError(data.detail || 'حذف محصول ناموفق بود');
@@ -467,7 +469,7 @@ const ProductManagement = () => {
 				<DialogTitle>{editingProduct ? 'ویرایش محصول' : 'افزودن محصول جدید'}</DialogTitle>
 				<Box component="form" onSubmit={handleSubmit}>
 					<DialogContent>
-						<Stack spacing={2} sx={{ mt: 1 }}>
+						<Stack spacing={3} sx={{ mt: 1 }}>
 							<TextField
 								label="نام محصول"
 								fullWidth
@@ -491,221 +493,6 @@ const ProductManagement = () => {
 									endAdornment: <InputAdornment position="end">تومان</InputAdornment>
 								}}
 							/>
-							<TextField
-								label="تخفیف (درصد)"
-								type="number"
-								fullWidth
-								value={form.discount_percent}
-								onChange={(e) =>
-									setForm((prev) => ({ 
-										...prev, 
-										discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0))
-									}))
-								}
-								disabled={saving}
-								inputProps={{ min: 0, max: 100, step: 1 }}
-								InputProps={{
-									startAdornment: (
-										<InputAdornment position="start">
-											<LocalOffer />
-										</InputAdornment>
-									),
-									endAdornment: <InputAdornment position="end">%</InputAdornment>
-								}}
-								helperText={form.discount_percent > 0 ? `قیمت با تخفیف: ${(form.price * (1 - form.discount_percent / 100)).toLocaleString('fa-IR')} تومان` : ''}
-							/>
-							<Autocomplete
-								multiple
-								options={availableLabels}
-								freeSolo
-								value={form.labels}
-								onChange={(event, newValue) => {
-									setForm(prev => ({ ...prev, labels: newValue }));
-								}}
-								renderTags={(value, getTagProps) =>
-									value.map((option, index) => (
-										<Chip
-											variant="outlined"
-											label={option}
-											{...getTagProps({ index })}
-											key={index}
-										/>
-									))
-								}
-								renderInput={(params) => (
-									<TextField
-										{...params}
-										label="برچسب‌ها (مثال: نوشیدنی گرم)"
-										placeholder="برچسب اضافه کنید"
-									/>
-								)}
-								disabled={saving}
-							/>
-							{isCoffeeProduct && (
-								<>
-									<Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
-										<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
-											گزینه‌های ترکیب قهوه (هر ترکیب با قیمت خود)
-										</Typography>
-										
-										{/* Existing Blends */}
-										{form.coffee_blends && form.coffee_blends.length > 0 && (
-											<Box sx={{ mb: 2 }}>
-												{form.coffee_blends.map((blend, index) => (
-													<Box key={index} sx={{ 
-														display: 'flex', 
-														alignItems: 'center', 
-														gap: 1, 
-														mb: 1,
-														p: 1,
-														bgcolor: 'grey.50',
-														borderRadius: 1
-													}}>
-														<Chip label={blend.ratio} color="primary" />
-														<Typography variant="body2" sx={{ flexGrow: 1 }}>
-															{blend.price.toLocaleString('fa-IR')} تومان
-														</Typography>
-														<IconButton 
-															size="small" 
-															onClick={() => handleEditBlend(index)}
-															disabled={saving}
-														>
-															<Edit fontSize="small" />
-														</IconButton>
-														<IconButton 
-															size="small" 
-															color="error"
-															onClick={() => handleRemoveBlend(index)}
-															disabled={saving}
-														>
-															<Delete fontSize="small" />
-														</IconButton>
-													</Box>
-												))}
-											</Box>
-										)}
-
-										{/* Add/Edit Blend Form */}
-										<Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
-											<Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
-												{editingBlendIndex !== null ? 'ویرایش ترکیب' : 'افزودن ترکیب جدید'}
-											</Typography>
-											<Box sx={{ mb: 2 }}>
-												<Typography variant="body2" sx={{ mb: 1 }}>نسبت ترکیب:</Typography>
-												<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-													{availableBlendRatios.map((ratio) => {
-														const isSelected = blendForm.ratio === ratio;
-														const isUsed = form.coffee_blends.some(b => b.ratio === ratio && 
-															(editingBlendIndex === null || form.coffee_blends.findIndex(b => b.ratio === ratio) !== editingBlendIndex));
-														return (
-															<Button
-																key={ratio}
-																variant={isSelected ? 'contained' : 'outlined'}
-																size="small"
-																onClick={() => {
-																	if (!isUsed) {
-																		setBlendForm(prev => ({ ...prev, ratio }));
-																	}
-																}}
-																disabled={saving || (editingBlendIndex !== null && !isSelected) || isUsed}
-																sx={{
-																	minWidth: 70,
-																	...(isSelected && {
-																		backgroundColor: 'var(--color-accent)',
-																		'&:hover': { backgroundColor: 'var(--color-accent)' }
-																	}),
-																	...(isUsed && {
-																		opacity: 0.5,
-																		cursor: 'not-allowed'
-																	})
-																}}
-															>
-																{ratio}
-															</Button>
-														);
-													})}
-												</Box>
-											</Box>
-											<Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-												<TextField
-													label="قیمت"
-													type="number"
-													size="small"
-													value={blendForm.price}
-													onChange={(e) => setBlendForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-													disabled={saving}
-													inputProps={{ min: 0, step: 0.01 }}
-													InputProps={{
-														endAdornment: <InputAdornment position="end">تومان</InputAdornment>
-													}}
-													sx={{ flexGrow: 1 }}
-												/>
-												{editingBlendIndex !== null ? (
-													<>
-														<Button
-															variant="contained"
-															size="small"
-															onClick={handleUpdateBlend}
-															disabled={saving}
-														>
-															ذخیره
-														</Button>
-														<Button
-															variant="outlined"
-															size="small"
-															onClick={() => {
-																setEditingBlendIndex(null);
-																setBlendForm({ ratio: '', price: 0 });
-															}}
-															disabled={saving}
-														>
-															انصراف
-														</Button>
-													</>
-												) : (
-													<Button
-														variant="contained"
-														size="small"
-														onClick={handleAddBlend}
-														disabled={saving || !blendForm.ratio || blendForm.price <= 0}
-													>
-														افزودن
-													</Button>
-												)}
-											</Box>
-										</Box>
-									</Box>
-									<Autocomplete
-										options={availableCoffeeTypes}
-										freeSolo
-										value={form.coffee_type}
-										onChange={(event, newValue) => {
-											setForm(prev => ({ ...prev, coffee_type: newValue || '' }));
-											// Add new custom option if it doesn't exist
-											if (newValue && !availableCoffeeTypes.includes(newValue)) {
-												setAvailableCoffeeTypes(prev => [...prev, newValue]);
-											}
-										}}
-										renderInput={(params) => (
-											<TextField
-												{...params}
-												label="نوع قهوه (Robusta, Arabica و ...)"
-												placeholder="نوع قهوه را انتخاب یا وارد کنید"
-											/>
-										)}
-										disabled={saving}
-									/>
-								</>
-							)}
-							<TextField
-								label="توضیحات (اختیاری)"
-								fullWidth
-								multiline
-								rows={3}
-								value={form.description}
-								onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-								disabled={saving}
-							/>
 							<Box>
 								<input
 									accept="image/*"
@@ -727,47 +514,42 @@ const ProductManagement = () => {
 										{uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر محصول'}
 									</Button>
 								</label>
-								{form.image_url && (
+								{imagePreview && (
 									<Box sx={{ mt: 2, textAlign: 'center' }}>
-										<Avatar
-											variant="rounded"
-											src={getImageUrl(form.image_url, apiBaseUrl) || form.image_url}
+										<Box
+											component="img"
+											src={imagePreview}
 											alt="Product preview"
-											sx={{ width: 120, height: 120, mx: 'auto', mb: 1 }}
-											onError={(e) => {
-												e.target.style.display = 'none';
+											sx={{
+												width: '100%',
+												maxWidth: 300,
+												height: 'auto',
+												maxHeight: 300,
+												objectFit: 'contain',
+												border: '1px solid',
+												borderColor: 'divider',
+												borderRadius: 2,
+												p: 1,
+												mb: 2,
+												mx: 'auto',
+												display: 'block'
 											}}
 										/>
 										<Button
 											size="small"
 											color="error"
-											onClick={() => setForm(prev => ({ ...prev, image_url: '' }))}
+											variant="outlined"
+											onClick={() => {
+												setForm(prev => ({ ...prev, image_url: '' }));
+												setImagePreview(null);
+											}}
 											disabled={saving}
 										>
 											حذف تصویر
 										</Button>
 									</Box>
 								)}
-								<TextField
-									label="یا آدرس تصویر را وارد کنید"
-									fullWidth
-									value={form.image_url}
-									onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))}
-									disabled={saving}
-									placeholder="https://example.com/image.jpg"
-									sx={{ mt: 2 }}
-								/>
 							</Box>
-							<FormControlLabel
-								control={
-									<Switch
-										checked={form.is_active}
-										onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
-										disabled={saving}
-									/>
-								}
-								label="فعال"
-							/>
 						</Stack>
 					</DialogContent>
 					<DialogActions>

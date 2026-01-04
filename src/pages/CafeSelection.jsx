@@ -213,12 +213,12 @@ const CafeSelection = () => {
                 )}
 
                 {loading ? (
-                    <Grid container spacing={3}>
+                    <Grid container spacing={{ xs: 2, md: 3 }}>
                         {[1, 2, 3].map((i) => (
                             <Grid item xs={12} sm={6} md={4} key={i}>
-                                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                                <Card sx={{ borderRadius: 4, overflow: 'hidden', height: '580px', width: '100%' }}>
                                     <Skeleton variant="rectangular" height={280} />
-                                    <CardContent>
+                                    <CardContent sx={{ height: '300px' }}>
                                         <Skeleton variant="text" height={32} width="60%" sx={{ mb: 1 }} />
                                         <Skeleton variant="text" height={20} width="100%" />
                                         <Skeleton variant="text" height={20} width="80%" />
@@ -241,7 +241,8 @@ const CafeSelection = () => {
                                 <Card
                                     sx={{
                                         cursor: 'pointer',
-                                        height: '100%',
+                                        height: '580px',
+                                        width: '100%',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         borderRadius: 4,
@@ -297,6 +298,8 @@ const CafeSelection = () => {
                                         display: 'flex', 
                                         flexDirection: 'column',
                                         p: 3,
+                                        height: '300px',
+                                        overflow: 'hidden',
                                     }}>
                                         {/* Cafe Name */}
                                         <Typography 

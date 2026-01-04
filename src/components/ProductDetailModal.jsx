@@ -191,3 +191,4 @@ const ProductDetailModal = ({ open, onClose, product, apiBaseUrl, onReserve }) =
 
 export default ProductDetailModal;
 
+

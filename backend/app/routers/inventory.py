@@ -1,15 +1,54 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import Optional
 from bson import ObjectId
 from datetime import datetime
 from app.database import get_database, connect_to_mongo
 from app.models import InventoryCreate, InventoryUpdate, InventoryResponse
-from app.auth import get_current_user, TokenData
+from app.auth import get_current_user, get_current_user_optional, TokenData
 from app.routers.auth import _get_request_user, _require_admin
 from app.db_helpers import (
-    get_cafe_inventory_collection, require_cafe_access
+    get_cafe_inventory_collection, require_cafe_access, get_cafe_id_for_access
 )
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
+
+
+@router.get("/public", response_model=list[InventoryResponse])
+async def list_inventory_public(
+    cafe_id: str = Query(..., description="Café ID"),
+    current_user: Optional[TokenData] = Depends(get_current_user_optional)
+):
+    """Get inventory items with price/image for custom drink builder (PUBLIC ENDPOINT)"""
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection not available.")
+    
+    # Get café ID
+    if current_user:
+        cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
+    else:
+        # Public access - validate cafe exists
+        cafes_collection = db["cafes"]
+        try:
+            cafe_oid = ObjectId(cafe_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid café ID")
+        cafe = await cafes_collection.find_one({"_id": cafe_oid})
+        if not cafe:
+            raise HTTPException(status_code=404, detail="Café not found")
+    
+    inventory_collection = get_cafe_inventory_collection(db, cafe_id)
+    # Only return items that have price (for custom drinks)
+    cursor = inventory_collection.find({"price": {"$exists": True, "$ne": None, "$gt": 0}}).sort("name", 1)
+    items = []
+    async for doc in cursor:
+        doc["id"] = str(doc["_id"])
+        doc.pop("_id", None)
+        items.append(InventoryResponse(**doc))
+    return items
 
 
 @router.get("", response_model=list[InventoryResponse])

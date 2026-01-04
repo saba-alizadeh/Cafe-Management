@@ -473,7 +473,8 @@ async def admin_login(credentials: UserLogin):
             detail="User account is inactive"
         )
 
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    # Admin/Manager tokens last longer (8 hours instead of 30 minutes)
+    access_token_expires = timedelta(hours=8) if user.get("role") in ["admin", "manager"] else timedelta(minutes=settings.access_token_expire_minutes)
     token_data = {
         "sub": user.get("username"),
         "user_id": str(user["_id"]),

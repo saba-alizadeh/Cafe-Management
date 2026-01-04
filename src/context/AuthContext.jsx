@@ -33,6 +33,8 @@ const fetchWithAuth = async (endpoint, options = {}) => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('cafeUser');
         window.dispatchEvent(new CustomEvent('authExpired'));
+        // Return a response that indicates auth failure
+        return response;
     }
 
     return response;
@@ -43,6 +45,15 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [tempPhone, setTempPhone] = useState(null);
     const [token, setToken] = useState(null);
+
+    const logout = () => {
+        setUser(null);
+        setTempPhone(null);
+        setToken(null);
+        localStorage.removeItem('cafeUser');
+        localStorage.removeItem('cafeTempPhone');
+        localStorage.removeItem('authToken');
+    };
 
     useEffect(() => {
         // Check for stored authentication on app load
@@ -58,6 +69,27 @@ export const AuthProvider = ({ children }) => {
         }
         
         setLoading(false);
+
+        // Listen for auth expiration events
+        const handleAuthExpired = () => {
+            setUser(null);
+            setTempPhone(null);
+            setToken(null);
+            localStorage.removeItem('cafeUser');
+            localStorage.removeItem('cafeTempPhone');
+            localStorage.removeItem('authToken');
+            // Redirect based on current path
+            if (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/manager')) {
+                window.location.href = '/admin-login';
+            } else {
+                window.location.href = '/';
+            }
+        };
+
+        window.addEventListener('authExpired', handleAuthExpired);
+        return () => {
+            window.removeEventListener('authExpired', handleAuthExpired);
+        };
     }, []);
 
     const fetchUserProfile = async (authToken) => {
@@ -111,15 +143,6 @@ export const AuthProvider = ({ children }) => {
     const setAuthToken = (authToken) => {
         setToken(authToken);
         localStorage.setItem('authToken', authToken);
-    };
-
-    const logout = () => {
-        setUser(null);
-        setTempPhone(null);
-        setToken(null);
-        localStorage.removeItem('cafeUser');
-        localStorage.removeItem('cafeTempPhone');
-        localStorage.removeItem('authToken');
     };
 
     const value = {

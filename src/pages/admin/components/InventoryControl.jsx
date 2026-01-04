@@ -40,7 +40,9 @@ const InventoryControl = () => {
 		name: '',
 		quantity: 0,
 		unit: '',
-		min_quantity: 0
+		min_quantity: 0,
+		image_url: '',
+		price: 0
 	});
 
 	useEffect(() => {
@@ -78,7 +80,9 @@ const InventoryControl = () => {
 				name: item.name,
 				quantity: item.quantity,
 				unit: item.unit,
-				min_quantity: item.min_quantity || 0
+				min_quantity: item.min_quantity || 0,
+				image_url: item.image_url || '',
+				price: item.price || 0
 			});
 		} else {
 			setEditingItem(null);
@@ -86,7 +90,9 @@ const InventoryControl = () => {
 				name: '',
 				quantity: 0,
 				unit: '',
-				min_quantity: 0
+				min_quantity: 0,
+				image_url: '',
+				price: 0
 			});
 		}
 		setOpenDialog(true);
@@ -99,7 +105,9 @@ const InventoryControl = () => {
 			name: '',
 			quantity: 0,
 			unit: '',
-			min_quantity: 0
+			min_quantity: 0,
+			image_url: '',
+			price: 0
 		});
 	};
 
@@ -387,6 +395,27 @@ const InventoryControl = () => {
 								}
 								disabled={saving}
 								inputProps={{ min: 0, step: 0.01 }}
+							/>
+							<TextField
+								label="قیمت (برای نوشیدنی سفارشی)"
+								type="number"
+								fullWidth
+								value={form.price}
+								onChange={(e) =>
+									setForm((prev) => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
+								}
+								disabled={saving}
+								inputProps={{ min: 0, step: 0.01 }}
+								helperText="قیمت برای استفاده در نوشیدنی سفارشی (اختیاری)"
+							/>
+							<TextField
+								label="آدرس تصویر (برای نوشیدنی سفارشی)"
+								fullWidth
+								value={form.image_url}
+								onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))}
+								disabled={saving}
+								placeholder="https://example.com/image.jpg"
+								helperText="آدرس تصویر برای نمایش در نوشیدنی سفارشی (اختیاری)"
 							/>
 						</Stack>
 					</DialogContent>
