@@ -82,14 +82,27 @@ const CafeSelection = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchCafes();
+        // Small delay to ensure component is mounted before fetching
+        const timer = setTimeout(() => {
+            fetchCafes();
+        }, 100);
+        return () => clearTimeout(timer);
     }, []);
 
     const fetchCafes = async () => {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch(`${apiBaseUrl}/cafes/public`);
+            // Add timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const res = await fetch(`${apiBaseUrl}/cafes/public`, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 setError(data.detail || data.message || 'خطا در بارگذاری کافه‌ها');
@@ -100,7 +113,13 @@ const CafeSelection = () => {
             setCafes(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Fetch cafes exception:', err);
-            setError('خطا در ارتباط با سرور: ' + err.message);
+            if (err.name === 'AbortError') {
+                setError('زمان اتصال به سرور به پایان رسید. لطفاً اتصال اینترنت و سرور را بررسی کنید.');
+            } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                setError('نمی‌توان به سرور متصل شد. لطفاً مطمئن شوید که سرور در حال اجرا است (http://localhost:8000)');
+            } else {
+                setError('خطا در ارتباط با سرور: ' + err.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -207,8 +226,27 @@ const CafeSelection = () => {
                         severity="error" 
                         sx={{ mb: 3, borderRadius: 3 }} 
                         onClose={() => setError('')}
+                        action={
+                            <Button 
+                                color="inherit" 
+                                size="small" 
+                                onClick={fetchCafes}
+                                sx={{ fontWeight: 600 }}
+                            >
+                                تلاش مجدد
+                            </Button>
+                        }
                     >
                         {error}
+                        {error.includes('localhost:8000') && (
+                            <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
+                                لطفاً مطمئن شوید که سرور بک‌اند در حال اجرا است:
+                                <br />
+                                <code style={{ background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                    cd backend && python run.py
+                                </code>
+                            </Box>
+                        )}
                     </Alert>
                 )}
 
