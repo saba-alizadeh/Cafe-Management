@@ -16,6 +16,11 @@ def get_orders_collection(db, cafe_id: str):
     return db[f"cafe_{cafe_id}_orders"]
 
 
+def get_reservations_collection(db, cafe_id: str):
+    """Get unified reservations collection for a café (tables, cinema, events, coworking, orders)."""
+    return db[f"cafe_{cafe_id}_reservations"]
+
+
 @router.post("", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order: OrderCreate,
@@ -63,16 +68,37 @@ async def create_order(
         "notes": order.notes,
         "status": "pending",
         "created_at": datetime.utcnow(),
-        "updated_at": None
+        "updated_at": None,
     }
-    
+
     result = await orders_collection.insert_one(order_doc)
     order_id = result.inserted_id
-    
+
     created = await orders_collection.find_one({"_id": order_id})
     created["id"] = str(created["_id"])
     created.pop("_id", None)
-    
+
+    # Also store a unified reservation record so all reservations (including food & drinks)
+    # are visible through the reservations collection used by admin/barista panels.
+    reservations_collection = get_reservations_collection(db, cafe_id)
+    reservation_doc = {
+        "user_id": str(user["_id"]),
+        "reservation_type": "order",
+        "cafe_id": cafe_id,
+        # Use order creation timestamp as logical reservation date/time
+        "date": created["created_at"].strftime("%Y-%m-%d"),
+        "time": created["created_at"].strftime("%H:%M"),
+        # For orders we don't track number of people explicitly; treat each order as 1 "party"
+        "number_of_people": 1,
+        "status": created["status"],
+        "notes": created.get("notes"),
+        "order_id": created["id"],
+        "items": created.get("items", []),
+        "created_at": created["created_at"],
+        "updated_at": created.get("updated_at"),
+    }
+    await reservations_collection.insert_one(reservation_doc)
+
     return OrderResponse(**created)
 
 

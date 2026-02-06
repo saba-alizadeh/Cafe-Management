@@ -696,7 +696,7 @@ class EventSessionResponse(EventSessionBase):
 
 # Reservation Models
 class ReservationBase(BaseModel):
-    reservation_type: str = Field(..., description="Type: table, cinema, event, coworking")
+    reservation_type: str = Field(..., description="Type: table, cinema, event, coworking, order")
     cafe_id: str
     date: str
     time: str
@@ -737,6 +737,14 @@ class ReservationResponse(ReservationBase):
     event_id: Optional[str] = None
     seat_numbers: Optional[List[str]] = None
     attendee_names: Optional[List[str]] = None
+    # For food & drink orders stored in the unified reservations table
+    order_id: Optional[str] = Field(
+        default=None, description="Linked order ID when reservation_type is 'order'"
+    )
+    items: Optional[List[OrderItem]] = Field(
+        default=None,
+        description="Food & drink items when reservation_type is 'order'",
+    )
     created_at: datetime
     updated_at: Optional[datetime] = None
 
