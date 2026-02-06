@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
     Box,
     Typography,
@@ -12,110 +13,252 @@ import {
     TableHead,
     TableRow,
     Button,
-    IconButton,
     Chip,
     TextField,
     InputAdornment,
-    Avatar
+    CircularProgress,
+    Stack,
+    Alert,
+    ToggleButton,
+    ToggleButtonGroup,
 } from '@mui/material';
 import {
     Search,
     Schedule,
-    Person,
     CheckCircle,
-    Pending,
     Cancel,
-    Edit
 } from '@mui/icons-material';
+import { useAuth } from '../../../context/AuthContext';
 
 const ReservationManagement = () => {
-    // Mock data - in real app, this would come from API
-    const reservations = [
-        {
-            id: 1,
-            customer: 'ساناز رفیعی',
-            phone: '۰۹۱۲۳۴۵۶۷۸۹',
-            date: '۱۴۰۲/۱۰/۲۵',
-            time: '۱۴:۰۰',
-            table: 'میز ۵',
-            party: 4,
-            status: 'Confirmed',
-            specialRequests: 'ترجیح پنجره'
-        },
-        {
-            id: 2,
-            customer: 'امیرحسین کاظمی',
-            phone: '۰۹۳۵۶۷۸۹۰۱۲',
-            date: '۱۴۰۲/۱۰/۲۵',
-            time: '۱۵:۳۰',
-            table: 'میز ۲',
-            party: 2,
-            status: 'Confirmed',
-            specialRequests: 'محیط آرام'
-        },
-        {
-            id: 3,
-            customer: 'نیلوفر شریفی',
-            phone: '۰۹۱۹۸۷۶۵۴۳۲',
-            date: '۱۴۰۲/۱۰/۲۵',
-            time: '۱۶:۰۰',
-            table: 'میز ۸',
-            party: 6,
-            status: 'Pending',
-            specialRequests: 'جشن تولد'
-        },
-        {
-            id: 4,
-            customer: 'کاوه مرادی',
-            phone: '۰۹۱۲۱۱۲۲۳۳۴',
-            date: '۱۴۰۲/۱۰/۲۶',
-            time: '۱۳:۰۰',
-            table: 'میز ۳',
-            party: 2,
-            status: 'Cancelled',
-            specialRequests: '---'
-        }
-    ];
+    const { apiBaseUrl, token, user } = useAuth();
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [query, setQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState('all');
+
+    const authToken = token || localStorage.getItem('authToken');
+    const cafeId = user?.cafe_id;
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Confirmed': return 'success';
-            case 'Pending': return 'warning';
-            case 'Cancelled': return 'error';
+            case 'confirmed': return 'success';
+            case 'pending': return 'warning';
+            case 'completed': return 'default';
+            case 'cancelled': return 'error';
             default: return 'default';
         }
     };
 
-    const getStatusIcon = (status) => {
+    const getStatusLabel = (status) => {
         switch (status) {
-            case 'Confirmed': return <CheckCircle />;
-            case 'Pending': return <Pending />;
-            case 'Cancelled': return <Cancel />;
-            default: return <Schedule />;
+            case 'confirmed': return 'تایید شده';
+            case 'pending': return 'در انتظار';
+            case 'completed': return 'انجام شده';
+            case 'cancelled': return 'لغو شده';
+            default: return status || 'نامشخص';
         }
     };
 
-    const statusLabels = {
-        Confirmed: 'تایید شده',
-        Pending: 'در انتظار تایید',
-        Cancelled: 'لغو شده'
+    const getTypeLabel = (reservationType, kind) => {
+        if (kind === 'order') return 'سفارش محصولات';
+        switch (reservationType) {
+            case 'table': return 'رزرو میز';
+            case 'coworking': return 'فضای مشترک';
+            case 'cinema': return 'سینما';
+            case 'event': return 'رویداد';
+            default: return 'رزرو';
+        }
     };
+
+    const fetchData = async () => {
+        if (!authToken || !cafeId) {
+            setError('احراز هویت یا شناسه کافه در دسترس نیست');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            const [reservationsRes, ordersRes] = await Promise.all([
+                fetch(`${apiBaseUrl}/reservations?cafe_id=${encodeURIComponent(cafeId)}`, {
+                    headers: { Authorization: `Bearer ${authToken}` },
+                }),
+                fetch(`${apiBaseUrl}/orders?cafe_id=${encodeURIComponent(cafeId)}`, {
+                    headers: { Authorization: `Bearer ${authToken}` },
+                }),
+            ]);
+
+            if (!reservationsRes.ok) {
+                const data = await reservationsRes.json().catch(() => ({}));
+                throw new Error(data.detail || 'خطا در دریافت رزروها');
+            }
+            if (!ordersRes.ok) {
+                const data = await ordersRes.json().catch(() => ({}));
+                throw new Error(data.detail || 'خطا در دریافت سفارش‌ها');
+            }
+
+            const reservationsData = await reservationsRes.json();
+            const ordersData = await ordersRes.json();
+
+            const mappedReservations = Array.isArray(reservationsData)
+                ? reservationsData.map((r) => ({
+                    id: r.id,
+                    kind: 'reservation',
+                    reservation_type: r.reservation_type,
+                    date: r.date,
+                    time: r.time,
+                    status: r.status,
+                    number_of_people: r.number_of_people,
+                    resource_info:
+                        r.reservation_type === 'table'
+                            ? `میز ${r.table_id ?? ''}`
+                            : r.reservation_type === 'coworking'
+                                ? `میز اشتراکی ${r.table_id ?? ''}`
+                                : r.reservation_type === 'cinema'
+                                    ? `سینما - جلسه ${r.session_id ?? ''}`
+                                    : r.reservation_type === 'event'
+                                        ? `رویداد ${r.event_id ?? ''}`
+                                        : '',
+                }))
+                : [];
+
+            const mappedOrders = Array.isArray(ordersData)
+                ? ordersData.map((o) => ({
+                    id: o.id,
+                    kind: 'order',
+                    reservation_type: 'order',
+                    date: new Date(o.created_at).toLocaleDateString('fa-IR'),
+                    time: new Date(o.created_at).toLocaleTimeString('fa-IR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    }),
+                    status: o.status,
+                    number_of_people: null,
+                    resource_info: `سفارش محصولات (${o.items.length} آیتم)`,
+                }))
+                : [];
+
+            setItems([...mappedReservations, ...mappedOrders]);
+        } catch (err) {
+            console.error(err);
+            setError(err.message || 'خطا در ارتباط با سرور');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [apiBaseUrl, authToken, cafeId]);
+
+    const handleUpdateStatus = async (item, newStatus) => {
+        if (!window.confirm('آیا از تغییر وضعیت این مورد اطمینان دارید؟')) return;
+        try {
+            setLoading(true);
+            setError('');
+
+            if (item.kind === 'order') {
+                const res = await fetch(
+                    `${apiBaseUrl}/orders/${encodeURIComponent(
+                        item.id
+                    )}?cafe_id=${encodeURIComponent(cafeId)}&status_update=${encodeURIComponent(
+                        newStatus
+                    )}`,
+                    {
+                        method: 'PUT',
+                        headers: { Authorization: `Bearer ${authToken}` },
+                    }
+                );
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.detail || 'خطا در به‌روزرسانی سفارش');
+                }
+                const updated = await res.json();
+                setItems((prev) =>
+                    prev.map((it) =>
+                        it.kind === 'order' && it.id === updated.id
+                            ? { ...it, status: updated.status }
+                            : it
+                    )
+                );
+            } else {
+                const res = await fetch(
+                    `${apiBaseUrl}/reservations/${encodeURIComponent(
+                        item.id
+                    )}?cafe_id=${encodeURIComponent(
+                        cafeId
+                    )}&status_update=${encodeURIComponent(newStatus)}`,
+                    {
+                        method: 'PUT',
+                        headers: { Authorization: `Bearer ${authToken}` },
+                    }
+                );
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.detail || 'خطا در به‌روزرسانی رزرو');
+                }
+                const updated = await res.json();
+                setItems((prev) =>
+                    prev.map((it) =>
+                        it.kind === 'reservation' && it.id === updated.id
+                            ? { ...it, status: updated.status }
+                            : it
+                    )
+                );
+            }
+        } catch (err) {
+            console.error(err);
+            setError(err.message || 'خطا در ارتباط با سرور');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredItems = useMemo(() => {
+        return items.filter((it) => {
+            if (statusFilter !== 'all' && it.status !== statusFilter) return false;
+            if (typeFilter !== 'all') {
+                if (typeFilter === 'order' && it.kind !== 'order') return false;
+                if (typeFilter !== 'order' && it.kind === 'reservation' && it.reservation_type !== typeFilter)
+                    return false;
+            }
+            if (query.trim()) {
+                const q = query.trim();
+                if (!String(it.resource_info || '').includes(q)) return false;
+            }
+            return true;
+        });
+    }, [items, statusFilter, typeFilter, query]);
+
+    const totalCount = filteredItems.length;
+    const confirmedCount = filteredItems.filter((i) => i.status === 'confirmed').length;
+    const pendingCount = filteredItems.filter((i) => i.status === 'pending').length;
 
     return (
         <Box sx={{ direction: 'rtl' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4">مدیریت رزروها</Typography>
-                <Button variant="contained" startIcon={<Schedule />}>
-                    رزرو جدید
-                </Button>
             </Box>
+
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+                    {error}
+                </Alert>
+            )}
 
             {/* Search and Stats */}
             <Grid container spacing={3} sx={{ mb: 3 }}>
                 <Grid item xs={12} md={6}>
                     <TextField
                         fullWidth
-                        placeholder="جستجوی رزرو..."
+                        placeholder="جستجو بر اساس جزئیات..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
                         inputProps={{ dir: 'rtl' }}
                         InputProps={{
                             startAdornment: (
@@ -130,9 +273,9 @@ const ReservationManagement = () => {
                     <Card>
                         <CardContent>
                             <Typography variant="h6" color="text.secondary">
-                                تعداد کل
+                                موارد فعلی
                             </Typography>
-                            <Typography variant="h4">{reservations.length}</Typography>
+                            <Typography variant="h4">{totalCount}</Typography>
                         </CardContent>
                     </Card>
                 </Grid>
@@ -143,7 +286,7 @@ const ReservationManagement = () => {
                                 تایید شده
                             </Typography>
                             <Typography variant="h4" color="success.main">
-                                {reservations.filter(r => r.status === 'Confirmed').length}
+                                {confirmedCount}
                             </Typography>
                         </CardContent>
                     </Card>
@@ -155,79 +298,133 @@ const ReservationManagement = () => {
                                 در انتظار
                             </Typography>
                             <Typography variant="h4" color="warning.main">
-                                {reservations.filter(r => r.status === 'Pending').length}
+                                {pendingCount}
                             </Typography>
                         </CardContent>
                     </Card>
                 </Grid>
             </Grid>
 
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2} alignItems="flex-start">
+                <ToggleButtonGroup
+                    size="small"
+                    color="primary"
+                    value={statusFilter}
+                    exclusive
+                    onChange={(_, val) => {
+                        if (val !== null) setStatusFilter(val);
+                    }}
+                >
+                    <ToggleButton value="all">همه وضعیت‌ها</ToggleButton>
+                    <ToggleButton value="pending">در انتظار</ToggleButton>
+                    <ToggleButton value="confirmed">تایید شده</ToggleButton>
+                    <ToggleButton value="completed">انجام شده</ToggleButton>
+                    <ToggleButton value="cancelled">لغو شده</ToggleButton>
+                </ToggleButtonGroup>
+
+                <ToggleButtonGroup
+                    size="small"
+                    color="primary"
+                    value={typeFilter}
+                    exclusive
+                    onChange={(_, val) => {
+                        if (val !== null) setTypeFilter(val);
+                    }}
+                >
+                    <ToggleButton value="all">همه انواع</ToggleButton>
+                    <ToggleButton value="table">میز</ToggleButton>
+                    <ToggleButton value="coworking">فضای مشترک</ToggleButton>
+                    <ToggleButton value="cinema">سینما</ToggleButton>
+                    <ToggleButton value="event">رویداد</ToggleButton>
+                    <ToggleButton value="order">سفارش محصولات</ToggleButton>
+                </ToggleButtonGroup>
+            </Stack>
+
             {/* Reservations Table */}
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell align="right">مشتری</TableCell>
-                            <TableCell align="right">تاریخ و ساعت</TableCell>
-                            <TableCell align="right">شماره میز</TableCell>
-                            <TableCell align="right">تعداد نفرات</TableCell>
-                            <TableCell align="right">وضعیت</TableCell>
-                            <TableCell align="right">درخواست ویژه</TableCell>
-                            <TableCell align="right">عملیات</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {reservations.map((reservation) => (
-                            <TableRow key={reservation.id}>
-                                <TableCell align="right">
-                                    <Box display="flex" alignItems="center" justifyContent="flex-end" gap={2}>
-                                        <Box>
-                                            <Typography variant="subtitle2">{reservation.customer}</Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                {reservation.phone}
-                                            </Typography>
-                                        </Box>
-                                        <Avatar>
-                                            {reservation.customer.split(' ').map(n => n[0]).join('')}
-                                        </Avatar>
-                                    </Box>
-                                </TableCell>
-                                <TableCell align="right">
-                                    <Box>
-                                        <Typography variant="body2">{reservation.date}</Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {reservation.time}
-                                        </Typography>
-                                    </Box>
-                                </TableCell>
-                                <TableCell align="right">{reservation.table}</TableCell>
-                                <TableCell align="right">{reservation.party} نفر</TableCell>
-                                <TableCell align="right">
-                                    <Chip
-                                        icon={getStatusIcon(reservation.status)}
-                                        label={statusLabels[reservation.status] ?? reservation.status}
-                                        color={getStatusColor(reservation.status)}
-                                        size="small"
-                                    />
-                                </TableCell>
-                                <TableCell align="right">
-                                    <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
-                                        {reservation.specialRequests}
-                                    </Typography>
-                                </TableCell>
-                                <TableCell align="right">
-                                    <IconButton size="small" color="primary">
-                                        <Edit />
-                                    </IconButton>
-                                    <Button size="small" variant="outlined" startIcon={<CheckCircle />}>
-                                        تایید رزرو
-                                    </Button>
-                                </TableCell>
+            {loading && (
+                <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+                    <CircularProgress />
+                </Box>
+            )}
+            {!loading && (
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell align="right">نوع</TableCell>
+                                <TableCell align="right">جزئیات</TableCell>
+                                <TableCell align="right">تعداد نفرات</TableCell>
+                                <TableCell align="right">تاریخ و ساعت</TableCell>
+                                <TableCell align="right">وضعیت</TableCell>
+                                <TableCell align="right">عملیات</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {filteredItems.map((item) => (
+                                <TableRow key={`${item.kind}-${item.id}`}>
+                                    <TableCell align="right">
+                                        <Chip
+                                            label={getTypeLabel(item.reservation_type, item.kind)}
+                                            size="small"
+                                            color={item.kind === 'order' ? 'secondary' : 'primary'}
+                                        />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Typography variant="body2">
+                                            {item.resource_info}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Typography variant="body2">
+                                            {item.number_of_people != null ? `${item.number_of_people} نفر` : '-'}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Typography variant="body2">{item.date}</Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {item.time}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Chip
+                                            label={getStatusLabel(item.status)}
+                                            color={getStatusColor(item.status)}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                            {item.status !== 'confirmed' && item.status !== 'cancelled' && (
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<CheckCircle />}
+                                                    onClick={() => handleUpdateStatus(item, 'confirmed')}
+                                                    disabled={loading}
+                                                >
+                                                    تایید
+                                                </Button>
+                                            )}
+                                            {item.status !== 'cancelled' && (
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="error"
+                                                    startIcon={<Cancel />}
+                                                    onClick={() => handleUpdateStatus(item, 'cancelled')}
+                                                    disabled={loading}
+                                                >
+                                                    رد / لغو
+                                                </Button>
+                                            )}
+                                        </Stack>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
         </Box>
     );
 };

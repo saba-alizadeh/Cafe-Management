@@ -140,8 +140,8 @@ async def update_order_status(
             raise HTTPException(status_code=503, detail="Database connection not available.")
     
     user = await _get_request_user(db, current_user)
-    if user.get("role") not in ["admin", "manager"]:
-        raise HTTPException(status_code=403, detail="Only admin/manager can update order status")
+    if user.get("role") not in ["admin", "manager", "barista"]:
+        raise HTTPException(status_code=403, detail="Only admin/manager/barista can update order status")
     
     cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
     orders_collection = get_orders_collection(db, cafe_id)

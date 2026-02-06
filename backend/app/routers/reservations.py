@@ -1,18 +1,24 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Query
 from bson import ObjectId
 from datetime import datetime
 from typing import List, Optional
 from app.database import get_database, connect_to_mongo
 from app.models import (
-    TableReservationCreate, CinemaReservationCreate, EventReservationCreate,
-    CoworkingReservationCreate, ReservationResponse
+    TableReservationCreate,
+    CinemaReservationCreate,
+    EventReservationCreate,
+    CoworkingReservationCreate,
+    ReservationResponse,
 )
 from app.auth import get_current_user, TokenData
 from app.routers.auth import _get_request_user
 from app.db_helpers import (
-    get_cafe_tables_collection, get_cafe_movie_sessions_collection,
-    get_cafe_events_collection, get_cafe_event_sessions_collection,
-    get_cafe_coworking_tables_collection, get_cafe_id_for_access
+    get_cafe_tables_collection,
+    get_cafe_movie_sessions_collection,
+    get_cafe_events_collection,
+    get_cafe_event_sessions_collection,
+    get_cafe_coworking_tables_collection,
+    get_cafe_id_for_access,
 )
 
 router = APIRouter(prefix="/api/reservations", tags=["reservations"])
@@ -296,10 +302,26 @@ async def create_coworking_reservation(
 @router.get("", response_model=List[ReservationResponse])
 async def get_user_reservations(
     current_user: TokenData = Depends(get_current_user),
-    reservation_type: Optional[str] = None,
-    cafe_id: Optional[str] = None
+    reservation_type: Optional[str] = Query(
+        None, description="Filter by reservation type: table, cinema, event, coworking"
+    ),
+    cafe_id: Optional[str] = Query(
+        None,
+        description="Café ID. For admin/manager/barista this limits to their café; for customers it filters their own reservations for that café.",
+    ),
+    status_filter: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Optional reservation status filter: pending, confirmed, completed, cancelled",
+    ),
 ):
-    """Get reservations for the current user"""
+    """
+    Get reservations.
+
+    - Customers: see only their own reservations.
+    - Admin/Manager/Barista: see all reservations for their café (when cafe_id is provided
+      or resolvable via access helpers).
+    """
     db = get_database()
     if db is None:
         await connect_to_mongo()
@@ -309,6 +331,7 @@ async def get_user_reservations(
     
     user = await _get_request_user(db, current_user)
     user_id = str(user["_id"])
+    role = user.get("role")
     
     reservations = []
     
@@ -316,29 +339,205 @@ async def get_user_reservations(
     if cafe_id:
         cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
         reservations_collection = get_reservations_collection(db, cafe_id)
-        query = {"user_id": user_id}
+
+        # Admin / manager / barista can see all reservations for the café.
+        query: dict = {}
+        if role not in ("admin", "manager", "barista"):
+            query["user_id"] = user_id
+
         if reservation_type:
             query["reservation_type"] = reservation_type
-        
+        if status_filter:
+            query["status"] = status_filter
+
         async for doc in reservations_collection.find(query).sort("created_at", -1):
             doc["id"] = str(doc["_id"])
             doc.pop("_id", None)
             reservations.append(ReservationResponse(**doc))
     else:
-        # Get reservations from all cafes (for customers)
-        # This requires iterating through all cafes - in production, you might want a global reservations collection
+        # Get reservations from all cafes for this user (customer history view).
+        # Admin/manager/barista can still call this but it will only return their own reservations.
         cafes_collection = db["cafes"]
         async for cafe in cafes_collection.find({}):
             cafe_id_str = str(cafe["_id"])
             reservations_collection = get_reservations_collection(db, cafe_id_str)
-            query = {"user_id": user_id}
+            query: dict = {"user_id": user_id}
             if reservation_type:
                 query["reservation_type"] = reservation_type
-            
+            if status_filter:
+                query["status"] = status_filter
+
             async for doc in reservations_collection.find(query).sort("created_at", -1):
                 doc["id"] = str(doc["_id"])
                 doc.pop("_id", None)
                 reservations.append(ReservationResponse(**doc))
-    
+
     return sorted(reservations, key=lambda x: x.created_at, reverse=True)
+
+
+@router.put("/{reservation_id}", response_model=ReservationResponse)
+async def update_reservation_status(
+    reservation_id: str,
+    status_update: str = Query(
+        ...,
+        description="New status for reservation: pending, confirmed, completed, cancelled",
+    ),
+    cafe_id: str = Query(..., description="Café ID for this reservation"),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """
+    Update reservation status (admin / manager / barista).
+
+    - Approve: typically set status to 'confirmed'.
+    - Reject / cancel: set status to 'cancelled' which will also release the underlying
+      resource (table / coworking desk / cinema seats / event spots).
+    """
+    db = get_database()
+    if db is None:
+        await connect_to_mongo()
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available."
+            )
+
+    user = await _get_request_user(db, current_user)
+    if user.get("role") not in ("admin", "manager", "barista"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin/manager/barista can update reservation status",
+        )
+
+    cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
+    reservations_collection = get_reservations_collection(db, cafe_id)
+
+    try:
+        oid = ObjectId(reservation_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid reservation ID")
+
+    reservation_doc = await reservations_collection.find_one({"_id": oid})
+    if not reservation_doc:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    valid_statuses = ["pending", "confirmed", "completed", "cancelled"]
+    if status_update not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}",
+        )
+
+    previous_status = reservation_doc.get("status")
+
+    # If nothing changes, just return the existing document
+    if previous_status == status_update:
+        reservation_doc["id"] = str(reservation_doc["_id"])
+        reservation_doc.pop("_id", None)
+        return ReservationResponse(**reservation_doc)
+
+    await reservations_collection.update_one(
+        {"_id": oid},
+        {"$set": {"status": status_update, "updated_at": datetime.utcnow()}},
+    )
+
+    # Release or occupy underlying resources when status transitions require it.
+    reservation_type = reservation_doc.get("reservation_type")
+
+    # On cancelling, free up the associated resource so other customers can book it.
+    if previous_status != "cancelled" and status_update == "cancelled":
+        if reservation_type == "table":
+            tables_collection = get_cafe_tables_collection(db, cafe_id)
+            table_id = reservation_doc.get("table_id")
+            if table_id:
+                try:
+                    table_oid = ObjectId(table_id)
+                    await tables_collection.update_one(
+                        {"_id": table_oid},
+                        {
+                            "$set": {
+                                "status": "available",
+                                "updated_at": datetime.utcnow(),
+                            }
+                        },
+                    )
+                except Exception:
+                    # Invalid table id stored; do not fail the whole operation
+                    pass
+        elif reservation_type == "coworking":
+            tables_collection = get_cafe_coworking_tables_collection(db, cafe_id)
+            table_id = reservation_doc.get("table_id")
+            if table_id:
+                try:
+                    table_oid = ObjectId(table_id)
+                    await tables_collection.update_one(
+                        {"_id": table_oid},
+                        {
+                            "$set": {
+                                "is_available": True,
+                                "updated_at": datetime.utcnow(),
+                            }
+                        },
+                    )
+                except Exception:
+                    pass
+        elif reservation_type == "cinema":
+            sessions_collection = get_cafe_movie_sessions_collection(db, cafe_id)
+            session_id = reservation_doc.get("session_id")
+            if session_id:
+                try:
+                    session_oid = ObjectId(session_id)
+                    session = await sessions_collection.find_one({"_id": session_oid})
+                    if session:
+                        occupied_seats = session.get("occupied_seats", [])
+                        seat_numbers = reservation_doc.get("seat_numbers") or []
+                        # Remove this reservation's seats from occupied list
+                        updated_occupied = [
+                            s for s in occupied_seats if s not in seat_numbers
+                        ]
+                        available_seats = session.get("available_seats", 0) + len(
+                            seat_numbers
+                        )
+                        await sessions_collection.update_one(
+                            {"_id": session_oid},
+                            {
+                                "$set": {
+                                    "occupied_seats": updated_occupied,
+                                    "available_seats": max(0, available_seats),
+                                    "updated_at": datetime.utcnow(),
+                                }
+                            },
+                        )
+                except Exception:
+                    pass
+        elif reservation_type == "event":
+            sessions_collection = get_cafe_event_sessions_collection(db, cafe_id)
+            session_id = reservation_doc.get("session_id")
+            if session_id:
+                try:
+                    session_oid = ObjectId(session_id)
+                    session = await sessions_collection.find_one({"_id": session_oid})
+                    if session:
+                        spots = session.get("available_spots", 0)
+                        num_people = reservation_doc.get("number_of_people", 0)
+                        await sessions_collection.update_one(
+                            {"_id": session_oid},
+                            {
+                                "$set": {
+                                    "available_spots": max(0, spots + num_people),
+                                    "updated_at": datetime.utcnow(),
+                                }
+                            },
+                        )
+                except Exception:
+                    pass
+
+    # Optionally, if a previously pending reservation is approved (confirmed) and
+    # the create endpoint was called with a 'pending' status, we could re-assert
+    # the resource as occupied here. For now we rely on the create_* endpoints
+    # to mark resources as reserved when the reservation is first created.
+
+    updated = await reservations_collection.find_one({"_id": oid})
+    updated["id"] = str(updated["_id"])
+    updated.pop("_id", None)
+    return ReservationResponse(**updated)
 
