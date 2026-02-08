@@ -6,7 +6,7 @@ from app.database import get_database, connect_to_mongo
 from app.models import OrderCreate, OrderResponse
 from app.auth import get_current_user, TokenData
 from app.routers.auth import _get_request_user
-from app.db_helpers import get_cafe_id_for_access, get_cafe_offcodes_collection
+from app.db_helpers import get_cafe_id_for_access, get_cafe_offcodes_collection, require_cafe_access
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -66,7 +66,7 @@ async def create_order(
         "subtotal": order.subtotal,
         "total": order.total,
         "notes": order.notes,
-        "status": "pending",
+        "status": "pending_approval",
         "created_at": datetime.utcnow(),
         "updated_at": None,
     }
@@ -119,28 +119,35 @@ async def get_orders(
     user_id = str(user["_id"])
     
     orders = []
-    
-    # If cafe_id is provided, get orders from that cafe
+    role = user.get("role")
+
+    # Resolve cafe_id: use provided param, or for admin/manager/barista derive from user
+    resolved_cafe_id = None
     if cafe_id:
-        cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
-        orders_collection = get_orders_collection(db, cafe_id)
-        
-        # Admin/Manager can see all orders, customers see only their own
+        resolved_cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
+    elif role in ("admin", "manager", "barista"):
+        resolved_cafe_id = await require_cafe_access(db, current_user)
+
+    if resolved_cafe_id:
+        # Get orders from the cafe (with access check already done)
+        orders_collection = get_orders_collection(db, resolved_cafe_id)
         query = {}
-        if user.get("role") not in ["admin", "manager"]:
+        if role not in ["admin", "manager", "barista"]:
             query["user_id"] = user_id
-        
+
         async for doc in orders_collection.find(query).sort("created_at", -1):
             doc["id"] = str(doc["_id"])
             doc.pop("_id", None)
             orders.append(OrderResponse(**doc))
     else:
-        # Get orders from all cafes for the user
-        cafes_collection = db["cafes"]
-        async for cafe in cafes_collection.find({}):
-            cafe_id_str = str(cafe["_id"])
+        # Customer without cafe_id: get their own orders from all cafes
+        cafes_master = db["cafes_master"]
+        async for cafe in cafes_master.find({}):
+            cafe_id_val = cafe.get("cafe_id")
+            if cafe_id_val is None:
+                continue
+            cafe_id_str = str(cafe_id_val)
             orders_collection = get_orders_collection(db, cafe_id_str)
-            
             query = {"user_id": user_id}
             async for doc in orders_collection.find(query).sort("created_at", -1):
                 doc["id"] = str(doc["_id"])
@@ -177,7 +184,7 @@ async def update_order_status(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid order ID")
     
-    valid_statuses = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"]
+    valid_statuses = ["pending", "pending_approval", "confirmed", "preparing", "ready", "completed", "cancelled", "rejected"]
     if status_update not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
     

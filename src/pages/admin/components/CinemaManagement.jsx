@@ -7,6 +7,7 @@ import {
 import { Add, Edit, Delete, Movie, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 import { getImageUrl } from '../../../utils/imageUtils';
+import ReservationListSection from './ReservationListSection';
 
 const CinemaManagement = () => {
     const { apiBaseUrl, token } = useAuth();
@@ -491,6 +492,12 @@ const CinemaManagement = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <ReservationListSection
+                reservationType="cinema"
+                typeLabel="سینما"
+                getResourceInfo={(r) => `سینما - جلسه ${r.session_id || ''} | صندلی‌ها: ${(r.seat_numbers || []).join(', ') || '-'}`}
+            />
         </Box>
     );
 };

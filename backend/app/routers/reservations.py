@@ -19,6 +19,7 @@ from app.db_helpers import (
     get_cafe_event_sessions_collection,
     get_cafe_coworking_tables_collection,
     get_cafe_id_for_access,
+    require_cafe_access,
 )
 
 router = APIRouter(prefix="/api/reservations", tags=["reservations"])
@@ -335,16 +336,19 @@ async def get_user_reservations(
     
     reservations = []
     
-    # If cafe_id is provided, get reservations from that cafe
+    # Resolve cafe_id: use provided param, or for admin/manager/barista derive from user
+    resolved_cafe_id = None
     if cafe_id:
-        cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
-        reservations_collection = get_reservations_collection(db, cafe_id)
+        resolved_cafe_id = await get_cafe_id_for_access(db, current_user, cafe_id)
+    elif role in ("admin", "manager", "barista"):
+        resolved_cafe_id = await require_cafe_access(db, current_user)
 
-        # Admin / manager / barista can see all reservations for the café.
+    if resolved_cafe_id:
+        # Get reservations from the cafe (with access check already done)
+        reservations_collection = get_reservations_collection(db, resolved_cafe_id)
         query: dict = {}
         if role not in ("admin", "manager", "barista"):
             query["user_id"] = user_id
-
         if reservation_type:
             query["reservation_type"] = reservation_type
         if status_filter:
@@ -355,11 +359,13 @@ async def get_user_reservations(
             doc.pop("_id", None)
             reservations.append(ReservationResponse(**doc))
     else:
-        # Get reservations from all cafes for this user (customer history view).
-        # Admin/manager/barista can still call this but it will only return their own reservations.
-        cafes_collection = db["cafes"]
-        async for cafe in cafes_collection.find({}):
-            cafe_id_str = str(cafe["_id"])
+        # Customer without cafe_id: get their own reservations from all cafes
+        cafes_master = db["cafes_master"]
+        async for cafe in cafes_master.find({}):
+            cafe_id_val = cafe.get("cafe_id")
+            if cafe_id_val is None:
+                continue
+            cafe_id_str = str(cafe_id_val)
             reservations_collection = get_reservations_collection(db, cafe_id_str)
             query: dict = {"user_id": user_id}
             if reservation_type:
@@ -420,7 +426,7 @@ async def update_reservation_status(
     if not reservation_doc:
         raise HTTPException(status_code=404, detail="Reservation not found")
 
-    valid_statuses = ["pending", "confirmed", "completed", "cancelled"]
+    valid_statuses = ["pending", "pending_approval", "confirmed", "completed", "cancelled", "rejected"]
     if status_update not in valid_statuses:
         raise HTTPException(
             status_code=400,
@@ -443,8 +449,8 @@ async def update_reservation_status(
     # Release or occupy underlying resources when status transitions require it.
     reservation_type = reservation_doc.get("reservation_type")
 
-    # On cancelling, free up the associated resource so other customers can book it.
-    if previous_status != "cancelled" and status_update == "cancelled":
+    # On cancelling or rejecting, free up the associated resource so other customers can book it.
+    if previous_status not in ("cancelled", "rejected") and status_update in ("cancelled", "rejected"):
         if reservation_type == "table":
             tables_collection = get_cafe_tables_collection(db, cafe_id)
             table_id = reservation_doc.get("table_id")

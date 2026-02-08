@@ -25,7 +25,10 @@ import {
     Inventory,
     Assignment,
     Logout,
-    AccountCircle
+    AccountCircle,
+    Movie,
+    Event,
+    Work
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import UserProfile from '../../components/profile/UserProfile';
@@ -34,6 +37,9 @@ import UserProfile from '../../components/profile/UserProfile';
 import BaristaOverview from './components/BaristaOverview';
 import OrderManagement from './components/OrderManagement';
 import ReservationManagement from './components/ReservationManagement';
+import CinemaReservations from './components/CinemaReservations';
+import EventReservations from './components/EventReservations';
+import CoworkingReservations from './components/CoworkingReservations';
 import InventoryStatus from './components/InventoryStatus';
 import LeaveRequests from './components/LeaveRequests';
 import EmployeeShifts from './components/EmployeeShifts';
@@ -52,7 +58,10 @@ const BaristaDashboard = () => {
     const menuItems = [
         { text: 'نمای کلی', icon: <Dashboard />, to: basePath },
         { text: 'سفارش‌ها', icon: <Restaurant />, to: `${basePath}/orders` },
-        { text: 'رزروها', icon: <Schedule />, to: `${basePath}/reservations` },
+        { text: 'رزروها (میز و غذا)', icon: <Schedule />, to: `${basePath}/reservations` },
+        { text: 'رزروهای سینما', icon: <Movie />, to: `${basePath}/cinema-reservations` },
+        { text: 'رزروهای رویدادها', icon: <Event />, to: `${basePath}/event-reservations` },
+        { text: 'رزروهای فضای مشترک', icon: <Work />, to: `${basePath}/coworking-reservations` },
         { text: 'شیفت‌های من', icon: <Schedule />, to: `${basePath}/shifts` },
         { text: 'موجودی', icon: <Inventory />, to: `${basePath}/inventory` },
         { text: 'درخواست‌های مرخصی', icon: <Assignment />, to: `${basePath}/leave` },
@@ -192,6 +201,9 @@ const BaristaDashboard = () => {
                     <Route index element={<BaristaOverview />} />
                     <Route path="orders" element={<OrderManagement />} />
                     <Route path="reservations" element={<ReservationManagement />} />
+                    <Route path="cinema-reservations" element={<CinemaReservations />} />
+                    <Route path="event-reservations" element={<EventReservations />} />
+                    <Route path="coworking-reservations" element={<CoworkingReservations />} />
                     <Route path="shifts" element={<EmployeeShifts />} />
                     <Route path="inventory" element={<InventoryStatus />} />
                     <Route path="leave" element={<LeaveRequests />} />

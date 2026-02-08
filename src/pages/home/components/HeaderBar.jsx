@@ -11,7 +11,7 @@ import { getImageUrl } from '../../../utils/imageUtils';
 const HeaderBar = ({ selectedCafe, onAboutClick }) => {
     const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
-    const { user, apiBaseUrl } = useAuth();
+    const { user, apiBaseUrl, token } = useAuth();
     const { cartItems, updateQuantity, removeFromCart, clearCart, getTotalItems } = useCart();
     const navigate = useNavigate();
 
@@ -52,6 +52,176 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
             }
         } else {
             navigate('/select-cafe');
+        }
+    };
+
+    const handleCheckoutSubmit = async (discountInfo, discountCode) => {
+        // Ensure authenticated
+        if (!user) {
+            setAuthDialogOpen(true);
+            return;
+        }
+
+        const authToken = token || localStorage.getItem('authToken');
+        if (!authToken) {
+            alert('لطفاً ابتدا وارد سیستم شوید');
+            return;
+        }
+
+        const selectedCafeFromStorage = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
+        if (!selectedCafeFromStorage || !selectedCafeFromStorage.id) {
+            alert('لطفاً ابتدا یک کافه انتخاب کنید');
+            return;
+        }
+
+        try {
+            // Separate reservations and product orders
+            const reservationItems = cartItems.filter(item =>
+                ['table', 'cinema', 'event', 'coworking'].includes(item.type)
+            );
+            const productItems = cartItems.filter(
+                item => !['table', 'cinema', 'event', 'coworking'].includes(item.type)
+            );
+
+            // Create reservations for reservation items
+            const reservationPromises = reservationItems.map(async (item) => {
+                const reservationData = {
+                    cafe_id: selectedCafeFromStorage.id,
+                    date: item.date || item.sessionDate || new Date().toISOString().split('T')[0],
+                    time: item.time || item.sessionTime || '12:00',
+                    number_of_people: item.people || item.numberOfPeople || item.quantity || 1,
+                    status: 'confirmed',
+                    notes: item.notes || ''
+                };
+
+                if (item.type === 'table') {
+                    return fetch(`${apiBaseUrl}/reservations/table`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            ...reservationData,
+                            table_id: item.tableId
+                        })
+                    });
+                } else if (item.type === 'cinema') {
+                    const seatNumbers = (item.selectedSeats || []).map(s => String(s));
+                    if (seatNumbers.length === 0) {
+                        return Promise.reject(new Error('لطفاً حداقل یک صندلی برای رزرو سینما انتخاب کنید'));
+                    }
+                    return fetch(`${apiBaseUrl}/reservations/cinema`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            ...reservationData,
+                            session_id: String(item.sessionId),
+                            seat_numbers: seatNumbers,
+                            attendee_names: (item.peopleNames || []).map(n => String(n))
+                        })
+                    });
+                } else if (item.type === 'event') {
+                    return fetch(`${apiBaseUrl}/reservations/event`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            ...reservationData,
+                            event_id: item.eventId,
+                            session_id: item.sessionId,
+                            attendee_names: item.peopleNames || []
+                        })
+                    });
+                } else if (item.type === 'coworking') {
+                    return fetch(`${apiBaseUrl}/reservations/coworking`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            ...reservationData,
+                            table_id: item.tableId
+                        })
+                    });
+                }
+                return Promise.resolve(null);
+            });
+
+            // Create order for product items
+            if (productItems.length > 0) {
+                const subtotal = productItems.reduce(
+                    (sum, item) => sum + ((item.price || item.basePrice || 0) * item.quantity),
+                    0
+                );
+                const finalTotal =
+                    discountInfo && discountInfo.valid ? discountInfo.final_amount : subtotal;
+
+                const orderData = {
+                    cafe_id: selectedCafeFromStorage.id,
+                    items: productItems.map(item => ({
+                        product_id: item.productId || item.id,
+                        product_name: item.name || item.title || 'آیتم بدون نام',
+                        product_type: item.type || 'product',
+                        price: item.price || item.basePrice || 0,
+                        quantity: item.quantity || 1,
+                        custom_ingredients: item.ingredients || null
+                    })),
+                    customer_name:
+                        (user.firstName && user.lastName)
+                            ? `${user.firstName} ${user.lastName}`
+                            : user.phone || null,
+                    customer_phone: user.phone || null,
+                    table_number: null,
+                    discount_code: discountCode || null,
+                    discount_percent: discountInfo && discountInfo.valid
+                        ? discountInfo.discount_percent
+                        : null,
+                    discount_amount: discountInfo && discountInfo.valid
+                        ? discountInfo.discount_amount
+                        : null,
+                    subtotal,
+                    total: finalTotal,
+                    notes: ''
+                };
+
+                const orderResponse = await fetch(`${apiBaseUrl}/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                if (!orderResponse.ok) {
+                    const errorData = await orderResponse.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'خطا در ثبت سفارش');
+                }
+                await orderResponse.json();
+            }
+
+            const reservationResults = await Promise.allSettled(reservationPromises);
+            const failedReservations = reservationResults.filter(
+                r => r.status === 'rejected' || (r.value && !r.value.ok)
+            );
+
+            if (failedReservations.length > 0) {
+                alert('برخی از رزروها با خطا مواجه شدند. لطفاً دوباره تلاش کنید.');
+                return;
+            }
+
+            alert('سفارش شما با موفقیت ثبت شد.');
+            clearCart();
+        } catch (error) {
+            console.error('Checkout error:', error);
+            alert(error.message || 'خطا در ثبت سفارش. لطفاً دوباره تلاش کنید.');
         }
     };
 
@@ -165,13 +335,7 @@ const HeaderBar = ({ selectedCafe, onAboutClick }) => {
                     }
                 }}
                 onCheckout={(discountInfo, discountCode) => {
-                    // Check authentication (ShoppingCartDrawer already checks, but double-check here)
-                    if (!user) {
-                        setAuthDialogOpen(true);
-                        return;
-                    }
-                    alert('سفارش شما با موفقیت ثبت شد.');
-                    clearCart();
+                    handleCheckoutSubmit(discountInfo, discountCode);
                 }}
             />
 

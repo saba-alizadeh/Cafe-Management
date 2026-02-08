@@ -7,6 +7,7 @@ import {
 import { Add, Edit, Delete, Event, CloudUpload } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 import { getImageUrl } from '../../../utils/imageUtils';
+import ReservationListSection from './ReservationListSection';
 
 const EventsManagement = () => {
     const { apiBaseUrl, token } = useAuth();
@@ -487,6 +488,12 @@ const EventsManagement = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <ReservationListSection
+                reservationType="event"
+                typeLabel="رویدادها"
+                getResourceInfo={(r) => `رویداد ${r.event_id || ''} - جلسه ${r.session_id || ''}`}
+            />
         </Box>
     );
 };

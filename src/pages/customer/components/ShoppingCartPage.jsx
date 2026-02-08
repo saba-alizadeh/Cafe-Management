@@ -1,14 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
     Box, Container, Typography, Alert, Card, CardContent, Grid, Chip, 
-    Button, List, ListItem, ListItemText, Divider, IconButton
+    Button, List, ListItem, ListItemText, Divider, IconButton, CircularProgress
 } from '@mui/material';
-import { ShoppingCart, Delete, Restaurant, Movie, Event, BusinessCenter } from '@mui/icons-material';
+import { ShoppingCart, Delete, Restaurant, Movie, Event, BusinessCenter, Payment } from '@mui/icons-material';
 import { useCart } from '../../../context/CartContext';
 import { useAuth } from '../../../context/AuthContext';
 import ShoppingCartDrawer from '../../../components/ShoppingCart/ShoppingCartDrawer';
 import PhoneAuthDialog from '../../../components/auth/PhoneAuthDialog';
 import { useNavigate } from 'react-router-dom';
+
+const getStatusLabel = (status) => {
+    switch (status) {
+        case 'pending_approval': case 'pending': return 'در انتظار تایید';
+        case 'confirmed': return 'تایید شده';
+        case 'rejected': return 'رد شده';
+        case 'completed': return 'انجام شده';
+        case 'cancelled': return 'لغو شده';
+        default: return status || 'نامشخص';
+    }
+};
+
+const getStatusColor = (status) => {
+    switch (status) {
+        case 'pending_approval': case 'pending': return 'warning';
+        case 'confirmed': return 'success';
+        case 'rejected': case 'cancelled': return 'error';
+        case 'completed': return 'default';
+        default: return 'default';
+    }
+};
 
 const ShoppingCartPage = () => {
     const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -18,6 +39,8 @@ const ShoppingCartPage = () => {
     const [checkoutError, setCheckoutError] = React.useState('');
     const [checkoutSuccess, setCheckoutSuccess] = React.useState(false);
     const [authDialogOpen, setAuthDialogOpen] = React.useState(false);
+    const [myOrders, setMyOrders] = useState([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
 
     const getItemIcon = (type) => {
         switch(type) {
@@ -36,6 +59,115 @@ const ShoppingCartPage = () => {
             case 'event': return 'رزرو رویداد';
             case 'coworking': return 'رزرو فضای مشترک';
             default: return 'محصول';
+        }
+    };
+
+    const fetchMyOrders = async () => {
+        const authToken = token || localStorage.getItem('authToken');
+        const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
+        const isStaff = user && ['admin', 'manager', 'barista'].includes(user.role);
+        const cafeId = selectedCafe?.id ?? (isStaff ? user?.cafe_id : null);
+        if (!authToken || !user || !cafeId) return;
+        setOrdersLoading(true);
+        try {
+            const [reservationsRes, ordersRes] = await Promise.all([
+                fetch(`${apiBaseUrl}/reservations?cafe_id=${cafeId}`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                }),
+                fetch(`${apiBaseUrl}/orders?cafe_id=${cafeId}`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                })
+            ]);
+            if (!reservationsRes.ok || !ordersRes.ok) return;
+            const reservations = await reservationsRes.json();
+            const orders = await ordersRes.json();
+            const items = [
+                ...(Array.isArray(reservations) ? reservations.map(r => ({
+                    id: r.id,
+                    kind: 'reservation',
+                    type: r.reservation_type,
+                    name: r.reservation_type === 'table' ? `رزرو میز ${r.table_id || ''}` : r.reservation_type === 'cinema' ? 'رزرو سینما' : r.reservation_type === 'event' ? 'رزرو رویداد' : r.reservation_type === 'coworking' ? 'رزرو فضای مشترک' : 'رزرو',
+                    date: r.date,
+                    time: r.time,
+                    status: r.status,
+                    total: 0,
+                    resource_info: r.reservation_type
+                })) : []),
+                ...(Array.isArray(orders) ? orders.map(o => ({
+                    id: o.id,
+                    kind: 'order',
+                    type: 'order',
+                    name: `سفارش محصولات (${(o.items || []).length} آیتم)`,
+                    date: o.created_at ? new Date(o.created_at).toLocaleDateString('fa-IR') : '',
+                    time: o.created_at ? new Date(o.created_at).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : '',
+                    status: o.status,
+                    total: o.total || 0,
+                    resource_info: 'order'
+                })) : [])
+            ];
+            setMyOrders(items.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setOrdersLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user && token) fetchMyOrders();
+    }, [user, token, checkoutSuccess]);
+
+    const [paymentLoading, setPaymentLoading] = useState(false);
+
+    const handlePayment = async (item) => {
+        const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
+        const isStaff = user && ['admin', 'manager', 'barista'].includes(user.role);
+        const cafeId = selectedCafe?.id ?? (isStaff ? user?.cafe_id : null);
+        if (!cafeId) {
+            setCheckoutError(isStaff ? 'شناسه کافه در دسترس نیست' : 'لطفاً ابتدا یک کافه انتخاب کنید');
+            return;
+        }
+        const rawAmount = Math.round(Number(item.total) || 0);
+        const amount = rawAmount >= 1000 ? rawAmount : Math.max(rawAmount * 10, 1000);
+        const authToken = token || localStorage.getItem('authToken');
+        if (!authToken) {
+            setCheckoutError('لطفاً ابتدا وارد شوید');
+            return;
+        }
+        setPaymentLoading(true);
+        setCheckoutError('');
+        try {
+            const callbackUrl = `${window.location.origin}/customer/payment-callback`;
+            const res = await fetch(
+                `${apiBaseUrl}/payments/request?callback_url=${encodeURIComponent(callbackUrl)}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify({
+                        amount,
+                        item_kind: item.kind,
+                        item_id: item.id,
+                        cafe_id: String(cafeId),
+                        description: `پرداخت ${item.name}`,
+                    }),
+                }
+            );
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || 'خطا در ایجاد درخواست پرداخت');
+            }
+            if (data.payment_url) {
+                window.open(data.payment_url, '_blank');
+            } else {
+                throw new Error('پاسخ نامعتبر از سرور');
+            }
+        } catch (err) {
+            setCheckoutError(err.message || 'خطا در اتصال به درگاه پرداخت');
+        } finally {
+            setPaymentLoading(false);
         }
     };
 
@@ -61,10 +193,64 @@ const ShoppingCartPage = () => {
                 )}
                 {checkoutSuccess && (
                     <Alert severity="success" sx={{ mb: 2 }}>
-                        سفارش شما با موفقیت ثبت شد!
+                        سفارش شما با موفقیت ثبت شد! در انتظار تایید کافه می‌باشد.
                     </Alert>
                 )}
-                
+
+                {/* My Orders & Reservations */}
+                {user && (
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>سفارشات و رزروهای من</Typography>
+                        {ordersLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress /></Box>
+                        ) : myOrders.length === 0 ? (
+                            <Typography color="text.secondary">سفارش یا رزرو فعالی ندارید.</Typography>
+                        ) : (
+                            <Grid container spacing={2}>
+                                {myOrders.map((item) => (
+                                    <Grid item xs={12} md={6} key={`${item.kind}-${item.id}`}>
+                                        <Card sx={{ height: '100%' }}>
+                                            <CardContent>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                                                    <Typography variant="subtitle1" fontWeight={600}>{item.name}</Typography>
+                                                    <Chip
+                                                        label={getStatusLabel(item.status)}
+                                                        color={getStatusColor(item.status)}
+                                                        size="small"
+                                                    />
+                                                </Box>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {item.date} {item.time}
+                                                </Typography>
+                                                {item.total > 0 && (
+                                                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                                        مبلغ: {item.total.toLocaleString()} تومان
+                                                    </Typography>
+                                                )}
+                                                {item.status === 'confirmed' && (item.kind === 'order' || (item.total || 0) > 0) && (
+                                                    <Button
+                                                        variant="contained"
+                                                        size="small"
+                                                        startIcon={<Payment />}
+                                                        onClick={() => handlePayment(item)}
+                                                        disabled={paymentLoading}
+                                                        sx={{ mt: 2 }}
+                                                    >
+                                                        {paymentLoading ? 'در حال انتقال...' : 'پرداخت'}
+                                                    </Button>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
+                    </Box>
+                )}
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>سبد خرید</Typography>
                 {cartItems.length === 0 ? (
                     <Card>
                         <CardContent sx={{ textAlign: 'center', py: 4 }}>
@@ -207,7 +393,7 @@ const ShoppingCartPage = () => {
                                     date: item.date || item.sessionDate || new Date().toISOString().split('T')[0],
                                     time: item.time || item.sessionTime || '12:00',
                                     number_of_people: item.people || item.numberOfPeople || item.quantity || 1,
-                                    status: 'confirmed',
+                                    status: 'pending_approval',
                                     notes: item.notes || ''
                                 };
 
@@ -224,6 +410,10 @@ const ShoppingCartPage = () => {
                                         })
                                     });
                                 } else if (item.type === 'cinema') {
+                                    const seatNumbers = (item.selectedSeats || []).map(s => String(s));
+                                    if (seatNumbers.length === 0) {
+                                        return Promise.reject(new Error('لطفاً حداقل یک صندلی برای رزرو سینما انتخاب کنید'));
+                                    }
                                     return fetch(`${apiBaseUrl}/reservations/cinema`, {
                                         method: 'POST',
                                         headers: {
@@ -232,9 +422,9 @@ const ShoppingCartPage = () => {
                                         },
                                         body: JSON.stringify({
                                             ...reservationData,
-                                            session_id: item.sessionId,
-                                            seat_numbers: item.selectedSeats || [],
-                                            attendee_names: item.peopleNames || []
+                                            session_id: String(item.sessionId),
+                                            seat_numbers: seatNumbers,
+                                            attendee_names: (item.peopleNames || []).map(n => String(n))
                                         })
                                     });
                                 } else if (item.type === 'event') {

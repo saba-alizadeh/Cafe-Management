@@ -26,7 +26,7 @@ const theme = createTheme(
     direction: 'rtl',
     palette,
     typography: {
-      fontFamily: "'Inter', 'Vazirmatn', 'Segoe UI', Arial, sans-serif",
+      fontFamily: "'Doran', 'Inter', 'Vazirmatn', 'Segoe UI', Arial, sans-serif",
       button: {
         textTransform: 'none',
         fontWeight: 600,

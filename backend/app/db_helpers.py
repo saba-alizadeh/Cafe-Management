@@ -212,6 +212,49 @@ async def get_user_from_persons(db, user_id: str = None, username: str = None, p
     return None, None
 
 
+async def get_user_or_employee(db, user_id: str = None, username: str = None, phone: str = None):
+    """
+    Search for a user across persons (users, admins, managers) AND employees.
+    Returns (user_doc_with_cafe_id, collection_name) or (None, None) if not found.
+    For employees, cafe_id is attached from the cafe they belong to.
+    """
+    from bson import ObjectId
+
+    # First try persons
+    user, collection_name = await get_user_from_persons(db, user_id=user_id, username=username, phone=phone)
+    if user:
+        return user, collection_name
+
+    # Not found in persons - search employees across all cafes
+    cafes_master = db["cafes_master"]
+    async for cafe in cafes_master.find({}):
+        cafe_id_val = cafe.get("cafe_id")
+        if cafe_id_val is None:
+            continue
+        cafe_id_str = str(cafe_id_val)
+        employees_col = get_cafe_employees_collection(db, cafe_id_str)
+        query = {}
+        if user_id:
+            try:
+                query["_id"] = ObjectId(user_id)
+            except Exception:
+                continue
+        elif username:
+            query["username"] = username
+        elif phone:
+            query["phone"] = phone
+        else:
+            continue
+        employee = await employees_col.find_one(query)
+        if employee:
+            # Attach cafe_id to the employee doc so get_cafe_id_from_user works
+            employee = dict(employee)
+            employee["cafe_id"] = cafe_id_val if isinstance(cafe_id_val, (int, str)) else str(cafe_id_val)
+            employee["role"] = employee.get("role", "barista")
+            return employee, "employees"
+    return None, None
+
+
 def get_cafe_id_from_user(user_doc):
     """
     Extract cafe_id from user document.

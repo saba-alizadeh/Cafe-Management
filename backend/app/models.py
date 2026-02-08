@@ -701,7 +701,7 @@ class ReservationBase(BaseModel):
     date: str
     time: str
     number_of_people: int = Field(..., ge=1)
-    status: str = Field(default="pending", description="pending, confirmed, completed, cancelled")
+    status: str = Field(default="pending_approval", description="pending_approval, confirmed, completed, cancelled, rejected")
     notes: Optional[str] = None
 
 
@@ -715,6 +715,13 @@ class CinemaReservationCreate(ReservationBase):
     session_id: str
     seat_numbers: List[str] = Field(..., min_length=1)
     attendee_names: List[str] = Field(default_factory=list)
+
+    @field_validator("seat_numbers", mode="before")
+    @classmethod
+    def coerce_seat_numbers(cls, v):
+        if isinstance(v, list) and v:
+            return [str(x) for x in v]
+        return v
 
 
 class EventReservationCreate(ReservationBase):
@@ -778,7 +785,7 @@ class OrderCreate(BaseModel):
 class OrderResponse(OrderCreate):
     id: str
     user_id: str
-    status: str = Field(default="pending", description="pending, confirmed, preparing, ready, completed, cancelled")
+    status: str = Field(default="pending_approval", description="pending_approval, confirmed, preparing, ready, completed, cancelled, rejected")
     created_at: datetime
     updated_at: Optional[datetime] = None
 

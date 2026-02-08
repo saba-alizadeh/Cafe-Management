@@ -10,8 +10,8 @@ from app.models import (
 from app.auth import verify_password, get_password_hash, create_access_token, get_current_user
 from app.config import settings
 from app.db_helpers import (
-    get_user_collection_by_role, get_user_from_persons, get_persons_users_collection,
-    get_persons_admins_collection, get_persons_managers_collection,
+    get_user_collection_by_role, get_user_from_persons, get_user_or_employee,
+    get_persons_users_collection, get_persons_admins_collection, get_persons_managers_collection,
     get_cafe_employees_collection, require_cafe_access
 )
 import os
@@ -24,8 +24,8 @@ DEFAULT_OTP = "123456"
 
 
 async def _get_request_user(db, current_user: TokenData):
-    """Get user from the new persons structure (searches across users, admins, managers)"""
-    user, collection_name = await get_user_from_persons(
+    """Get user from persons (users, admins, managers) or employees (baristas, etc.)"""
+    user, collection_name = await get_user_or_employee(
         db,
         user_id=current_user.user_id,
         username=current_user.username,
@@ -823,13 +823,13 @@ async def complete_login(profile_data: PhoneLoginComplete):
 async def get_current_user_info(current_user: TokenData = Depends(get_current_user)):
     """
     Get current authenticated user information
-    Identifies user from token and returns user information
+    Identifies user from token and returns user information (persons or employees)
     Only works with a valid token
     """
     db = get_database()
     
-    # Find user by username, phone, or user_id (searches across all persons collections)
-    user, collection_name = await get_user_from_persons(
+    # Find user in persons (users, admins, managers) or employees (baristas, etc.)
+    user, collection_name = await get_user_or_employee(
         db,
         user_id=current_user.user_id,
         username=current_user.username,
@@ -842,19 +842,24 @@ async def get_current_user_info(current_user: TokenData = Depends(get_current_us
             detail="User not found"
         )
     
+    # Build name for employees (firstName + lastName)
+    name = user.get("name") or (
+        f"{user.get('firstName', '')} {user.get('lastName', '')}".strip() or "User"
+    )
+    
     return UserResponse(
         id=str(user["_id"]),
         username=user.get("username"),
         email=user.get("email"),
         phone=user.get("phone"),
-        role=user["role"],
-        name=user["name"],
+        role=user.get("role", "customer"),
+        name=name,
         firstName=user.get("firstName"),
         lastName=user.get("lastName"),
         address=user.get("address"),
         details=user.get("details"),
         cafe_id=user.get("cafe_id"),
-        created_at=user.get("created_at"),
+        created_at=user.get("created_at", datetime.utcnow()),
         is_active=user.get("is_active", True),
         profile_image_url=user.get("profile_image_url")
     )

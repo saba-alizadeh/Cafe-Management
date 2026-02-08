@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, Work } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
+import ReservationListSection from './ReservationListSection';
 
 const CoworkingManagement = () => {
     const { apiBaseUrl, token } = useAuth();
@@ -174,6 +175,12 @@ const CoworkingManagement = () => {
                     </Table>
                 </CardContent>
             </Card>
+
+            <ReservationListSection
+                reservationType="coworking"
+                typeLabel="فضای مشترک"
+                getResourceInfo={(r) => `میز اشتراکی ${r.table_id || ''}`}
+            />
 
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>{editingTable ? 'ویرایش میز' : 'افزودن میز جدید'}</DialogTitle>

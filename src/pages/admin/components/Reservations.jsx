@@ -21,7 +21,7 @@ import {
 	ToggleButtonGroup,
 	ToggleButton
 } from '@mui/material';
-import { TableRestaurant, BookOnline, Cancel, CheckCircle } from '@mui/icons-material';
+import { TableRestaurant, BookOnline, Cancel, CheckCircle, Close } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
 const Reservations = () => {
@@ -40,10 +40,12 @@ const Reservations = () => {
 			case 'confirmed':
 				return 'success';
 			case 'pending':
+			case 'pending_approval':
 				return 'warning';
 			case 'completed':
 				return 'default';
 			case 'cancelled':
+			case 'rejected':
 				return 'error';
 			default:
 				return 'default';
@@ -55,11 +57,14 @@ const Reservations = () => {
 			case 'confirmed':
 				return 'تایید شده';
 			case 'pending':
-				return 'در انتظار';
+			case 'pending_approval':
+				return 'در انتظار تایید';
 			case 'completed':
 				return 'انجام شده';
 			case 'cancelled':
 				return 'لغو شده';
+			case 'rejected':
+				return 'رد شده';
 			default:
 				return status || 'نامشخص';
 		}
@@ -82,32 +87,23 @@ const Reservations = () => {
 	};
 
 	const fetchData = async () => {
-		if (!authToken || !cafeId) {
-			setError('احراز هویت یا شناسه کافه در دسترس نیست');
+		if (!authToken) {
+			setError('احراز هویت در دسترس نیست');
 			return;
 		}
 
 		setLoading(true);
 		setError('');
 
+		const cafeParam = cafeId ? `?cafe_id=${encodeURIComponent(cafeId)}` : '';
 		try {
 			const [reservationsRes, ordersRes] = await Promise.all([
-				fetch(
-					`${apiBaseUrl}/reservations?cafe_id=${encodeURIComponent(
-						cafeId
-					)}`,
-					{
-						headers: { Authorization: `Bearer ${authToken}` }
-					}
-				),
-				fetch(
-					`${apiBaseUrl}/orders?cafe_id=${encodeURIComponent(
-						cafeId
-					)}`,
-					{
-						headers: { Authorization: `Bearer ${authToken}` }
-					}
-				)
+				fetch(`${apiBaseUrl}/reservations${cafeParam}`, {
+					headers: { Authorization: `Bearer ${authToken}` }
+				}),
+				fetch(`${apiBaseUrl}/orders${cafeParam}`, {
+					headers: { Authorization: `Bearer ${authToken}` }
+				})
 			]);
 
 			if (!reservationsRes.ok) {
@@ -126,6 +122,7 @@ const Reservations = () => {
 				? reservationsData.map((r) => ({
 						id: r.id,
 						kind: 'reservation',
+						cafe_id: r.cafe_id,
 						reservation_type: r.reservation_type,
 						date: r.date,
 						time: r.time,
@@ -150,6 +147,7 @@ const Reservations = () => {
 				? ordersData.map((o) => ({
 						id: o.id,
 						kind: 'order',
+						cafe_id: o.cafe_id,
 						reservation_type: 'order',
 						date: new Date(o.created_at).toLocaleDateString('fa-IR'),
 						time: new Date(o.created_at).toLocaleTimeString('fa-IR', {
@@ -179,6 +177,11 @@ const Reservations = () => {
 	}, [apiBaseUrl, authToken, cafeId]);
 
 	const handleUpdateStatus = async (item, newStatus) => {
+		const itemCafeId = item.cafe_id ?? cafeId;
+		if (!itemCafeId) {
+			setError('شناسه کافه برای به‌روزرسانی در دسترس نیست');
+			return;
+		}
 		if (item.kind === 'order') {
 			if (!window.confirm('آیا از تغییر وضعیت این سفارش اطمینان دارید؟')) return;
 			try {
@@ -188,7 +191,7 @@ const Reservations = () => {
 				const res = await fetch(
 					`${apiBaseUrl}/orders/${encodeURIComponent(
 						item.id
-					)}?cafe_id=${encodeURIComponent(cafeId)}&status_update=${encodeURIComponent(
+					)}?cafe_id=${encodeURIComponent(itemCafeId)}&status_update=${encodeURIComponent(
 						newStatus
 					)}`,
 					{
@@ -228,7 +231,7 @@ const Reservations = () => {
 				`${apiBaseUrl}/reservations/${encodeURIComponent(
 					item.id
 				)}?cafe_id=${encodeURIComponent(
-					cafeId
+					itemCafeId
 				)}&status_update=${encodeURIComponent(newStatus)}`,
 				{
 					method: 'PUT',
@@ -259,6 +262,8 @@ const Reservations = () => {
 
 	const filteredItems = useMemo(() => {
 		return items.filter((it) => {
+			// Reservations section: only table and order (food/drinks)
+			if (it.kind === 'reservation' && it.reservation_type !== 'table') return false;
 			if (statusFilter !== 'all' && it.status !== statusFilter) return false;
 			if (typeFilter !== 'all') {
 				if (typeFilter === 'order' && it.kind !== 'order') return false;
@@ -276,7 +281,7 @@ const Reservations = () => {
 				<Typography variant="h4" sx={{ fontWeight: 'bold' }}>رزروها</Typography>
 			</Stack>
 			<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-				مشاهده و مدیریت تمام رزروها و سفارش‌های پرداخت‌شده
+				مدیریت رزرو میزها و سفارش غذا و نوشیدنی
 			</Typography>
 
 			<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2} alignItems="flex-start">
@@ -290,9 +295,10 @@ const Reservations = () => {
 					}}
 				>
 					<ToggleButton value="all">همه وضعیت‌ها</ToggleButton>
-					<ToggleButton value="pending">در انتظار</ToggleButton>
+					<ToggleButton value="pending_approval">در انتظار تایید</ToggleButton>
 					<ToggleButton value="confirmed">تایید شده</ToggleButton>
 					<ToggleButton value="completed">انجام شده</ToggleButton>
+					<ToggleButton value="rejected">رد شده</ToggleButton>
 					<ToggleButton value="cancelled">لغو شده</ToggleButton>
 				</ToggleButtonGroup>
 
@@ -307,9 +313,6 @@ const Reservations = () => {
 				>
 					<ToggleButton value="all">همه انواع</ToggleButton>
 					<ToggleButton value="table">میز</ToggleButton>
-					<ToggleButton value="coworking">فضای مشترک</ToggleButton>
-					<ToggleButton value="cinema">سینما</ToggleButton>
-					<ToggleButton value="event">رویداد</ToggleButton>
 					<ToggleButton value="order">سفارش محصولات</ToggleButton>
 				</ToggleButtonGroup>
 			</Stack>
@@ -394,20 +397,33 @@ const Reservations = () => {
 												/>
 											</TableCell>
 											<TableCell align="right">
-												<Stack direction="row" spacing={1} justifyContent="flex-end">
-													{item.status !== 'confirmed' && item.status !== 'cancelled' && (
-														<Button
-															variant="outlined"
-															size="small"
-															startIcon={<CheckCircle />}
-															onClick={() => handleUpdateStatus(item, 'confirmed')}
-															disabled={loading}
-															sx={{ borderRadius: 2 }}
-														>
-															تایید
-														</Button>
+												<Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+													{(item.status === 'pending_approval' || item.status === 'pending') && (
+														<>
+															<Button
+																variant="outlined"
+																size="small"
+																startIcon={<CheckCircle />}
+																onClick={() => handleUpdateStatus(item, 'confirmed')}
+																disabled={loading}
+																sx={{ borderRadius: 2 }}
+															>
+																تایید
+															</Button>
+															<Button
+																variant="outlined"
+																color="error"
+																size="small"
+																startIcon={<Close />}
+																onClick={() => handleUpdateStatus(item, 'rejected')}
+																disabled={loading}
+																sx={{ borderRadius: 2 }}
+															>
+																رد
+															</Button>
+														</>
 													)}
-													{item.status !== 'cancelled' && (
+													{item.status !== 'cancelled' && item.status !== 'rejected' && (item.status === 'confirmed' || item.status === 'completed') && (
 														<Button
 															variant="outlined"
 															color="error"
@@ -417,7 +433,7 @@ const Reservations = () => {
 															disabled={loading}
 															sx={{ borderRadius: 2 }}
 														>
-															رد / لغو
+															لغو
 														</Button>
 													)}
 												</Stack>

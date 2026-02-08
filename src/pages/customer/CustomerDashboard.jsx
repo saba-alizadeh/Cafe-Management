@@ -42,6 +42,7 @@ import TableReservations from './components/TableReservations';
 import EventReservations from './components/EventReservations';
 import CinemaReservations from './components/CinemaReservations';
 import SharedSpaceReservations from './components/SharedSpaceReservations';
+import PaymentCallback from './components/PaymentCallback';
 
 const drawerWidth = 240;
 
@@ -243,6 +244,7 @@ const CustomerDashboard = () => {
                     <Route path="reservations/cinema" element={<CinemaReservations />} />
                     <Route path="reservations/shared" element={<SharedSpaceReservations />} />
                     <Route path="reviews" element={<Reviews />} />
+                    <Route path="payment-callback" element={<PaymentCallback />} />
                     <Route path="profile" element={<UserProfile />} />
                 </Routes>
             </Box>

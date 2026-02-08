@@ -38,7 +38,8 @@ import {
 	TableRestaurant,
 	Movie,
 	Work,
-	Event
+	Event,
+	Payment
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import UserProfile from '../../components/profile/UserProfile';
@@ -121,6 +122,7 @@ const AdminDashboard = () => {
 		{ text: 'پیام های تبلیغاتی', icon: <Sms />, to: `${basePath}/ads` },
 		{ text: 'کدهای تخفیف', icon: <Percent />, to: `${basePath}/discounts` },
 		{ text: 'رزروها', icon: <BookOnline />, to: `${basePath}/reservations` },
+		{ text: 'سبد خرید و پرداخت', icon: <Payment />, to: '/customer/cart' },
 		{ text: 'مدیریت محصولات', icon: <ShoppingBag />, to: `${basePath}/products` },
 		{ text: 'مدیریت کاربران', icon: <Group />, to: `${basePath}/users` },
 		{ text: 'بازخورد مشتریان', icon: <RateReview />, to: `${basePath}/feedback` },

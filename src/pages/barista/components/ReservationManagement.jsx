@@ -27,6 +27,7 @@ import {
     Schedule,
     CheckCircle,
     Cancel,
+    Close,
 } from '@mui/icons-material';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -45,9 +46,11 @@ const ReservationManagement = () => {
     const getStatusColor = (status) => {
         switch (status) {
             case 'confirmed': return 'success';
-            case 'pending': return 'warning';
+            case 'pending':
+            case 'pending_approval': return 'warning';
             case 'completed': return 'default';
-            case 'cancelled': return 'error';
+            case 'cancelled':
+            case 'rejected': return 'error';
             default: return 'default';
         }
     };
@@ -55,9 +58,11 @@ const ReservationManagement = () => {
     const getStatusLabel = (status) => {
         switch (status) {
             case 'confirmed': return 'تایید شده';
-            case 'pending': return 'در انتظار';
+            case 'pending':
+            case 'pending_approval': return 'در انتظار تایید';
             case 'completed': return 'انجام شده';
             case 'cancelled': return 'لغو شده';
+            case 'rejected': return 'رد شده';
             default: return status || 'نامشخص';
         }
     };
@@ -74,20 +79,21 @@ const ReservationManagement = () => {
     };
 
     const fetchData = async () => {
-        if (!authToken || !cafeId) {
-            setError('احراز هویت یا شناسه کافه در دسترس نیست');
+        if (!authToken) {
+            setError('احراز هویت در دسترس نیست');
             return;
         }
 
         setLoading(true);
         setError('');
 
+        const cafeParam = cafeId ? `?cafe_id=${encodeURIComponent(cafeId)}` : '';
         try {
             const [reservationsRes, ordersRes] = await Promise.all([
-                fetch(`${apiBaseUrl}/reservations?cafe_id=${encodeURIComponent(cafeId)}`, {
+                fetch(`${apiBaseUrl}/reservations${cafeParam}`, {
                     headers: { Authorization: `Bearer ${authToken}` },
                 }),
-                fetch(`${apiBaseUrl}/orders?cafe_id=${encodeURIComponent(cafeId)}`, {
+                fetch(`${apiBaseUrl}/orders${cafeParam}`, {
                     headers: { Authorization: `Bearer ${authToken}` },
                 }),
             ]);
@@ -108,6 +114,7 @@ const ReservationManagement = () => {
                 ? reservationsData.map((r) => ({
                     id: r.id,
                     kind: 'reservation',
+                    cafe_id: r.cafe_id,
                     reservation_type: r.reservation_type,
                     date: r.date,
                     time: r.time,
@@ -130,6 +137,7 @@ const ReservationManagement = () => {
                 ? ordersData.map((o) => ({
                     id: o.id,
                     kind: 'order',
+                    cafe_id: o.cafe_id,
                     reservation_type: 'order',
                     date: new Date(o.created_at).toLocaleDateString('fa-IR'),
                     time: new Date(o.created_at).toLocaleTimeString('fa-IR', {
@@ -157,6 +165,11 @@ const ReservationManagement = () => {
     }, [apiBaseUrl, authToken, cafeId]);
 
     const handleUpdateStatus = async (item, newStatus) => {
+        const itemCafeId = item.cafe_id ?? cafeId;
+        if (!itemCafeId) {
+            setError('شناسه کافه برای به‌روزرسانی در دسترس نیست');
+            return;
+        }
         if (!window.confirm('آیا از تغییر وضعیت این مورد اطمینان دارید؟')) return;
         try {
             setLoading(true);
@@ -166,7 +179,7 @@ const ReservationManagement = () => {
                 const res = await fetch(
                     `${apiBaseUrl}/orders/${encodeURIComponent(
                         item.id
-                    )}?cafe_id=${encodeURIComponent(cafeId)}&status_update=${encodeURIComponent(
+                    )}?cafe_id=${encodeURIComponent(itemCafeId)}&status_update=${encodeURIComponent(
                         newStatus
                     )}`,
                     {
@@ -191,7 +204,7 @@ const ReservationManagement = () => {
                     `${apiBaseUrl}/reservations/${encodeURIComponent(
                         item.id
                     )}?cafe_id=${encodeURIComponent(
-                        cafeId
+                        itemCafeId
                     )}&status_update=${encodeURIComponent(newStatus)}`,
                     {
                         method: 'PUT',
@@ -221,6 +234,8 @@ const ReservationManagement = () => {
 
     const filteredItems = useMemo(() => {
         return items.filter((it) => {
+            // Reservations section: only table and order (food/drinks)
+            if (it.kind === 'reservation' && it.reservation_type !== 'table') return false;
             if (statusFilter !== 'all' && it.status !== statusFilter) return false;
             if (typeFilter !== 'all') {
                 if (typeFilter === 'order' && it.kind !== 'order') return false;
@@ -315,11 +330,12 @@ const ReservationManagement = () => {
                         if (val !== null) setStatusFilter(val);
                     }}
                 >
-                    <ToggleButton value="all">همه وضعیت‌ها</ToggleButton>
-                    <ToggleButton value="pending">در انتظار</ToggleButton>
-                    <ToggleButton value="confirmed">تایید شده</ToggleButton>
-                    <ToggleButton value="completed">انجام شده</ToggleButton>
-                    <ToggleButton value="cancelled">لغو شده</ToggleButton>
+                <ToggleButton value="all">همه وضعیت‌ها</ToggleButton>
+                <ToggleButton value="pending_approval">در انتظار تایید</ToggleButton>
+                <ToggleButton value="confirmed">تایید شده</ToggleButton>
+                <ToggleButton value="completed">انجام شده</ToggleButton>
+                <ToggleButton value="rejected">رد شده</ToggleButton>
+                <ToggleButton value="cancelled">لغو شده</ToggleButton>
                 </ToggleButtonGroup>
 
                 <ToggleButtonGroup
@@ -331,12 +347,9 @@ const ReservationManagement = () => {
                         if (val !== null) setTypeFilter(val);
                     }}
                 >
-                    <ToggleButton value="all">همه انواع</ToggleButton>
-                    <ToggleButton value="table">میز</ToggleButton>
-                    <ToggleButton value="coworking">فضای مشترک</ToggleButton>
-                    <ToggleButton value="cinema">سینما</ToggleButton>
-                    <ToggleButton value="event">رویداد</ToggleButton>
-                    <ToggleButton value="order">سفارش محصولات</ToggleButton>
+                <ToggleButton value="all">همه انواع</ToggleButton>
+                <ToggleButton value="table">میز</ToggleButton>
+                <ToggleButton value="order">سفارش محصولات</ToggleButton>
                 </ToggleButtonGroup>
             </Stack>
 
@@ -393,19 +406,31 @@ const ReservationManagement = () => {
                                         />
                                     </TableCell>
                                     <TableCell align="right">
-                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                            {item.status !== 'confirmed' && item.status !== 'cancelled' && (
-                                                <Button
-                                                    size="small"
-                                                    variant="outlined"
-                                                    startIcon={<CheckCircle />}
-                                                    onClick={() => handleUpdateStatus(item, 'confirmed')}
-                                                    disabled={loading}
-                                                >
-                                                    تایید
-                                                </Button>
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                                            {(item.status === 'pending_approval' || item.status === 'pending') && (
+                                                <>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        startIcon={<CheckCircle />}
+                                                        onClick={() => handleUpdateStatus(item, 'confirmed')}
+                                                        disabled={loading}
+                                                    >
+                                                        تایید
+                                                    </Button>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="error"
+                                                        startIcon={<Close />}
+                                                        onClick={() => handleUpdateStatus(item, 'rejected')}
+                                                        disabled={loading}
+                                                    >
+                                                        رد
+                                                    </Button>
+                                                </>
                                             )}
-                                            {item.status !== 'cancelled' && (
+                                            {item.status !== 'cancelled' && item.status !== 'rejected' && (item.status === 'confirmed' || item.status === 'completed') && (
                                                 <Button
                                                     size="small"
                                                     variant="outlined"
@@ -414,7 +439,7 @@ const ReservationManagement = () => {
                                                     onClick={() => handleUpdateStatus(item, 'cancelled')}
                                                     disabled={loading}
                                                 >
-                                                    رد / لغو
+                                                    لغو
                                                 </Button>
                                             )}
                                         </Stack>
