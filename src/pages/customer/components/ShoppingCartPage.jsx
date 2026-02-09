@@ -67,14 +67,16 @@ const ShoppingCartPage = () => {
         const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
         const isStaff = user && ['admin', 'manager', 'barista'].includes(user.role);
         const cafeId = selectedCafe?.id ?? (isStaff ? user?.cafe_id : null);
-        if (!authToken || !user || !cafeId) return;
+        if (!authToken || !user) return;
         setOrdersLoading(true);
         try {
+            const resQuery = cafeId ? `?cafe_id=${encodeURIComponent(cafeId)}` : '';
+            const ordQuery = cafeId ? `?cafe_id=${encodeURIComponent(cafeId)}` : '';
             const [reservationsRes, ordersRes] = await Promise.all([
-                fetch(`${apiBaseUrl}/reservations?cafe_id=${cafeId}`, {
+                fetch(`${apiBaseUrl}/reservations${resQuery}`, {
                     headers: { Authorization: `Bearer ${authToken}` }
                 }),
-                fetch(`${apiBaseUrl}/orders?cafe_id=${cafeId}`, {
+                fetch(`${apiBaseUrl}/orders${ordQuery}`, {
                     headers: { Authorization: `Bearer ${authToken}` }
                 })
             ]);
@@ -86,6 +88,7 @@ const ShoppingCartPage = () => {
                     id: r.id,
                     kind: 'reservation',
                     type: r.reservation_type,
+                    cafe_id: r.cafe_id,
                     name: r.reservation_type === 'table' ? `رزرو میز ${r.table_id || ''}` : r.reservation_type === 'cinema' ? 'رزرو سینما' : r.reservation_type === 'event' ? 'رزرو رویداد' : r.reservation_type === 'coworking' ? 'رزرو فضای مشترک' : 'رزرو',
                     date: r.date,
                     time: r.time,
@@ -97,6 +100,7 @@ const ShoppingCartPage = () => {
                     id: o.id,
                     kind: 'order',
                     type: 'order',
+                    cafe_id: o.cafe_id,
                     name: `سفارش محصولات (${(o.items || []).length} آیتم)`,
                     date: o.created_at ? new Date(o.created_at).toLocaleDateString('fa-IR') : '',
                     time: o.created_at ? new Date(o.created_at).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : '',
@@ -122,7 +126,7 @@ const ShoppingCartPage = () => {
     const handlePayment = async (item) => {
         const selectedCafe = JSON.parse(localStorage.getItem('selectedCafe') || 'null');
         const isStaff = user && ['admin', 'manager', 'barista'].includes(user.role);
-        const cafeId = selectedCafe?.id ?? (isStaff ? user?.cafe_id : null);
+        const cafeId = item.cafe_id ?? selectedCafe?.id ?? (isStaff ? user?.cafe_id : null);
         if (!cafeId) {
             setCheckoutError(isStaff ? 'شناسه کافه در دسترس نیست' : 'لطفاً ابتدا یک کافه انتخاب کنید');
             return;
@@ -227,7 +231,7 @@ const ShoppingCartPage = () => {
                                                         مبلغ: {item.total.toLocaleString()} تومان
                                                     </Typography>
                                                 )}
-                                                {item.status === 'confirmed' && (item.kind === 'order' || (item.total || 0) > 0) && (
+                                                {item.status === 'confirmed' && (
                                                     <Button
                                                         variant="contained"
                                                         size="small"

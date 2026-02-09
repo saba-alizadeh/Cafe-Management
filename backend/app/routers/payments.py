@@ -13,10 +13,16 @@ from app.db_helpers import get_cafe_id_for_access
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 ZARINPAL_MERCHANT_ID = "199342e2-53e4-4e0e-bc28-5454b9e476a6"
-# Zarinpal v4 API (old WebGate URLs return 404)
+# Zarinpal v4 API
 ZARINPAL_REQUEST = "https://sandbox.zarinpal.com/pg/v4/payment/request.json"
 ZARINPAL_VERIFY = "https://sandbox.zarinpal.com/pg/v4/payment/verify.json"
 ZARINPAL_STARTPAY = "https://sandbox.zarinpal.com/pg/StartPay/"
+# Headers: User-Agent helps avoid Cloudflare/bot blocks returning HTML instead of JSON
+ZARINPAL_HEADERS = {
+    "accept": "application/json",
+    "content-type": "application/json",
+    "User-Agent": "ZarinPal Rest Api v4",
+}
 
 
 def get_orders_collection(db, cafe_id: str):
@@ -69,7 +75,7 @@ async def request_payment(
                 "callback_url": callback_url,
                 "description": body.description or "پرداخت سفارش کافه",
             },
-            headers={"accept": "application/json", "content-type": "application/json"},
+            headers=ZARINPAL_HEADERS,
         )
 
     if not resp.text or not resp.text.strip():
@@ -80,10 +86,11 @@ async def request_payment(
     try:
         data = resp.json()
     except Exception:
-        raise HTTPException(
-            status_code=502,
-            detail=f"پاسخ نامعتبر از درگاه پرداخت: {resp.text[:200] if resp.text else 'بدون محتوا'}",
-        )
+        # Often HTML (e.g. Cloudflare block) when sandbox blocks server requests
+        detail = "درگاه پرداخت در دسترس نیست یا درخواست مسدود شده است. لطفاً بعداً یا با اتصال دیگر (یا شبکه دیگر) امتحان کنید."
+        if resp.text and "<!DOCTYPE" in resp.text[:100]:
+            detail = "درگاه پرداخت به درخواست پاسخ درست نداد. لطفاً بعداً تلاش کنید یا از شبکه/سرور دیگری استفاده کنید."
+        raise HTTPException(status_code=502, detail=detail)
 
     # v4 response: data.code == 100 for success; errors is object {code, message}
     errors = data.get("errors") or {}
@@ -145,7 +152,7 @@ async def verify_payment(
                 "amount": amount,
                 "authority": authority,
             },
-            headers={"accept": "application/json", "content-type": "application/json"},
+            headers=ZARINPAL_HEADERS,
         )
 
     if not resp.text or not resp.text.strip():
