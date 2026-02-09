@@ -227,7 +227,7 @@ const ShoppingCartPage = () => {
                                                         مبلغ: {item.total.toLocaleString()} تومان
                                                     </Typography>
                                                 )}
-                                                {item.status === 'confirmed' && (item.kind === 'order' || (item.total || 0) > 0) && (
+                                                {item.status === 'confirmed' && (
                                                     <Button
                                                         variant="contained"
                                                         size="small"
